@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
+	<classpathentry kind="lib" path="/home/ccc2/Dropbox/OLE Conversion/marc4j.jar"/>
+	<classpathentry kind="lib" path="/home/ccc2/Dropbox/OLE Conversion/olebibloadfile.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/J2SE-1.5">
+		<attributes>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="/home/ccc2/dev/xerces-2_11_0/xercesImpl.jar"/>
+	<classpathentry kind="lib" path="/home/ccc2/dev/jaxb-impl-2.1.13.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
