@@ -1,3 +1,4 @@
+package edu.lu.oleconvert;
 
 public class LU_NamespacePrefixMapper extends com.sun.xml.bind.marshaller.NamespacePrefixMapper {
 

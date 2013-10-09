@@ -1,3 +1,4 @@
+package edu.lu.oleconvert;
 
 import edu.indiana.libraries.JPADriver.classes.JPADriver;
 import edu.indiana.libraries.JPADriver.classes.MakeConnection;
@@ -19,6 +20,7 @@ import org.marc4j.marc.Leader;
 
 import OLEBibLoadDocuments.edu.indiana.libraries.OLEBibLoadDocuments.classes.BuildRequestDocument;
 import edu.indiana.libraries.LoadDocstore.jaxb.*;
+import edu.lu.oleconvert.ole.InstanceCollection;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -148,7 +150,9 @@ public class LU_BuildOLELoadDocs {
         ByteArrayOutputStream out = null;
         MarcWriter writer;
         RequestType request;
-
+        LU_BuildInstance buildInstance = new LU_BuildInstance();
+        InstanceCollection ic = new InstanceCollection();
+        
         System.out.println("Starting ...");
         
         /* ccc2 -- not doing this anymore
@@ -276,9 +280,13 @@ public class LU_BuildOLELoadDocs {
             								xmlrecord.getLeader().toString(),
             								BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,
             								xmlrecord, marcXML);
+            	buildInstance.setRecord(record);
+            	buildInstance.ReadInstance(ic, callNumbersFilename, itemsFilename)
+            	// Here would be a great place to generate instance records too, since we already have the catalog record in hand
+            	
             	//  marshaller = getMarshaller(RequestType.class);
             	
-            	// output.print(marshallObjext(request,marshaller));            
+            	// output.print(marshallObjext(request,marshaller));      
             	marshallObjext(request,marshaller, outFile);
         		counter++;
         		if ( counter % 10000 == 0 ) {
