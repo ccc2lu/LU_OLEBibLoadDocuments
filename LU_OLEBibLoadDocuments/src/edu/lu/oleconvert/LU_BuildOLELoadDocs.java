@@ -150,7 +150,7 @@ public class LU_BuildOLELoadDocs {
         ByteArrayOutputStream out = null;
         MarcWriter writer;
         RequestType request;
-        LU_BuildInstance buildInstance = new LU_BuildInstance();
+        LU_BuildInstance instanceBuilder = new LU_BuildInstance("/mnt/bigdrive/bibdata/allcallnums.txt", "/mnt/bigdrive/bibdata/allitems.txt");
         InstanceCollection ic = new InstanceCollection();
         
         System.out.println("Starting ...");
@@ -280,8 +280,7 @@ public class LU_BuildOLELoadDocs {
             								xmlrecord.getLeader().toString(),
             								BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,
             								xmlrecord, marcXML);
-            	buildInstance.setRecord(record);
-            	buildInstance.ReadInstance(ic, callNumbersFilename, itemsFilename)
+            	instanceBuilder.buildInstance(record, ic);
             	// Here would be a great place to generate instance records too, since we already have the catalog record in hand
             	
             	//  marshaller = getMarshaller(RequestType.class);

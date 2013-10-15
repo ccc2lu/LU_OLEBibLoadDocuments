@@ -7,6 +7,7 @@ package edu.lu.oleconvert;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import javax.xml.*;
@@ -30,24 +31,61 @@ import edu.lu.oleconvert.ole.*;
 public class LU_BuildInstance {
 
 
-	private Record record;
-	private HashMap<String, String> callNumbers;
-	private HashMap<String, String[]> items;
+	private HashMap<String, ArrayList<String>> callNumbers;
+	private HashMap<String, ArrayList<String>> items;
 	
 	public LU_BuildInstance() {
 		super();
+		callNumbers = new HashMap<String, ArrayList<String>>();
+		items = new HashMap<String, ArrayList<String>>();
+	}
+
+	public LU_BuildInstance(String callNumbersFilename, String itemsFilename) {
+		this();
+		this.readSirsiFiles(callNumbersFilename, itemsFilename);		
 	}
 	
-	public LU_BuildInstance(Record record) {
-		this.record = record;
+	public LU_BuildInstance(Record record, String callNumbersFilename, String itemsFilename) {
+		this(callNumbersFilename, itemsFilename);
 	}
 	
-	public Record getRecord() {
-		return this.record;
-	}
-	
-	public void setRecord(Record record) {
-		this.record = record;
+	public void readSirsiFiles(String callNumbersFilename, String itemsFilename) {
+		BufferedReader callNumbersReader, itemsReader;
+		try {
+        	callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
+        	itemsReader = new BufferedReader(new FileReader(itemsFilename));
+        	System.out.println("Building hashmap of call number records by catalog key ...");
+        	while(callNumbersReader.ready()) {
+        		String line = callNumbersReader.readLine();
+        		String fields[] = line.split("\\|");
+        		if ( callNumbers.get(fields[2]) == null ) {
+        			ArrayList<String> callNumberStrs = new ArrayList<String>();
+        			callNumberStrs.add(line);
+        			callNumbers.put(fields[2], callNumberStrs);
+        		} else {
+        			callNumbers.get(fields[2]).add(line);
+        		}
+        		//TODO: instead of reading the files again for each catalog record, we're
+        		//      going to cache all the callnumber and item records in big hashmaps,
+        		//      keyed by the catalog record
+        		//ReadCallNumber(inst, callNumbersReader);
+        	}
+        	System.out.println("Building hashmap of call item records by catalog key ...");
+        	while(itemsReader.ready()) {
+        		String line = itemsReader.readLine();
+        		String fields[] = line.split("\\|");
+        		if ( items.get(fields[3]) == null ) {
+        			ArrayList<String> itemStrs = new ArrayList<String>();
+        			itemStrs.add(line);
+        			items.put(fields[3], itemStrs);
+        		} else {
+        			items.get(fields[3]).add(line);
+        		}
+        	}
+		} catch(Exception e) {
+			System.err.println("Unable to read in call numbers and items: " + e.getMessage());
+			e.printStackTrace(System.err);
+		}
 	}
 	
 	public static void main(String arguments[]) {
@@ -71,27 +109,75 @@ public class LU_BuildInstance {
 		}
 	}
 	
-	public static void ReadInstance(InstanceCollection ic, String callNumbersFilename, String itemsFilename) {
+	public void buildInstance(Record record, InstanceCollection ic) {
 		Instance inst = new Instance();
-		BufferedReader callNumbersReader, itemsReader;
-		try {
-        	callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
-        	itemsReader = new BufferedReader(new FileReader(itemsFilename));
-        	while(callNumbersReader.ready()) {
-        		ReadCallNumber(inst, callNumbersReader);
-        	}
-		} catch(Exception e) {
-			System.err.println("Unable to read in call numbers and items: " + e.getMessage());
-			e.printStackTrace(System.err);
-		}
+
+	    String catalogKey = record.getVariableField("001").toString().split(" ")[1];
+		ArrayList<String> callNumberStrings = this.callNumbers.get(catalogKey);
+		ArrayList<String> itemStrings = this.items.get(catalogKey);
+		this.buildHoldingsDataFromCallNumber(record, inst, callNumberStrings);
 		
 		ic.getInstances().add(inst);
 		//ic.setInstance(inst);
 	}
 	
-	public static void ReadCallNumber(Instance inst, BufferedReader callNumbersReader) throws Exception {
-		String line = callNumbersReader.readLine();
-		String fields[] = line.split("\\|");
+	public void buildItemsData(Record record, Instance inst, ArrayList<String> itemStrings) {
+		Items items = new Items();
+		ArrayList<Item> itemsList = new ArrayList<Item>();
+		for ( String itemString : itemStrings ) {
+			// construct the item data from the item string
+			Item item = new Item();
+			// The contents of the call numbers file was produced by this command:
+			// selitem -oKINCabcdfhjlmnpqrstuvwyzA1234567BSk > /ExtDisk/allitems.txt
+			// So the order of fields is:
+			/* 0 (K) item key
+			 * 1 (I) item key (again for some reason)
+			 * 2 (N) callnum key
+			 * 3 (C) catalog key
+			 * 4 (a) last used date
+			 * 5 (b) number of bills
+			 * 6 (c) number of charges
+			 * 7 (d) number of "total" charges, not sure what the difference is from (c)
+			 * 8 (f) first created date
+			 * 9 (h) number of holds
+			 * 10 (j) house charge
+			 * 11 (l) home location
+			 * 12 (m) current location
+			 * 13 (n) last changed date
+			 * 14 (p) permanent flag (Y or N)
+			 * 15 (q) price
+			 * 16 (r) reserve type
+			 * 17 (s) last user key
+			 * 18 (t) type
+			 * 19 (u) recirculation flags
+			 * 20 (v) inventoried date
+			 * 21 (w) number of times inventoried
+			 * 22 (y) library of item
+			 * 23 (z) hold key
+			 * 24 (A) last discharge date
+			 * 25 (1) "accountability"
+			 * 26 (2) shadowed (Y or N)
+			 * 27 (3) distribution key
+			 * 28 (4) transit status
+			 * 29 (5) reserve status -- NOT_ON_RES, FLAGGED, KEEP_DESK, PICKUP, or ON_RESERVE
+			 * 30 (6) "pieces"
+			 * 31 (7) "Media Desk" field
+			 * 32 (B) item ID (NQ)
+			 * 33 (S) item "input string"
+			 * 34 (k) number of comments
+			 * TODO: we'd like to get the actual comments, but selitem on dewey
+			 * claimed the -Z option was invalid.  Ask Mark or someone about this.
+			 * The API manual says to use -Z to get the comments.
+			 */
+			itemsList.add(item);
+		}
+		items.setItems(itemsList);
+		inst.setItems(items);
+	}
+	
+	public void buildHoldingsDataFromCallNumber(Record record, Instance inst, ArrayList<String> callNumberStrings) {
+		// Use the first callNumber in the list to fill in some info 
+		String fields[] = callNumberStrings.get(0).split("\\|");
 		// The contents of the call numbers file was produced by this command:
 		// selcallnum -iS -oKNCADSZabchpqryz2 > /ExtDisk/allcallnums.txt
 		// So the order of fields is:
@@ -119,12 +205,17 @@ public class LU_BuildInstance {
 		SourceHoldings sh = new SourceHoldings();
 		sh.setPrimary(fields[16].equals("1") ? "true" : "false");
 		inst.setSourceHoldings(sh);
-
+		
 		// TODO: many things now stored in the instance record may need to be
 		// drawn from the catalog record.  Look in WorkFlows to see ...
 		
 		// Build up oleHoldings within instance
 		OLEHoldings oh = new OLEHoldings();
+		ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
+		extentOfOwnership.setType("public");
+		// TODO: probably need to split this
+		extentOfOwnership.setTextualHoldings(record.getVariableField("866").toString());
+		oh.setExtentOfOwnership(extentOfOwnership);
 		
 		inst.setOleHoldings(oh);
 	}
