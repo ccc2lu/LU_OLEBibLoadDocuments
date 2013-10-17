@@ -128,47 +128,56 @@ public class LU_BuildInstance {
 			// construct the item data from the item string
 			Item item = new Item();
 			// The contents of the call numbers file was produced by this command:
-			// selitem -oKINCabcdfhjlmnpqrstuvwyzA1234567BSk > /ExtDisk/allitems.txt
+			// selitem -oKabcdfhjlmnpqrstuvwyzA1234567Bk > /ExtDisk/allitems.txt
+			// K actually includes the item key, the callnumber key, and the catalog key all in one
 			// So the order of fields is:
 			/* 0 (K) item key
-			 * 1 (I) item key (again for some reason)
-			 * 2 (N) callnum key
-			 * 3 (C) catalog key
-			 * 4 (a) last used date
-			 * 5 (b) number of bills
-			 * 6 (c) number of charges
-			 * 7 (d) number of "total" charges, not sure what the difference is from (c)
-			 * 8 (f) first created date
-			 * 9 (h) number of holds
-			 * 10 (j) house charge
-			 * 11 (l) home location
-			 * 12 (m) current location
-			 * 13 (n) last changed date
-			 * 14 (p) permanent flag (Y or N)
-			 * 15 (q) price
-			 * 16 (r) reserve type
-			 * 17 (s) last user key
-			 * 18 (t) type
-			 * 19 (u) recirculation flags
-			 * 20 (v) inventoried date
-			 * 21 (w) number of times inventoried
-			 * 22 (y) library of item
-			 * 23 (z) hold key
-			 * 24 (A) last discharge date
-			 * 25 (1) "accountability"
-			 * 26 (2) shadowed (Y or N)
-			 * 27 (3) distribution key
-			 * 28 (4) transit status
-			 * 29 (5) reserve status -- NOT_ON_RES, FLAGGED, KEEP_DESK, PICKUP, or ON_RESERVE
-			 * 30 (6) "pieces"
-			 * 31 (7) "Media Desk" field
-			 * 32 (B) item ID (NQ)
-			 * 33 (S) item "input string"
-			 * 34 (k) number of comments
+			 * 1 (K) callnumber key
+			 * 2 (K) catalog key
+			 * 3 (a) last used date
+			 * 4 (b) number of bills
+			 * 5 (c) number of charges
+			 * 6 (d) number of "total" charges, not sure what the difference is from (c)
+			 * 7 (f) first created date
+			 * 8 (h) number of holds
+			 * 9 (j) house charge
+			 * 10 (l) home location
+			 * 11 (m) current location
+			 * 12 (n) last changed date
+			 * 13 (p) permanent flag (Y or N)
+			 * 14 (q) price
+			 * 15 (r) reserve type
+			 * 16 (s) last user key
+			 * 17 (t) type
+			 * 18 (u) recirculation flags
+			 * 19 (v) inventoried date
+			 * 20 (w) number of times inventoried
+			 * 21 (y) library of item
+			 * 22 (z) hold key
+			 * 23 (A) last discharge date
+			 * 24 (1) "accountability"
+			 * 25 (2) shadowed (Y or N)
+			 * 26 (3) distribution key
+			 * 27 (4) transit status
+			 * 28 (5) reserve status -- NOT_ON_RES, FLAGGED, KEEP_DESK, PICKUP, or ON_RESERVE
+			 * 29 (6) "pieces"
+			 * 30 (7) "Media Desk" field
+			 * 31 (B) item ID (NQ)
+			 * 32 (k) number of comments
 			 * TODO: we'd like to get the actual comments, but selitem on dewey
 			 * claimed the -Z option was invalid.  Ask Mark or someone about this.
 			 * The API manual says to use -Z to get the comments.
 			 */
+			
+			Location location = new Location();
+			LocationLevel locLevel1 = new LocationLevel();
+			locLevel1.setLevel("UNIVERSITY");
+			locLevel1.setName("Lehigh University");
+			LocationLevel locLevel2 = new LocationLevel();
+			locLevel2.setLevel("LIBRARY");
+			
+			locLevel2.setName(libraryName);
+			locLevel2.setName(name)
 			itemsList.add(item);
 		}
 		items.setItems(itemsList);
@@ -179,25 +188,23 @@ public class LU_BuildInstance {
 		// Use the first callNumber in the list to fill in some info 
 		String fields[] = callNumberStrings.get(0).split("\\|");
 		// The contents of the call numbers file was produced by this command:
-		// selcallnum -iS -oKNCADSZabchpqryz2 > /ExtDisk/allcallnums.txt
+		// selcallnum -iS -oKADZabchpqryz2 > /ExtDisk/allcallnums.txt
 		// So the order of fields is:
-		/* 0 callnum key,
-		 * 1 callnum key, 
-		 * 2 catalog key, 
-		 * 3 shelving key, 
-		 * 4 item number,
-		 * 5 "input strings",
-		 * 6 analytics
-		 * 7 analytic position
-		 * 8 level (NONE, CHILD, or PARENT)
-		 * 9 number of copies
-		 * 10 number of "call" holds
-		 * 11 classification
-		 * 12 number of reserve control records
-		 * 13 number of academic reserves
-		 * 14 library
-		 * 15 number of visible copies
-		 * 16 shadowed
+		/* 0 callnum key, 
+		 * 1 catalog key, 
+		 * 2 shelving key, 
+		 * 3 item number,
+		 * 4 analytics
+		 * 5 analytic position
+		 * 6 level (NONE, CHILD, or PARENT)
+		 * 7 number of copies
+		 * 8 number of "call" holds
+		 * 9 classification
+		 * 10 number of reserve control records
+		 * 11 number of academic reserves
+		 * 12 library
+		 * 13 number of visible copies
+		 * 14 shadowed
 		 */
 		String catalogKey = fields[2];
 		inst.setInstanceIdentifier(fields[0]);
