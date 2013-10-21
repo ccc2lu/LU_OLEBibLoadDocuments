@@ -20,11 +20,33 @@ public class test {
         	callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
         	itemsReader = new BufferedReader(new FileReader(itemsFilename));
 
+        	System.out.println("Building hashmap of call item records by catalog key ...");
+        	while(itemsReader.ready()) {
+        		String line = itemsReader.readLine();
+        		String fields[] = line.split("\\|");
+        		if ( fields.length != 33 ) {
+        			badfields++;
+        			System.err.println("Wrong number of fields: ");
+        			for( int i = 0; i < fields.length; i++ ) {
+        				System.err.println(i + ": " + fields[i]);
+        			}
+        		}
+        		
+        		if ( items.get(fields[3]) == null ) {
+        			ArrayList<String> itemStrs = new ArrayList<String>();
+        			itemStrs.add(line);
+        			items.put(fields[3], itemStrs);
+        		} else {
+        			items.get(fields[3]).add(line);
+        		}
+        	}
+        	System.err.println("Number of bad field strings in item records: " + badfields);
+        	badfields = 0;
            	System.out.println("Building hashmap of call number records by catalog key ...");
         	while(callNumbersReader.ready()) {
         		String line = callNumbersReader.readLine();
         		String fields[] = line.split("\\|");
-        		if ( fields.length != 15 ) {
+        		if ( fields.length != 12 ) {
         			badfields++;
         			System.err.println("Wrong number of fields: ");
         			for( int i = 0; i < fields.length; i++ ) {
@@ -39,22 +61,8 @@ public class test {
         			callNumbers.get(fields[2]).add(line);
         		}
         	}
-        	System.err.println("Number of bad field strings: " + badfields);
+        	System.err.println("Number of bad field strings in call number records: " + badfields);
         	System.exit(0);
-        	
-        	System.out.println("Building hashmap of call item records by catalog key ...");
-        	while(itemsReader.ready()) {
-        		String line = itemsReader.readLine();
-        		String fields[] = line.split("\\|");
-        		
-        		if ( items.get(fields[3]) == null ) {
-        			ArrayList<String> itemStrs = new ArrayList<String>();
-        			itemStrs.add(line);
-        			items.put(fields[3], itemStrs);
-        		} else {
-        			items.get(fields[3]).add(line);
-        		}
-        	}
         	
         		//TODO: instead of reading the files again for each catalog record, we're
         		//      going to cache all the callnumber and item records in big hashmaps,

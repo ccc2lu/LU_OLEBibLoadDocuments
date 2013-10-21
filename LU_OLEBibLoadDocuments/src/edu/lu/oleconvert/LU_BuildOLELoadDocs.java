@@ -150,7 +150,11 @@ public class LU_BuildOLELoadDocs {
         ByteArrayOutputStream out = null;
         MarcWriter writer;
         RequestType request;
-        LU_BuildInstance instanceBuilder = new LU_BuildInstance("/mnt/bigdrive/bibdata/allcallnums.txt", "/mnt/bigdrive/bibdata/allitems.txt");
+        LU_BuildInstance instanceBuilder = new LU_BuildInstance("/mnt/bigdrive/bibdata/allcallnums.txt", 
+        														"/mnt/bigdrive/bibdata/allcallnumsshelvingkeys.txt",
+        														"/mnt/bigdrive/bibdata/allcallnumsitemnumbers.txt",
+        														"/mnt/bigdrive/bibdata/allcallnumsanalytics.txt",        														
+        		                                                "/mnt/bigdrive/bibdata/allitems.txt");
         InstanceCollection ic = new InstanceCollection();
         
         System.out.println("Starting ...");
