@@ -10,6 +10,7 @@ import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 import javax.xml.*;
 import javax.xml.bind.JAXB;
@@ -22,6 +23,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.TransformerFactory;
 
+import org.apache.commons.lang3.StringUtils;
 import org.marc4j.marc.Record;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -31,24 +33,24 @@ import edu.lu.oleconvert.ole.*;
 
 public class LU_BuildInstance {
 
-	private HashMap<String, ArrayList<ArrayList<String>>> callNumberKeysToCallNumbers;
-	private HashMap<String, ArrayList<ArrayList<String>>> itemKeysToItems;
-
 	// These are indexed by what we have to link to them from the Bibliographic data
 	// For the callNumbers, that's the "Item Number", which is in the 999 field's "a" subfield code
 	// Librarians know is as the "call number", but Sirsi calls it the Item Number.  It is output by
 	// the "D" option to selcallnum, and is in a separate file keyed by the callnumber key.
 	// Items are linked by the "Item ID", which is 999 subfield code "i" in the MARC record.
 	// It's output by the "B" option to selitem and is field 31 in the output of selitem
-	private HashMap<String, ArrayList<ArrayList<String>>> callNumbers;
-	private HashMap<String, ArrayList<ArrayList<String>>> items;
+	private HashMap<String, List<List<String>>> callNumbersByCatalogKey;
+	private HashMap<String, List<List<String>>> callNumbersByItemNumber;
+	private HashMap<String, List<List<String>>> itemsByCatalogKey;
+	private HashMap<String, List<List<String>>> itemsByID;
+	private static int initSize = 2000000;
 	
 	public LU_BuildInstance() {
 		super();
-		callNumberKeysToCallNumbers = new HashMap<String, ArrayList<ArrayList<String>>>();
-		itemKeysToItems = new HashMap<String, ArrayList<ArrayList<String>>>();
-		callNumbers = new HashMap<String, ArrayList<ArrayList<String>>>();
-		items = new HashMap<String, ArrayList<ArrayList<String>>>();
+		callNumbersByCatalogKey = new HashMap<String, List<List<String>>>(initSize);
+		itemsByCatalogKey = new HashMap<String, List<List<String>>>(initSize);
+		callNumbersByItemNumber = new HashMap<String, List<List<String>>>(initSize);
+		itemsByID = new HashMap<String, List<List<String>>>(initSize);
 	}
 
 	public LU_BuildInstance(String callNumbersFilename, String shelvingKeysFilename,
@@ -60,6 +62,30 @@ public class LU_BuildInstance {
 							itemsFilename);		
 	}
 	
+	public void printHashMaps(int limit) {
+		int i = 0;
+		List<List<String>> callNumberStrings;
+		List<List<String>> itemStrings;
+		System.out.println("Printing hash maps ...");
+		for ( String catkey : callNumbersByCatalogKey.keySet() ) {
+			callNumberStrings = callNumbersByCatalogKey.get(catkey);
+			for ( List<String> callNumberStr : callNumberStrings ) {
+				System.out.println("Call number by catalog key " + catkey + ": " + 
+			                        StringUtils.join(callNumberStr.toArray(), ","));
+			}
+			i++;
+			if ( i >= limit ) 
+				break;
+		}
+	}
+	
+	public void readSirsiFiles(String callNumbersFilename, String shelvingKeysFilename,
+							   String itemNumbersFilename, String analyticsFilename,
+							   String itemsFilename) {
+		this.readSirsiFiles(callNumbersFilename, shelvingKeysFilename, 
+				            itemNumbersFilename, analyticsFilename, itemsFilename, -1);
+	}
+	
 	// The callnumbers data is broken up into 4 files because 3 of the fields contained
 	// the pipe character in them and Sirsi had no way to intelligently change the
 	// delimiter character between fields from pipe to something else -- it's selascii
@@ -69,7 +95,7 @@ public class LU_BuildInstance {
 	// files by themselves.
 	public void readSirsiFiles(String callNumbersFilename, String shelvingKeysFilename,
 							   String itemNumbersFilename, String analyticsFilename,
-							   String itemsFilename) {
+							   String itemsFilename, int limit) {
 		BufferedReader callNumbersReader, shelvingKeysReader, itemNumbersReader, analyticsReader, itemsReader;
 		try {
         	callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
@@ -77,43 +103,99 @@ public class LU_BuildInstance {
         	itemNumbersReader = new BufferedReader(new FileReader(itemNumbersFilename));
         	analyticsReader = new BufferedReader(new FileReader(analyticsFilename));
         	itemsReader = new BufferedReader(new FileReader(itemsFilename));
-        	System.out.println("Building hashmap of call number records by catalog key ...");
-        	while(callNumbersReader.ready()) {
-        		// There should be the same number of lines in all 4 files containing callnum data 
+        	System.out.println("Building hashmap of call number records by call number key " + 
+        					   "and by call number (called \"item number\" by Sirsi) ...");
+        	int curr = 0, increment = 100000;
+        	while(callNumbersReader.ready() && (limit > 0 && curr < limit)) {
+        		// There should be the same number of lines in all 4 files containing callnum data,
+        		// and they should all be sorted the same way to line 1 goes with line 1 goes with line 1, etc.
+        		// I'm building those files myself, so I can guarantee it, heh
+        		// With that in mind, we'll just read lines from all 4 files at once
         		String line = callNumbersReader.readLine();
         		String shelvingKeysLine = shelvingKeysReader.readLine();
         		String itemNumbersLine = itemNumbersReader.readLine();
-        		String analyticsLine = itemNumbersReader.readLine();
+        		String analyticsLine = analyticsReader.readLine();
         		String fields[] = line.split("\\|");
-        		ArrayList<String> callNumberFields = (ArrayList<String>) Arrays.asList(fields);
-        		// TODO: now add the shelving key, item number, and analytics data to callNumbersFields
-        		ArrayList<ArrayList<String>> callNumberStrs ;
-        		if ( callNumbers.get(fields[2]) == null ) {
-        			callNumberStrs = new ArrayList<ArrayList<String>>();
+        		// Can't just assign the return value of Arrays.asList(fields) to callNumberFields --
+        		// that method returns an immutable, fixed-size list
+        		ArrayList<String> callNumberFields = new ArrayList<String>();
+        		callNumberFields.addAll(Arrays.asList(fields));
+        		
+        		List<String> tmpfields;
+        		String tmpStr;
+
+        		// Now add the shelving key, item number, and analytics data to callNumberFields
+        		// The shelving keys may also contain pipes, so they are exported into their own file
+        		// The first two fields on each line of that file are the call number 
+        		// and catalog keys, so we skip them, then add the rest onto the end
+        		// of the callNumberFields array.
+           		fields = shelvingKeysLine.split("\\|");
+        		tmpfields = Arrays.asList(fields).subList(2, fields.length);
+        		tmpStr = StringUtils.join(tmpfields, "|");
+        		callNumberFields.add(tmpStr);
+        		// Now we repeat that process for the itemNumbersLine and analyticsLine
+        		fields = itemNumbersLine.split("\\|");
+        		tmpfields = Arrays.asList(fields).subList(2, fields.length);
+        		tmpStr = StringUtils.join(tmpfields, "|");
+        		callNumberFields.add(tmpStr);
+        		fields = analyticsLine.split("\\|");
+        		tmpfields = Arrays.asList(fields).subList(2, fields.length);
+        		tmpStr = StringUtils.join(tmpfields, "|");        		
+        		callNumberFields.add(tmpStr);
+        		if ( callNumbersByCatalogKey.get(callNumberFields.get(2)) == null ) {
+        			List<List<String>> callNumberStrs = new ArrayList<List<String>>();
         			callNumberStrs.add(callNumberFields);
-        			callNumbers.put(fields[2], callNumberStrs);
+        			callNumbersByCatalogKey.put(callNumberFields.get(2), callNumberStrs);
         		} else {
-        			callNumbers.get(fields[2]).add(callNumberFields);
+        			callNumbersByCatalogKey.get(callNumberFields.get(2)).add(callNumberFields);
         		}
-        		//TODO: now fill in the hashmap keyed by itemnumber ...
+        		// Now fill in the hashmap keyed by itemnumber, which should be index 13 in the field list
+        		if ( this.callNumbersByItemNumber.get(callNumberFields.get(13)) == null) {
+        			List<List<String>> callNumberStrs = new ArrayList<List<String>>();
+        			callNumberStrs.add(callNumberFields);
+        			callNumbersByItemNumber.put(callNumberFields.get(13), callNumberStrs);        			
+        		} else {
+        			callNumbersByItemNumber.get(callNumberFields.get(13)).add(callNumberFields);
+        		}
+        		if ( ++curr % increment == 0 ) {
+        			System.out.println("On call number " + curr);
+        		}
         	}
-        	System.out.println("Building hashmap of call item records by catalog key ...");
-        	while(itemsReader.ready()) {
+        	System.out.println("Building hashmap of item records by catalog key and by Item ID ...");
+        	curr = 0;
+        	while(itemsReader.ready() && (limit > 0 && curr < limit)) {
+        		// Only one file to read from this time
         		String line = itemsReader.readLine();
         		String fields[] = line.split("\\|");
-        		if ( items.get(fields[3]) == null ) {
-        			ArrayList<String> itemStrs = new ArrayList<String>();
-        			itemStrs.add(line);
-        			items.put(fields[3], itemStrs);
+        		List<String> itemNumberFields = Arrays.asList(fields);
+        		// Fill in the hash keyed by catalog key, which should be index 2 in the list
+        		if ( itemsByCatalogKey.get(itemNumberFields.get(2)) == null ) {
+        			List<List<String>> itemStrs = new ArrayList<List<String>>();
+        			itemStrs.add(itemNumberFields);
+        			itemsByCatalogKey.put(itemNumberFields.get(2), itemStrs);
         		} else {
-        			items.get(fields[3]).add(line);
+        			itemsByCatalogKey.get(itemNumberFields.get(2)).add(itemNumberFields);
         		}
+        		// Now fill in the hash keyed by Item ID, which is index 31
+        		if ( this.itemsByID.get(itemNumberFields.get(31)) == null ) {
+        			List<List<String>> itemStrs = new ArrayList<List<String>>();
+        			itemStrs.add(itemNumberFields);
+        			itemsByID.put(itemNumberFields.get(2), itemStrs);        			
+        		} else {
+        			itemsByID.get(itemNumberFields.get(31)).add(itemNumberFields);
+        		}
+        		if ( ++curr % increment == 0 ) {
+        			System.out.println("On item number " + curr);
+        		}
+        	
         	}
+        	System.out.println("Done building hashmaps");
 		} catch(Exception e) {
 			System.err.println("Unable to read in call numbers and items: " + e.getMessage());
 			e.printStackTrace(System.err);
 		}
 	}
+	
 	
 	public static void main(String arguments[]) {
 		
@@ -140,18 +222,22 @@ public class LU_BuildInstance {
 		Instance inst = new Instance();
 
 	    String catalogKey = record.getVariableField("001").toString().split(" ")[1];
-		ArrayList<String> callNumberStrings = this.callNumbers.get(catalogKey);
-		ArrayList<String> itemStrings = this.items.get(catalogKey);
-		this.buildHoldingsDataFromCallNumber(record, inst, callNumberStrings);
-		
+		List<List<String>> callNumberStrings = this.callNumbersByCatalogKey.get(catalogKey);
+		List<List<String>> itemStrings = this.itemsByCatalogKey.get(catalogKey);
+		for( List<String> callNumberFields : callNumberStrings ) {
+			this.buildHoldingsDataFromCallNumber(record, inst, callNumberFields);
+		}
+		for( List<String> itemFields : itemStrings) {
+			this.buildItemsData(record, inst, itemFields);
+		}
 		ic.getInstances().add(inst);
 		//ic.setInstance(inst);
 	}
 	
-	public void buildItemsData(Record record, Instance inst, ArrayList<String> itemStrings) {
+	public void buildItemsData(Record record, Instance inst, List<String> itemFields) {
 		Items items = new Items();
 		ArrayList<Item> itemsList = new ArrayList<Item>();
-		for ( String itemString : itemStrings ) {
+		for ( String itemString : itemFields ) {
 			// construct the item data from the item string
 			Item item = new Item();
 			// The contents of the items file was produced by this command:
@@ -203,19 +289,23 @@ public class LU_BuildInstance {
 			LocationLevel locLevel2 = new LocationLevel();
 			locLevel2.setLevel("LIBRARY");
 			
-			locLevel2.setName(libraryName);
-			locLevel2.setName(name)
+			//locLevel2.setName(libraryName);
+			//locLevel2.setName(name)
 			itemsList.add(item);
 		}
 		items.setItems(itemsList);
 		inst.setItems(items);
 	}
 	
-	public void buildHoldingsDataFromCallNumber(Record record, Instance inst, ArrayList<String> callNumberStrings) {
+	public void buildHoldingsDataFromCallNumber(Record record, Instance inst, List<String> callNumberFields) {
 		// Use the first callNumber in the list to fill in some info 
-		String fields[] = callNumberStrings.get(0).split("\\|");
+		String fields[] = callNumberFields.get(0).split("\\|");
 		// The contents of the call numbers file was produced by this command:
 		// selcallnum -iS -oKabchpqryz2 > /ExtDisk/allcallnums.txt
+		// The shelving Key, output by -oA, the "item number", called call number at Lehigh
+		// and output by -oD, and the analytics, output by -oZ, are then concatenated onto
+		// the end of the callNumberFields list.  They are output separately since each
+		// can contain pipe characters.
 		// So the order of fields is:
 		/* 0 callnum key, 
 		 * 1 catalog key, 
@@ -229,6 +319,9 @@ public class LU_BuildInstance {
 		 * 9 library
 		 * 10 number of visible copies
 		 * 11 shadowed
+		 * 12 shelving key
+		 * 13 item number (call number at Lehigh)
+		 * 14 analytics
 		 */
 		String catalogKey = fields[2];
 		inst.setInstanceIdentifier(fields[0]);
