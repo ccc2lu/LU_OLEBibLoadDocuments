@@ -80,8 +80,8 @@ public class test {
 										   "/mnt/bigdrive/bibdata/allcallnumsshelvingkeys.txt",
 										   "/mnt/bigdrive/bibdata/allcallnumsitemnumbers.txt",
 										   "/mnt/bigdrive/bibdata/allcallnumsanalytics.txt",        														
-										   "/mnt/bigdrive/bibdata/allitems.txt", 10000);
-        	instanceBuilder.printHashMaps(10);
+										   "/mnt/bigdrive/bibdata/allitems.txt", -1);
+        	instanceBuilder.printHashMaps(0);
          	
 		} catch(Exception e) {
 			System.err.println("Unable to read in call numbers and items: " + e.getMessage());
