@@ -284,7 +284,7 @@ public class LU_BuildOLELoadDocs {
             								xmlrecord.getLeader().toString(),
             								BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,
             								xmlrecord, marcXML);
-            	instanceBuilder.buildInstance(record, ic);
+            	instanceBuilder.buildInstanceCollection(record, ic);
             	// Here would be a great place to generate instance records too, since we already have the catalog record in hand
             	
             	//  marshaller = getMarshaller(RequestType.class);

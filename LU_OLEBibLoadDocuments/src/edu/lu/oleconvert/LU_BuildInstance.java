@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -27,6 +28,7 @@ import javax.xml.transform.TransformerFactory;
 
 import org.apache.commons.lang3.StringUtils;
 import org.marc4j.marc.Record;
+import org.marc4j.marc.VariableField;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -273,25 +275,61 @@ public class LU_BuildInstance {
 		}
 	}
 	
-	public void buildInstance(Record record, InstanceCollection ic) {
-		Instance inst = new Instance();
+	public Map<String, List<String>> getSubfields(VariableField field) {
+		HashMap<String, List<String>> subfields = new HashMap<String, List<String>>();
+		String fieldStr = field.toString();
+		// Take the tag off of there
+		fieldStr = fieldStr.replaceFirst(field.getTag() + "\\s+", "");
+		//System.out.println("After replacement, whole thing is: " + fieldStr);
+		// Split on a $ followed by a lower case letter, since the price subfield will have $ signs in it,
+		// and use the LookBehind feature (that's the ?=) to include the delimiter.
+		// We can then make a hashmap out of that keyed by the subfield codes
+		String[] subfieldsarray = fieldStr.split("(?=\\$[a-z])");
+		String key = "", value = "";
+		for ( String subfield : subfieldsarray ) {
+			// After split, there's an empty string at the beginning that we should skip
+			if ( subfield.length() == 0 ) 
+				continue;
+			key = subfield.substring(0, 2);
+			value = subfield.substring(2);
+			if ( subfields.get(key) == null ) {
+				List<String> sub = new ArrayList<String>();
+				sub.add(value);
+				subfields.put(key, sub);
+			} else {
+				subfields.get(key).add(value);
+			}
+		}
+		return subfields;
+	}
+	
+	public void buildInstanceCollection(Record record, InstanceCollection ic) {
 
 	    String catalogKey = record.getVariableField("001").toString().split(" ")[1];
 		List<List<String>> callNumberStrings = this.callNumbersByCatalogKey.get(catalogKey);
 		List<List<String>> itemStrings = this.itemsByCatalogKey.get(catalogKey);
 		for( List<String> callNumberFields : callNumberStrings ) {
+			Instance inst = new Instance();
 			this.buildHoldingsDataFromCallNumber(record, inst, callNumberFields);
+			for( List<String> itemFields : itemStrings) {
+				
+				this.buildItemsData(record, inst, itemFields);
+			}
+			ic.getInstances().add(inst);
 		}
-		for( List<String> itemFields : itemStrings) {
-			this.buildItemsData(record, inst, itemFields);
-		}
-		ic.getInstances().add(inst);
 		//ic.setInstance(inst);
 	}
 	
 	public void buildItemsData(Record record, Instance inst, List<String> itemFields) {
 		Items items = new Items();
 		ArrayList<Item> itemsList = new ArrayList<Item>();
+		// TODO: the record parameter may have multiple 999 fields.  Need to figure out which
+		// one goes with the item record we're currently processing from the items hash.
+	    List<VariableField> recitems = record.getVariableFields("999"); 
+	    for ( VariableField field : recitems ) {
+	    	field.find("$o");
+	    }
+	    
 		for ( String itemString : itemFields ) {
 			// construct the item data from the item string
 			Item item = new Item();
@@ -346,6 +384,8 @@ public class LU_BuildInstance {
 			
 			//locLevel2.setName(libraryName);
 			//locLevel2.setName(name)
+			
+
 			itemsList.add(item);
 		}
 		items.setItems(itemsList);

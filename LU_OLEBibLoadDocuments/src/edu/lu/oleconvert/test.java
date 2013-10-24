@@ -1,9 +1,17 @@
 package edu.lu.oleconvert;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.marc4j.MarcXmlReader;
+import org.marc4j.marc.Record;
+import org.marc4j.marc.VariableField;
 
 public class test {
 
@@ -64,6 +72,40 @@ public class test {
 		
 	}
 	
+
+	
+	public static void testReadingXMLRecord(LU_BuildInstance instanceBuilder, String filename, int limit) {
+		
+		Record record;
+        MarcXmlReader reader;
+        Map<String, List<String>> subfieldsmap;
+		try {
+			reader = new MarcXmlReader(new FileInputStream(filename));
+	        int curr = 0;
+	        while (reader.hasNext() && (curr++ < limit) ) {
+	        	record = reader.next();
+	        	List<VariableField> recitems = record.getVariableFields("999"); 
+	    	    String catalogKey = record.getVariableField("001").toString().split(" ")[1];
+	    	    System.out.println("999 fields for record with catalog key " + catalogKey);
+	        	for ( VariableField field : recitems ) {
+	        		System.out.println("Field ID: " + field.getId() + ", tag: " + field.getTag() + 
+	        				           ", whole thing: " + field.toString());
+	        		subfieldsmap = instanceBuilder.getSubfields(field);
+	        		for ( Object key : subfieldsmap.keySet().toArray() ) {
+	        			List<String> subfields = subfieldsmap.get(key);
+	        			for ( String value : subfields ) {
+	        				System.out.println("Subfield " + key + ", " + value);
+	        			}
+	        		}
+	        	}
+	        	System.out.println();
+	        }
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
 	public static void main(String arguments[]) {
 		
 		String callNumbersFilename = "/mnt/bigdrive/bibdata/allcallnums.txt";
@@ -76,12 +118,18 @@ public class test {
         	callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
         	itemsReader = new BufferedReader(new FileReader(itemsFilename));
         	// test.testReadingFiles1(callNumbersReader, itemsReader);
+
+        	test.testReadingXMLRecord(instanceBuilder, "/mnt/bigdrive/bibdata/catalog.07302013.plusholdings.mod.marcxml", 1000);
+        	
+        	/*
         	instanceBuilder.readSirsiFiles("/mnt/bigdrive/bibdata/allcallnums.txt", 
 										   "/mnt/bigdrive/bibdata/allcallnumsshelvingkeys.txt",
 										   "/mnt/bigdrive/bibdata/allcallnumsitemnumbers.txt",
 										   "/mnt/bigdrive/bibdata/allcallnumsanalytics.txt",        														
 										   "/mnt/bigdrive/bibdata/allitems.txt", -1);
         	instanceBuilder.printHashMaps(0);
+        	*/
+
          	
 		} catch(Exception e) {
 			System.err.println("Unable to read in call numbers and items: " + e.getMessage());
