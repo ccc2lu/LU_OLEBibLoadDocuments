@@ -49,6 +49,10 @@ public class LU_BuildInstance {
 	private TreeMap<String, List<List<String>>> itemsByID;
 	private static int initSize = 2000000;
 	
+	// Once OLE has a way to ingest e-instance documents, then set this to true
+	// and the code to generate e-instances will run
+	private boolean eInstanceReady = false;
+	
 	public LU_BuildInstance() {
 		super();
 		callNumbersByCatalogKey = new TreeMap<String, List<List<String>>>();
@@ -287,12 +291,16 @@ public class LU_BuildInstance {
 		String[] subfieldsarray = fieldStr.split("(?=\\$[a-z])");
 		String key = "", value = "";
 		for ( String subfield : subfieldsarray ) {
-			// After split, there's an empty string at the beginning that we should skip
+			// After substition and split, there's an empty string element of
+			// the array that we want to skip
 			if ( subfield.length() == 0 ) 
 				continue;
 			key = subfield.substring(0, 2);
 			value = subfield.substring(2);
 			if ( subfields.get(key) == null ) {
+				// There can be multiple subfields with the same subfield code,
+				// such as the $o subfield for comments, so we make the values
+				// a list
 				List<String> sub = new ArrayList<String>();
 				sub.add(value);
 				subfields.put(key, sub);
@@ -303,98 +311,127 @@ public class LU_BuildInstance {
 		return subfields;
 	}
 	
-	public void buildInstanceCollection(Record record, InstanceCollection ic) {
+	public void buildInstanceCollection(Record record, InstanceCollection ic, ArrayList<Record> assocMFHDRecords) {
 
 	    String catalogKey = record.getVariableField("001").toString().split(" ")[1];
-		List<List<String>> callNumberStrings = this.callNumbersByCatalogKey.get(catalogKey);
-		List<List<String>> itemStrings = this.itemsByCatalogKey.get(catalogKey);
-		for( List<String> callNumberFields : callNumberStrings ) {
+		//List<List<String>> callNumberStrings = this.callNumbersByCatalogKey.get(catalogKey);
+		//List<List<String>> itemStrings = this.itemsByCatalogKey.get(catalogKey);
+		List<VariableField> itemsholdings = record.getVariableFields("999");
+		//for( List<String> callNumberFields : callNumberStrings ) {
+		if ( record.getVariableFields("856").size() > 1 && eInstanceReady ) {
+			// multiple 856 fields -- generate e-instances for each one
+			// no code to ingest these yet, so don't bother currently
+			// TODO: 
+			// When code to ingest e-instances exists, take the "&& false"
+			// out up above
+		}
+
+		// Loop over the 999 fields of the bib record, which represent items
+		for ( VariableField field : itemsholdings ) {
 			Instance inst = new Instance();
-			this.buildHoldingsDataFromCallNumber(record, inst, callNumberFields);
-			for( List<String> itemFields : itemStrings) {
-				
-				this.buildItemsData(record, inst, itemFields);
-			}
+			Map<String, List<String>> subfields = this.getSubfields(field);			
+			List<String> itemnumber = subfields.get("$a"); // I think that's the subfield code, check that
+			this.buildHoldingsData(record, inst, subfields, assocMFHDRecords); 		
+			this.buildItemsData(record, inst, subfields);
 			ic.getInstances().add(inst);
 		}
 		//ic.setInstance(inst);
 	}
 	
-	public void buildItemsData(Record record, Instance inst, List<String> itemFields) {
-		Items items = new Items();
-		ArrayList<Item> itemsList = new ArrayList<Item>();
-		// TODO: the record parameter may have multiple 999 fields.  Need to figure out which
-		// one goes with the item record we're currently processing from the items hash.
-	    List<VariableField> recitems = record.getVariableFields("999"); 
-	    for ( VariableField field : recitems ) {
-	    	field.find("$o");
-	    }
-	    
-		for ( String itemString : itemFields ) {
-			// construct the item data from the item string
-			Item item = new Item();
-			// The contents of the items file was produced by this command:
-			// selitem -oKabcdfhjlmnpqrstuvwyzA1234567Bk > /ExtDisk/allitems.txt
-			// K actually includes the item key, the callnumber key, and the catalog key all in one
-			// So the order of fields is:
-			/* 0 (K) catalog key
-			 * 1 (K) callnumber key
-			 * 2 (K) item key
-			 * 3 (a) last used date
-			 * 4 (b) number of bills
-			 * 5 (c) number of charges
-			 * 6 (d) number of "total" charges, not sure what the difference is from (c)
-			 * 7 (f) first created date
-			 * 8 (h) number of holds
-			 * 9 (j) house charge
-			 * 10 (l) home location
-			 * 11 (m) current location
-			 * 12 (n) last changed date
-			 * 13 (p) permanent flag (Y or N)
-			 * 14 (q) price
-			 * 15 (r) reserve type
-			 * 16 (s) last user key
-			 * 17 (t) type
-			 * 18 (u) recirculation flags
-			 * 19 (v) inventoried date
-			 * 20 (w) number of times inventoried
-			 * 21 (y) library of item
-			 * 22 (z) hold key
-			 * 23 (A) last discharge date
-			 * 24 (1) "accountability"
-			 * 25 (2) shadowed (Y or N)
-			 * 26 (3) distribution key
-			 * 27 (4) transit status
-			 * 28 (5) reserve status -- NOT_ON_RES, FLAGGED, KEEP_DESK, PICKUP, or ON_RESERVE
-			 * 29 (6) "pieces"
-			 * 30 (7) "Media Desk" field
-			 * 31 (B) item ID (NQ)
-			 * 32 (k) number of comments
-			 * TODO: we'd like to get the actual comments, but selitem on dewey
-			 * claimed the -Z option was invalid.  Ask Mark or someone about this.
-			 * The API manual says to use -Z to get the comments.
-			 */
+	/*
+	 *  The subfields parameter is a hashmap containing all the subfields of a 999 field.
+	 * There can be more than one of several of them, so each key returns a list.  The
+	 * keys are the subfield codes, like "$a", "$e", etc.  What's in them is described at:
+	 * http://carbon.sirsidynix.com/Helps/3.4/Workflows/English/Using_the_949_Entry_for_Cop.html
+	 * $a => Call Number -- called "Item Number" in Sirsi databases and used to key into callNumbersByItemNumber hash
+	 * $v => Volume Number, $w => Class scheme, $c => copy number, $h => holding code
+	 * $i => barcode number (Item ID in Sirsi's items table), $m => Library, $d => last activity date
+	 * $e => date last charged, $f => date inventoried, $g => times inventoried, $j => number of pieces
+	 * $k => current location, $l => home location, $n => totale charges, $o => comments/notes
+	 * $p => price, $q => in house charges, $r => circulate flag, $s => permanent flag
+	 * $t => item type, $u => acquisition date, $x => item category 1, $z = item category 2
+	 * 
+	 */
+	public void buildItemsData(Record record, Instance inst, Map<String, List<String>> subfields) {
+		if ( inst.getItems() == null ) {
+			// Constructor for Items class will initialize the ArrayList
+			inst.setItems(new Items());
+		}
+	    Item item = new Item();		
+	    List<String> commentfields = subfields.get("$o");
+
+	    // There should only be one subfield "i", as it's the item's barcode and should be unique
+	    // And there should be only 1 item with that item ID, so we can just get the first
+	    // element of each of those lists
+		if ( subfields.get("$i").size() != 1 ||
+			itemsByID.get(subfields.get("$i").get(0)).size() != 1 ) {
+				System.err.println("Bar code number (item ID) not unique for item: " + subfields.toString());			
+			}
+	    List<String> itemString = this.itemsByID.get(subfields.get("$i").get(0)).get(0);
+		// The field order of the itemString is described here:		
+		// The contents of the items file was produced by this command:
+		// selitem -oKabcdfhjlmnpqrstuvwyzA1234567Bk > /ExtDisk/allitems.txt
+		// K actually includes the item key, the callnumber key, and the catalog key all in one
+		// So the order of fields is:
+		/* 0 (K) catalog key
+		 * 1 (K) callnumber key
+		 * 2 (K) item key
+		 * 3 (a) last used date
+		 * 4 (b) number of bills
+		 * 5 (c) number of charges
+		 * 6 (d) number of "total" charges, not sure what the difference is from (c)
+		 * 7 (f) first created date
+		 * 8 (h) number of holds
+		 * 9 (j) house charge
+		 * 10 (l) home location
+		 * 11 (m) current location
+		 * 12 (n) last changed date
+		 * 13 (p) permanent flag (Y or N)
+		 * 14 (q) price
+		 * 15 (r) reserve type
+		 * 16 (s) last user key
+		 * 17 (t) type
+		 * 18 (u) recirculation flags
+		 * 19 (v) inventoried date
+		 * 20 (w) number of times inventoried
+		 * 21 (y) library of item
+		 * 22 (z) hold key
+		 * 23 (A) last discharge date
+		 * 24 (1) "accountability"
+		 * 25 (2) shadowed (Y or N)
+		 * 26 (3) distribution key
+		 * 27 (4) transit status
+		 * 28 (5) reserve status -- NOT_ON_RES, FLAGGED, KEEP_DESK, PICKUP, or ON_RESERVE
+		 * 29 (6) "pieces"
+		 * 30 (7) "Media Desk" field
+		 * 31 (B) item ID (NQ)
+		 * 32 (k) number of comments	
+		 */
 			
-			Location location = new Location();
-			LocationLevel locLevel1 = new LocationLevel();
-			locLevel1.setLevel("UNIVERSITY");
-			locLevel1.setName("Lehigh University");
-			LocationLevel locLevel2 = new LocationLevel();
-			locLevel2.setLevel("LIBRARY");
+		Location location = new Location();
+		LocationLevel locLevel1 = new LocationLevel();
+		locLevel1.setLevel("UNIVERSITY");
+		locLevel1.setName("Lehigh University");
+		LocationLevel locLevel2 = new LocationLevel();
+		locLevel2.setLevel("LIBRARY");
 			
 			//locLevel2.setName(libraryName);
 			//locLevel2.setName(name)
 			
-
-			itemsList.add(item);
-		}
-		items.setItems(itemsList);
-		inst.setItems(items);
+		inst.getItems().getItems().add(item);
 	}
 	
-	public void buildHoldingsDataFromCallNumber(Record record, Instance inst, List<String> callNumberFields) {
+	public void buildHoldingsData(Record record, Instance inst, Map<String, List<String>> subfields, ArrayList<Record> assocMFHDRecords) {
 		// Use the first callNumber in the list to fill in some info 
-		String fields[] = callNumberFields.get(0).split("\\|");
+		
+	    // There should only be one subfield "a", as it's the item's call number and should be unique
+	    // And there should be only 1 call number with that "item number" in Sirsi, so we can just get the first
+	    // element of each of those lists
+		if ( subfields.get("$a").size() != 1 ||
+			 callNumbersByItemNumber.get(subfields.get("$a").get(0)).size() != 1 ) {
+			System.err.println("Call number (item number) not unique for item: " + subfields.toString());			
+		}
+		List<String> callNumberFields = this.callNumbersByItemNumber.get(subfields.get("$a").get(0)).get(0);
 		// The contents of the call numbers file was produced by this command:
 		// selcallnum -iS -oKabchpqryz2 > /ExtDisk/allcallnums.txt
 		// The shelving Key, output by -oA, the "item number", called call number at Lehigh
@@ -418,11 +455,11 @@ public class LU_BuildInstance {
 		 * 13 item number (call number at Lehigh)
 		 * 14 analytics
 		 */
-		String catalogKey = fields[2];
-		inst.setInstanceIdentifier(fields[0]);
-		inst.setResourceIdentifier(fields[2]);
+		String catalogKey = callNumberFields.get(2);
+		inst.setInstanceIdentifier(callNumberFields.get(0));
+		inst.setResourceIdentifier(callNumberFields.get(2));
 		SourceHoldings sh = new SourceHoldings();
-		sh.setPrimary(fields[16].equals("1") ? "true" : "false");
+		sh.setPrimary(callNumberFields.get(16).equals("1") ? "true" : "false");
 		inst.setSourceHoldings(sh);
 		
 		// TODO: many things now stored in the instance record may need to be
@@ -433,7 +470,9 @@ public class LU_BuildInstance {
 		ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
 		extentOfOwnership.setType("public");
 		// TODO: probably need to split this
-		extentOfOwnership.setTextualHoldings(record.getVariableField("866").toString());
+		Map<String, List<String>> tmpsubfields = this.getSubfields(record.getVariableField("866"));
+		// Should only be one 866 field with one "$a" subfield
+		extentOfOwnership.setTextualHoldings(tmpsubfields.get("$a").get(0));
 		oh.setExtentOfOwnership(extentOfOwnership);
 		
 		inst.setOleHoldings(oh);

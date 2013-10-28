@@ -30,6 +30,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
@@ -264,9 +266,20 @@ public class LU_BuildOLELoadDocs {
             // not sure this accounts for holdings in addition to bibs, though
             MarcXmlReader reader = new MarcXmlReader(new FileInputStream(args[3]));
             int limit = 50, curr = 0;
-            while (reader.hasNext() && curr++ < limit ) {
-            	Record xmlrecord = reader.next();
-            	//System.err.println("ID is: " + xmlrecord.getLeader());
+            List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
+            Record xmlrecord, nextrecord;
+            nextrecord = reader.next();
+        	ArrayList<Record> assocMFHDRecords;
+            do {
+            	assocMFHDRecords = new ArrayList<Record>();
+            	xmlrecord = nextrecord;
+            	nextrecord = reader.next();
+            	// The associated holdings records for a bib record should always come right after it
+            	// So we keep looping and adding them to an ArrayList as we go
+            	while ( holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
+            		assocMFHDRecords.add(nextrecord);
+            		nextrecord = reader.next();
+            	}
 
             	// ccc2 -- catalog was only needed to get some extra data elements, which we get from a 
             	// separate file that I generated using selcatalog
@@ -284,7 +297,7 @@ public class LU_BuildOLELoadDocs {
             								xmlrecord.getLeader().toString(),
             								BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,
             								xmlrecord, marcXML);
-            	instanceBuilder.buildInstanceCollection(record, ic);
+            	instanceBuilder.buildInstanceCollection(record, ic, assocMFHDRecords);
             	// Here would be a great place to generate instance records too, since we already have the catalog record in hand
             	
             	//  marshaller = getMarshaller(RequestType.class);
@@ -295,7 +308,7 @@ public class LU_BuildOLELoadDocs {
         		if ( counter % 10000 == 0 ) {
         			System.out.println(counter + " ingest documents created ...");
         		}
-            }
+            } while (nextrecord != null && curr++ < limit );
             System.out.println("Done creating ingest documents");
             outFile.close();
         } catch (IOException e) {
