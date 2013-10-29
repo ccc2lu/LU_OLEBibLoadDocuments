@@ -58,6 +58,14 @@ public class LU_BuildOLELoadDocs {
     public static final String MARC_FORMAT = "marc";
     public static final String CATEGORY_WORK = "work";
 
+    static final int LOG_DEBUG = 0, LOG_INFO = 1, LOG_WARN = 2, LOG_ERROR = 3; 
+    private static int logLevel = LOG_DEBUG; 
+    public static void Log(PrintStream out, String message, int level) {
+    	if ( level >= logLevel ) {
+    		out.println(message);
+    	}
+    }
+
     private static XMLSerializer getXMLSerializer(BufferedWriter out) {
         // configure an OutputFormat to handle CDATA
         OutputFormat of = new OutputFormat();
@@ -134,8 +142,6 @@ public class LU_BuildOLELoadDocs {
 
         return marshaller;
     }
-
-
 
     public static void main(String[] args) {
         Marshaller marshaller;
@@ -220,7 +226,7 @@ public class LU_BuildOLELoadDocs {
         		KeyToDate.put(key, line);
         		counter++;
         		if ( counter % 100000 == 0 ) {
-        			System.out.println(counter + " records mapped ...");
+        			Log(System.out, counter + " records mapped ...", LOG_DEBUG);
         		}
         	}
         	System.out.println("Done reading in catalog keys map");
@@ -269,14 +275,15 @@ public class LU_BuildOLELoadDocs {
             List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
             Record xmlrecord, nextrecord;
             nextrecord = reader.next();
-        	ArrayList<Record> assocMFHDRecords;
+        	ArrayList<Record> assocMFHDRecords = new ArrayList<Record>();;
             do {
-            	assocMFHDRecords = new ArrayList<Record>();
+            	assocMFHDRecords.clear();
             	xmlrecord = nextrecord;
             	nextrecord = reader.next();
             	// The associated holdings records for a bib record should always come right after it
             	// So we keep looping and adding them to an ArrayList as we go
             	while ( holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
+            		
             		assocMFHDRecords.add(nextrecord);
             		nextrecord = reader.next();
             	}
