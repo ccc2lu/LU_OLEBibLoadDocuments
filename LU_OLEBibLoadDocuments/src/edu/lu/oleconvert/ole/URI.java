@@ -22,6 +22,11 @@ public class URI implements Serializable {
 		super();
 	}
 	
+	public URI(String value) {
+		super();
+		this.uri = value;
+	}
+	
 	@XmlAttribute(name="resolvable")
 	public String getResolvable() {
 		return resolvable;

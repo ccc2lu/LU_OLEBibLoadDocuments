@@ -56,6 +56,8 @@ public class Item implements Serializable {
 	private String fastAddFlag;
 	private Extension extension;
 	
+	// This default, no-args constructor only puts a value in those fields
+	// that need it initialized so they show up properly in the XML output
 	public Item() {
 		super();
 		this.barcodeARSL = "";
@@ -77,6 +79,46 @@ public class Item implements Serializable {
 		price = numberOfPieces = itemStatus = itemStatusEffectiveDate = "";
 		checkinNote = staffOnlyFlag = fastAddFlag = "";
 	}
+	
+	// This copy constructor needs to assign all the fields
+	public Item(Item i) {
+		super();
+		this.analytic = i.getAnalytic();
+		this.resourceIdentifier = i.getResourceIdentifier();
+		this.itemIdentifier = i.getItemIdentifier();
+		this.barcodeARSL = i.getBarcodeARSL();
+		this.vendorLineItemIdentifier = i.getVendorLineItemIdentifier();
+		this.purchaseOrderLineItemIdentifier = i.getPurchaseOrderLineItemIdentifier();
+		this.statisticalSearchingCodes = (ArrayList<StatisticalSearchingCode>) i.getStatisticalSearchingCodes().clone();
+		this.formerIdentifiers = (ArrayList<FormerIdentifier>) i.getFormerIdentifiers().clone();
+		this.itemType = i.getItemType();
+		this.callNumber = i.getCallNumber();
+		this.callNumber.setClassificationPart(i.getCallNumber().getClassificationPart());
+		this.callNumber.setItemPart(i.getCallNumber().getClassificationPart());
+		this.location = i.getLocation();
+		this.highDensityStorage = i.getHighDensityStorage();
+		this.temporaryItemType = i.getTemporaryItemType();
+		this.extension = i.getExtension();
+		this.notes = (ArrayList<Note>) i.getNotes().clone();
+		this.enumeration = i.getEnumeration();
+		this.chronology = i.getChronology();
+		copyNumber = i.getCopyNumber(); 
+		copyNumberLabel = i.getCopyNumberLabel(); 
+		volumeNumber = i.getVolumeNumber();
+		volumeNumberLabel = i.getVolumeNumberLabel();
+		fund = i.getFund();
+		donorPublicDisplay = i.getDonorPublicDisplay();
+		donorNote = i.getDonorNote();
+		price = i.getPrice();
+		numberOfPieces = i.getNumberOfPieces();
+		itemStatus = i.getItemStatus();
+		itemStatusEffectiveDate = i.getItemStatusEffectiveDate();
+		checkinNote = i.getCheckinNote();
+		staffOnlyFlag = i.getStaffOnlyFlag();
+		fastAddFlag = i.getFastAddFlag();
+		this.accessInformation = i.getAccessInformation();
+	}
+	
 	
 	@XmlElement(name="copyNumber", required=true, nillable=true)
 	public String getCopyNumber() {

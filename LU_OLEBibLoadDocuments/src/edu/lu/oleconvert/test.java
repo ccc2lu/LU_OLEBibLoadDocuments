@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,8 @@ import java.util.Map;
 import org.marc4j.MarcXmlReader;
 import org.marc4j.marc.Record;
 import org.marc4j.marc.VariableField;
+
+import edu.lu.oleconvert.ole.Note;
 
 public class test {
 
@@ -106,6 +109,32 @@ public class test {
 		}
 	}
 	
+	public static void splitTest() {
+		List<String> nonpublicNoteType = Arrays.asList(".CIRCNOTE.", ".STAFF.");
+		List<String> publicNoteType = Arrays.asList(".PUBLIC.");
+	    List<String> commentfields = Arrays.asList(".CIRCNOTE. test1", ".PUBLIC. test2", ".STAFF. test3"); 
+	    for ( String comment : commentfields ) {
+	    	System.out.println();
+	    	//String[] pieces = comment.split("\\.[A-Z]+\\.");
+	    	// Keep the delimiter on the preceding element of the split array
+	    	String[] pieces = comment.split("(?<=\\. )");
+	    	if ( pieces.length != 2 ) {
+	    		System.err.println("Badly formatted comment: " + comment);
+	    	}
+	    	for (String piece : pieces ) {
+	    		System.out.println("Piece: " + piece);
+	    	}
+	    	if ( nonpublicNoteType.contains(pieces[0].trim())) {
+	    		System.out.println("Type is nonpublic");
+	    	} else if ( publicNoteType.contains(pieces[0].trim())) {
+	    		System.out.println("Type is public");
+	    	} else {
+	    		System.out.println("Unknown type");
+	    	}
+	    	System.out.println("Type is " + pieces[1]);
+	    }
+	}
+	
 	public static void main(String arguments[]) {
 		
 		String callNumbersFilename = "/mnt/bigdrive/bibdata/allcallnums.txt";
@@ -119,7 +148,7 @@ public class test {
         	itemsReader = new BufferedReader(new FileReader(itemsFilename));
         	// test.testReadingFiles1(callNumbersReader, itemsReader);
 
-        	test.testReadingXMLRecord(instanceBuilder, "/mnt/bigdrive/bibdata/catalog.07302013.plusholdings.mod.marcxml", 1000);
+        	//test.testReadingXMLRecord(instanceBuilder, "/mnt/bigdrive/bibdata/catalog.07302013.plusholdings.mod.marcxml", 1000);
         	
         	/*
         	instanceBuilder.readSirsiFiles("/mnt/bigdrive/bibdata/allcallnums.txt", 
@@ -130,7 +159,7 @@ public class test {
         	instanceBuilder.printHashMaps(0);
         	*/
 
-         	
+         	splitTest();
 		} catch(Exception e) {
 			System.err.println("Unable to read in call numbers and items: " + e.getMessage());
 			e.printStackTrace(System.err);

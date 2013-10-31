@@ -59,13 +59,22 @@ public class LU_BuildOLELoadDocs {
     public static final String CATEGORY_WORK = "work";
 
     static final int LOG_DEBUG = 0, LOG_INFO = 1, LOG_WARN = 2, LOG_ERROR = 3; 
-    private static int logLevel = LOG_DEBUG; 
+    private static int currentLogLevel = LOG_DEBUG;
+    private static int defaultLogLevel = LOG_INFO;
     public static void Log(PrintStream out, String message, int level) {
-    	if ( level >= logLevel ) {
+    	if ( level >= currentLogLevel ) {
     		out.println(message);
     	}
     }
 
+    public static void Log(PrintStream out, String message) {
+    	Log(out, message, defaultLogLevel);
+    }
+    
+    public static void Log(String message) {
+    	Log(System.out, message);
+    }
+    
     private static XMLSerializer getXMLSerializer(BufferedWriter out) {
         // configure an OutputFormat to handle CDATA
         OutputFormat of = new OutputFormat();
@@ -165,7 +174,7 @@ public class LU_BuildOLELoadDocs {
         		                                                "/mnt/bigdrive/bibdata/allitems.txt");
         InstanceCollection ic = new InstanceCollection();
         
-        System.out.println("Starting ...");
+        Log("Starting ...");
         
         /* ccc2 -- not doing this anymore
         try {
@@ -175,7 +184,7 @@ public class LU_BuildOLELoadDocs {
         }
          */
 
-        System.out.println("Args: " + args[0] + ", " + args[1]);
+        Log("Args: " + args[0] + ", " + args[1]);
         
         loadprops = loadProps(args[0]);
         oracleprops = loadProps(loadprops.getProperty("oracle.properties"));
@@ -188,6 +197,7 @@ public class LU_BuildOLELoadDocs {
             outFile = new BufferedWriter(new FileWriter(args[1]));
             
         } catch (IOException e) {
+        	Log(System.err, e.getMessage(), LOG_ERROR);
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }
 
@@ -216,7 +226,7 @@ public class LU_BuildOLELoadDocs {
         	String line, key;
         	String parts[];
         	inFile = new BufferedReader(new FileReader(args[2]));
-        	System.out.println("Reading in map of catalog keys to dates, shadowed values, statuses ...");
+        	Log("Reading in map of catalog keys to dates, shadowed values, statuses ...");
         	counter = 0;
         	while(inFile.ready()) {
         		line = inFile.readLine();
@@ -229,10 +239,10 @@ public class LU_BuildOLELoadDocs {
         			Log(System.out, counter + " records mapped ...", LOG_DEBUG);
         		}
         	}
-        	System.out.println("Done reading in catalog keys map");
+        	Log("Done reading in catalog keys map");
         	inFile.close();
         } catch(Exception e) {
-        	System.err.println("Unable to read in key-to-date mapping: " + e.toString());
+        	Log(System.err, "Unable to read in key-to-date mapping: " + e.toString(), LOG_ERROR);
         	e.printStackTrace(System.err);
         }
         PrintWriter output = new PrintWriter(new BufferedWriter(outFile));
@@ -266,7 +276,7 @@ public class LU_BuildOLELoadDocs {
             outFile.close();
 	        */
         	
-        	System.out.println("Creating OLE ingest documents ...");
+        	Log("Creating OLE ingest documents ...");
         	counter = 0;
             // ccc2 -- new loop over all records, perhaps?
             // not sure this accounts for holdings in addition to bibs, though
@@ -313,15 +323,17 @@ public class LU_BuildOLELoadDocs {
             	marshallObjext(request,marshaller, outFile);
         		counter++;
         		if ( counter % 10000 == 0 ) {
-        			System.out.println(counter + " ingest documents created ...");
+        			Log(System.out, counter + " ingest documents created ...", LOG_DEBUG);
         		}
             } while (nextrecord != null && curr++ < limit );
-            System.out.println("Done creating ingest documents");
+            Log("Done creating ingest documents");
             outFile.close();
         } catch (IOException e) {
+        	Log(System.err, e.getMessage(), LOG_ERROR);
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         } catch (org.marc4j.MarcException e) {
-        	
+        	Log(System.err, e.getMessage(), LOG_ERROR);
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.        	
         }
     }
     

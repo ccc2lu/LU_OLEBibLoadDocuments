@@ -48,7 +48,7 @@ public class LU_BuildInstance {
 	private TreeMap<String, List<List<String>>> itemsByCatalogKey;
 	private TreeMap<String, List<List<String>>> itemsByID;
 	private static int initSize = 2000000;
-	
+	private final String ELECTRONIC_RESOURCE = "WWW";
 	// Once OLE has a way to ingest e-instance documents, then set this to true
 	// and the code to generate e-instances will run
 	private boolean eInstanceReady = false;
@@ -74,65 +74,65 @@ public class LU_BuildInstance {
 		int i = 0;
 		List<List<String>> callNumberStrings;
 		List<List<String>> itemStrings;
-		System.out.println("Printing hash maps ...");
-		System.out.println();
-		System.out.println("Call numbers by catalog key ...");
+		LU_BuildOLELoadDocs.Log("Printing hash maps ...");
+		LU_BuildOLELoadDocs.Log("");
+		LU_BuildOLELoadDocs.Log("Call numbers by catalog key ...");
 		for ( String catkey : callNumbersByCatalogKey.keySet() ) {
 			callNumberStrings = callNumbersByCatalogKey.get(catkey);
-			System.out.println("Catalog key: " + catkey + ", number of callnumbers: " + callNumberStrings.size());
+			LU_BuildOLELoadDocs.Log("Catalog key: " + catkey + ", number of callnumbers: " + callNumberStrings.size());
 			for ( List<String> callNumberStr : callNumberStrings ) {
-				System.out.println("Call number by catalog key " + catkey + ": " + 
-			                        StringUtils.join(callNumberStr.toArray(), ","));
+				LU_BuildOLELoadDocs.Log("Call number by catalog key " + catkey + ": " + 
+			                        	StringUtils.join(callNumberStr.toArray(), ","));
 			}
-			System.out.println();
+			LU_BuildOLELoadDocs.Log("");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
 		}
 		
 		i = 0;
-		System.out.println();
-		System.out.println("Call numbers by item number (actual call number) ...");
+		LU_BuildOLELoadDocs.Log("");
+		LU_BuildOLELoadDocs.Log("Call numbers by item number (actual call number) ...");
 		for ( String itemnumber : callNumbersByItemNumber.keySet() ) {
 			callNumberStrings = callNumbersByItemNumber.get(itemnumber);
-			System.out.println("Item number: " + itemnumber + ", number of callnumbers: " + callNumberStrings.size());
+			LU_BuildOLELoadDocs.Log("Item number: " + itemnumber + ", number of callnumbers: " + callNumberStrings.size());
 			for ( List<String> callNumberStr : callNumberStrings ) {
-				System.out.println("Call number by itemnumber " + itemnumber + ": " + 
-			                        StringUtils.join(callNumberStr.toArray(), ","));
+				LU_BuildOLELoadDocs.Log("Call number by itemnumber " + itemnumber + ": " + 
+			                        	StringUtils.join(callNumberStr.toArray(), ","));
 			}
-			System.out.println();
+			LU_BuildOLELoadDocs.Log("");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
 		}
 
 		i = 0;
-		System.out.println();
-		System.out.println("Items by catalog key ...");
+		LU_BuildOLELoadDocs.Log("");
+		LU_BuildOLELoadDocs.Log("Items by catalog key ...");
 		for ( String catkey : itemsByCatalogKey.keySet() ) {
 			itemStrings = itemsByCatalogKey.get(catkey);
-			System.out.println("Catalog key: " + catkey + ", number of items: " + itemStrings.size());
+			LU_BuildOLELoadDocs.Log("Catalog key: " + catkey + ", number of items: " + itemStrings.size());
 			for ( List<String> itemStr : itemStrings ) {
-				System.out.println("Item by catalog key " + catkey + ": " + 
-			                        StringUtils.join(itemStr.toArray(), ","));
+				LU_BuildOLELoadDocs.Log("Item by catalog key " + catkey + ": " + 
+			                        	StringUtils.join(itemStr.toArray(), ","));
 			}
-			System.out.println();
+			LU_BuildOLELoadDocs.Log("");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
 		}
 
 		i = 0;
-		System.out.println();
-		System.out.println("Items by Item ID ...");
+		LU_BuildOLELoadDocs.Log("");
+		LU_BuildOLELoadDocs.Log("Items by Item ID ...");
 		for ( String itemID : itemsByID.keySet() ) {
 			itemStrings = itemsByID.get(itemID);
-			System.out.println("Item ID: " + itemID + ", number of items: " + itemStrings.size());
+			LU_BuildOLELoadDocs.Log("Item ID: " + itemID + ", number of items: " + itemStrings.size());
 			for ( List<String> itemStr : itemStrings ) {
-				System.out.println("Item by ID " + itemID + ": " + 
-			                        StringUtils.join(itemStr.toArray(), ","));
+				LU_BuildOLELoadDocs.Log("Item by ID " + itemID + ": " + 
+			                        	StringUtils.join(itemStr.toArray(), ","));
 			}
-			System.out.println();
+			LU_BuildOLELoadDocs.Log("");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
@@ -164,8 +164,8 @@ public class LU_BuildInstance {
         	itemNumbersReader = new BufferedReader(new FileReader(itemNumbersFilename));
         	analyticsReader = new BufferedReader(new FileReader(analyticsFilename));
         	itemsReader = new BufferedReader(new FileReader(itemsFilename));
-        	System.out.println("Building hashmap of call number records by call number key " + 
-        					   "and by call number (called \"item number\" by Sirsi) ...");
+        	LU_BuildOLELoadDocs.Log("Building hashmap of call number records by call number key " + 
+        					   		"and by call number (called \"item number\" by Sirsi) ...");
         	int curr = 0, increment = 100000;
         	while(callNumbersReader.ready() && (limit < 0 || curr < limit)) {
         		// There should be the same number of lines in all 4 files containing callnum data,
@@ -219,10 +219,10 @@ public class LU_BuildInstance {
         			callNumbersByItemNumber.get(callNumberFields.get(13)).add(callNumberFields);
         		}
         		if ( ++curr % increment == 0 ) {
-        			System.out.println("On call number " + curr);
+        			LU_BuildOLELoadDocs.Log(System.out, "On call number " + curr, LU_BuildOLELoadDocs.LOG_DEBUG);
         		}
         	}
-        	System.out.println("Building hashmap of item records by catalog key and by Item ID ...");
+        	LU_BuildOLELoadDocs.Log("Building hashmap of item records by catalog key and by Item ID ...");
         	curr = 0;
         	while(itemsReader.ready() && (limit < 0 || curr < limit)) {
         		// Only one file to read from this time
@@ -246,13 +246,13 @@ public class LU_BuildInstance {
         			itemsByID.get(itemNumberFields.get(31)).add(itemNumberFields);
         		}
         		if ( ++curr % increment == 0 ) {
-        			System.out.println("On item number " + curr);
+        			LU_BuildOLELoadDocs.Log(System.out, "On item number " + curr, LU_BuildOLELoadDocs.LOG_DEBUG);
         		}
         		
         	}
-        	System.out.println("Done building hashmaps");
+        	LU_BuildOLELoadDocs.Log("Done building hashmaps");
 		} catch(Exception e) {
-			System.err.println("Unable to read in call numbers and items: " + e.getMessage());
+			LU_BuildOLELoadDocs.Log(System.err, "Unable to read in call numbers and items: " + e.getMessage(), LU_BuildOLELoadDocs.LOG_ERROR);
 			e.printStackTrace(System.err);
 		}
 	}
@@ -274,7 +274,7 @@ public class LU_BuildInstance {
 			marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
 			marshaller.marshal(ic, System.out);
 		} catch(Exception e) {
-			System.err.println("Unable to marshall instance collection: " + e.getMessage());
+			LU_BuildOLELoadDocs.Log(System.err, "Unable to marshall instance collection: " + e.getMessage(), LU_BuildOLELoadDocs.LOG_ERROR);
 			e.printStackTrace(System.err);
 		}
 	}
@@ -357,16 +357,18 @@ public class LU_BuildInstance {
 			// Constructor for Items class will initialize the ArrayList
 			inst.setItems(new Items());
 		}
+		
 	    Item item = new Item();		
-	    List<String> commentfields = subfields.get("$o");
+
 
 	    // There should only be one subfield "i", as it's the item's barcode and should be unique
 	    // And there should be only 1 item with that item ID, so we can just get the first
 	    // element of each of those lists
 		if ( subfields.get("$i").size() != 1 ||
-			itemsByID.get(subfields.get("$i").get(0)).size() != 1 ) {
-				System.err.println("Bar code number (item ID) not unique for item: " + subfields.toString());			
-			}
+			 itemsByID.get(subfields.get("$i").get(0)).size() != 1 ) {
+			LU_BuildOLELoadDocs.Log(System.err, "Bar code number (item ID) not unique for item: " + subfields.toString(), 
+									LU_BuildOLELoadDocs.LOG_ERROR);			
+		}
 	    List<String> itemString = this.itemsByID.get(subfields.get("$i").get(0)).get(0);
 		// The field order of the itemString is described here:		
 		// The contents of the items file was produced by this command:
@@ -407,7 +409,23 @@ public class LU_BuildInstance {
 		 * 31 (B) item ID (NQ)
 		 * 32 (k) number of comments	
 		 */
-			
+		item.setBarcodeARSL(""); // We don't use this, currently
+		ArrayList<FormerIdentifier> fids = new ArrayList<FormerIdentifier>();
+		FormerIdentifier fi = new FormerIdentifier();
+		Identifier id = new Identifier();
+		id.setIdentifierValue(itemString.get(0) + "|" + itemString.get(1) + "|" + itemString.get(2));
+		id.setSource("SIRSI_ITEMKEY");
+		fi.setIdentifier(id);
+		fids.add(fi);
+		item.setFormerIdentifiers(fids);
+	    
+		// TODO: statisticalSearchingCodes?  Not used yet
+		ItemType type = new ItemType();
+		type.setCodeValue(subfields.get("$t").get(0)); // should be only one of these
+		type.setFullValue(subfields.get("$t").get(0));
+		// Don't worry about the typeOrSource of the itemType, not sure what that would be
+		item.setItemType(type);
+		
 		Location location = new Location();
 		LocationLevel locLevel1 = new LocationLevel();
 		locLevel1.setLevel("UNIVERSITY");
@@ -417,8 +435,27 @@ public class LU_BuildInstance {
 			
 			//locLevel2.setName(libraryName);
 			//locLevel2.setName(name)
-			
-		inst.getItems().getItems().add(item);
+		
+		// If we're creating e-instances, then we don't need to make multiple items here, as
+		// there will be a totally separate instance for each URL
+		// Until OLE can ingest e-instances, we need to make multiple items with different
+		// values of the accessInformation for the items that are electronic resources
+		if ( subfields.get("$l").equals(ELECTRONIC_RESOURCE) && !eInstanceReady) {
+			List<VariableField> accessinfofields = record.getVariableFields("856");
+			for ( VariableField accessinfofield : accessinfofields ) {
+				Item itemcopy = new Item(item); // copy the item
+				List<String> URLs = this.getSubfields(accessinfofield).get("$u");
+				if ( URLs != null && URLs.size() > 0 ) {
+					AccessInformation ai = new AccessInformation();
+					ai.setUri(new URI(URLs.get(0)));
+					itemcopy.setAccessInformation(ai);
+					inst.getItems().getItems().add(itemcopy);
+				}
+			}
+		} else {
+			// not an electronic resource, or eInstances are ready
+			inst.getItems().getItems().add(item);
+		}
 	}
 	
 	public void buildHoldingsData(Record record, Instance inst, Map<String, List<String>> subfields, ArrayList<Record> assocMFHDRecords) {
@@ -429,7 +466,8 @@ public class LU_BuildInstance {
 	    // element of each of those lists
 		if ( subfields.get("$a").size() != 1 ||
 			 callNumbersByItemNumber.get(subfields.get("$a").get(0)).size() != 1 ) {
-			System.err.println("Call number (item number) not unique for item: " + subfields.toString());			
+			LU_BuildOLELoadDocs.Log(System.err, "Call number (item number) not unique for item: " + subfields.toString(),
+									LU_BuildOLELoadDocs.LOG_ERROR);			
 		}
 		List<String> callNumberFields = this.callNumbersByItemNumber.get(subfields.get("$a").get(0)).get(0);
 		// The contents of the call numbers file was produced by this command:
@@ -461,13 +499,36 @@ public class LU_BuildInstance {
 		SourceHoldings sh = new SourceHoldings();
 		sh.setPrimary(callNumberFields.get(16).equals("1") ? "true" : "false");
 		inst.setSourceHoldings(sh);
-		
-		// TODO: many things now stored in the instance record may need to be
-		// drawn from the catalog record.  Look in WorkFlows to see ...
-		
+				
 		// Build up oleHoldings within instance
 		OLEHoldings oh = new OLEHoldings();
-		ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
+		List<String> nonpublicNoteType = Arrays.asList(".CIRCNOTE.", ".STAFF.");
+		List<String> publicNoteType = Arrays.asList(".PUBLIC.");
+	    List<String> commentfields = subfields.get("$o"); // TODO: figure out the split and regex, test this
+	    for ( String comment : commentfields ) {
+	    	// Keep the delimiter on the preceding element of the split array
+	    	Note note = new Note();
+	    	String[] pieces = comment.split("(?<=\\. )");
+	    	if ( pieces.length != 2 ) {
+	    		LU_BuildOLELoadDocs.Log(System.err, "Badly formatted comment: " + comment, LU_BuildOLELoadDocs.LOG_ERROR);
+		    	for (String piece : pieces ) {
+		    		LU_BuildOLELoadDocs.Log(System.err, "Piece: " + piece, LU_BuildOLELoadDocs.LOG_ERROR);
+		    		System.out.println("Piece: " + piece);
+		    	}
+	    	}
+	    	if ( nonpublicNoteType.contains(pieces[0].trim())) {
+	    		System.out.println("Type is nonpublic");
+	    		note.setType("nonpublic");
+	    	} else if ( publicNoteType.contains(pieces[0].trim())) {
+	    		note.setType("public");
+	    	} else {
+	    		LU_BuildOLELoadDocs.Log(System.err, "Unknown type of comment: " + comment, LU_BuildOLELoadDocs.LOG_WARN);
+	    	}
+	    	note.setNote(pieces[1]);
+	    	oh.getNotes().add(note);
+	    }
+
+	    ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
 		extentOfOwnership.setType("public");
 		// TODO: probably need to split this
 		Map<String, List<String>> tmpsubfields = this.getSubfields(record.getVariableField("866"));
