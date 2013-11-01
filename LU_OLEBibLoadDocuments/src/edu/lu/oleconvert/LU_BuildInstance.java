@@ -420,12 +420,20 @@ public class LU_BuildInstance {
 		item.setFormerIdentifiers(fids);
 	    
 		// TODO: statisticalSearchingCodes?  Not used yet
+		
 		ItemType type = new ItemType();
 		type.setCodeValue(subfields.get("$t").get(0)); // should be only one of these
 		type.setFullValue(subfields.get("$t").get(0));
 		// Don't worry about the typeOrSource of the itemType, not sure what that would be
 		item.setItemType(type);
 		
+		// should also only be one of these
+		item.setCopyNumber(subfields.get("c").get(0));
+		
+		// Not used:
+		// copyNumberLabel, volumeNumber, volumneNumberLabel, enumeration
+		// item.setChronology(chronology) // TODO: this might be a date at the end of the call 
+                                          // number (subfield $a), but doesn't appear to be there for most		
 		Location location = new Location();
 		LocationLevel locLevel1 = new LocationLevel();
 		locLevel1.setLevel("UNIVERSITY");
@@ -453,7 +461,11 @@ public class LU_BuildInstance {
 				}
 			}
 		} else {
-			// not an electronic resource, or eInstances are ready
+			// not an electronic resource, or eInstances are ready,
+			// so just set the barcode
+			AccessInformation ai = new AccessInformation();
+			ai.setBarcode(subfields.get("$i").get(0));
+			item.setAccessInformation(ai);
 			inst.getItems().getItems().add(item);
 		}
 	}
