@@ -133,6 +133,12 @@ public class test {
 	    	}
 	    	System.out.println("Type is " + pieces[1]);
 	    }
+	    
+	    String locStr = "FM-4-NORTH";
+	    String[] locPieces = locStr.split("-|_");
+	    for ( String piece : locPieces ) {
+	    	System.out.println(piece);
+	    }
 	}
 	
 	public static void main(String arguments[]) {

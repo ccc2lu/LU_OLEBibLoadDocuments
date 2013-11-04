@@ -7,8 +7,11 @@ package edu.lu.oleconvert;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +55,13 @@ public class LU_BuildInstance {
 	// Once OLE has a way to ingest e-instance documents, then set this to true
 	// and the code to generate e-instances will run
 	private boolean eInstanceReady = false;
+	
+	Map<String, String> libraryCodeToName = new HashMap<String, String>(){{
+		put("FM", "Fairchild-Martindale");
+		put("L", "Linderman");
+		put("LIND", "Linderman");
+		put("Z", "Zoellner");
+	}};
 	
 	public LU_BuildInstance() {
 		super();
@@ -409,7 +419,9 @@ public class LU_BuildInstance {
 		 * 31 (B) item ID (NQ)
 		 * 32 (k) number of comments	
 		 */
+	    
 		item.setBarcodeARSL(""); // We don't use this, currently
+		
 		ArrayList<FormerIdentifier> fids = new ArrayList<FormerIdentifier>();
 		FormerIdentifier fi = new FormerIdentifier();
 		Identifier id = new Identifier();
@@ -417,9 +429,17 @@ public class LU_BuildInstance {
 		id.setSource("SIRSI_ITEMKEY");
 		fi.setIdentifier(id);
 		fids.add(fi);
+		// Some records may have multiple 035 fields, ex "British Pacific Fleet experience and legacy, 1944-50"
+		List<String> formerIDs = subfields.get("035");
+		for ( String fid : formerIDs ) {
+			fi = new FormerIdentifier();
+			id = new Identifier();
+			id.setSource("SIRIS_MARC_035");
+			id.setIdentifierValue(fid);
+			fi.setIdentifier(id);
+			fids.add(fi);
+		}
 		item.setFormerIdentifiers(fids);
-	    
-		// TODO: statisticalSearchingCodes?  Not used yet
 		
 		ItemType type = new ItemType();
 		type.setCodeValue(subfields.get("$t").get(0)); // should be only one of these
@@ -430,20 +450,48 @@ public class LU_BuildInstance {
 		// should also only be one of these
 		item.setCopyNumber(subfields.get("c").get(0));
 		
-		// Not used:
-		// copyNumberLabel, volumeNumber, volumneNumberLabel, enumeration
-		// item.setChronology(chronology) // TODO: this might be a date at the end of the call 
-                                          // number (subfield $a), but doesn't appear to be there for most		
-		Location location = new Location();
-		LocationLevel locLevel1 = new LocationLevel();
-		locLevel1.setLevel("UNIVERSITY");
-		locLevel1.setName("Lehigh University");
-		LocationLevel locLevel2 = new LocationLevel();
-		locLevel2.setLevel("LIBRARY");
-			
-			//locLevel2.setName(libraryName);
-			//locLevel2.setName(name)
+		// Status could mean any number of things.  From Sirsi, we've got transit status and reserve status
+		// Could also be "current location".  I'm going to assume it's current location here, based on the data I've seen
+		if ( subfields.get("035") != null ) {
+			item.setItemStatus(subfields.get("035").get(0));
+		}
+		// If it were "reserve status", then we'd use this:
+		//item.setItemStatus(itemString.get(28));
+		// Nothing to put here from Sirsi, just going to make it today
+		DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
+		item.setItemStatusEffectiveDate(df.format(Calendar.getInstance().getTime()));
 		
+		// Use the "shadowed" attribute to set the staffOnlyFlag
+		item.setStaffOnlyFlag(itemString.get(25));
+
+		// Should also only be one of these
+		item.setNumberOfPieces(subfields.get("$j").get(0));
+		item.setPrice(subfields.get("$p").get(0));
+		
+		// Items can override the location from the containing OLE Holdings, but
+		// for our purposes, we've currently only got the 1 location
+		//Location location = new Location();
+		//LocationLevel locLevel1 = new LocationLevel();
+		//locLevel1.setLevel("UNIVERSITY");
+		//locLevel1.setName("Lehigh University");
+		//LocationLevel locLevel2 = new LocationLevel();
+		//locLevel2.setLevel("LIBRARY");
+
+		//locLevel2.setName(libraryName);
+		//locLevel2.setName(name)
+	
+		
+		// TODO: go over these with Doreen
+		// Fields not used:
+		// copyNumberLabel, volumeNumber, volumneNumberLabel, enumeration
+		// callNumber (inherited from OLEHOldings) and all its pieces -- callNumberPrefix,
+		// callNumberType, classificationPart, itemPart		
+		// statisticalSearchingCodes?
+
+		// item.setChronology(chronology) // TODO: this might be a date at the end of the call 
+                                          // number (subfield $a), but doesn't appear to be there for most
+		
+			
 		// If we're creating e-instances, then we don't need to make multiple items here, as
 		// there will be a totally separate instance for each URL
 		// Until OLE can ingest e-instances, we need to make multiple items with different
@@ -511,7 +559,7 @@ public class LU_BuildInstance {
 		SourceHoldings sh = new SourceHoldings();
 		sh.setPrimary(callNumberFields.get(16).equals("1") ? "true" : "false");
 		inst.setSourceHoldings(sh);
-				
+		
 		// Build up oleHoldings within instance
 		OLEHoldings oh = new OLEHoldings();
 		List<String> nonpublicNoteType = Arrays.asList(".CIRCNOTE.", ".STAFF.");
@@ -540,6 +588,32 @@ public class LU_BuildInstance {
 	    	oh.getNotes().add(note);
 	    }
 
+		// Items can override the location from the containing OLE Holdings
+	    String locStr = subfields.get("$l").get(0);
+	    String[] locPieces = locStr.split("-|_");
+	    String libraryName = "", shelvingStr = "";
+	    if ( locPieces.length == 3 ) {
+	    	libraryName = libraryCodeToName.get(locPieces[0]);
+	    }
+	    // TODO: fill in the logic for initializing the shelvingStr
+	    // TODO: figure out how to handle different locStr lengths like for LMC_BOOKS or LMCJOURNAL
+		Location location = new Location();
+		LocationLevel locLevel1 = new LocationLevel();
+		locLevel1.setLevel("UNIVERSITY");
+		locLevel1.setName("Lehigh University");
+		LocationLevel locLevel2 = new LocationLevel();
+		locLevel2.setLevel("LIBRARY");
+		locLevel2.setName(libraryName);
+		locLevel1.setSubLocationLevel(locLevel2);
+		LocationLevel locLevel3 = new LocationLevel();
+		locLevel3.setLevel("Shelving");
+		locLevel3.setName(shelvingStr);
+		locLevel2.setSubLocationLevel(locLevel3);
+		location.setLocLevel(locLevel1);
+
+		//locLevel2.setName(libraryName);
+		//locLevel2.setName(name)
+		
 	    ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
 		extentOfOwnership.setType("public");
 		// TODO: probably need to split this
