@@ -61,8 +61,27 @@ public class LU_BuildInstance {
 		put("L", "Linderman");
 		put("LIND", "Linderman");
 		put("Z", "Zoellner");
+		put("LMC", "Library Materials Center");
 	}};
-	
+
+	String floorToName(String floor) {
+		String name = "";
+		if ( floor.equals("G") ) {
+			name = "Ground";
+		} else {
+			switch(Integer.parseInt(floor)) {
+				case 1: name = "1st";
+						break;
+				case 2: name = "2nd";
+						break;
+				case 3: name = "3rd";
+						break;
+				default: name = floor + "th";
+						break;
+			}
+		}
+		return name + " " + "Floor";
+	}
 	public LU_BuildInstance() {
 		super();
 		callNumbersByCatalogKey = new TreeMap<String, List<List<String>>>();
@@ -590,30 +609,60 @@ public class LU_BuildInstance {
 
 		// Items can override the location from the containing OLE Holdings
 	    String locStr = subfields.get("$l").get(0);
-	    String[] locPieces = locStr.split("-|_");
-	    String libraryName = "", shelvingStr = "";
-	    if ( locPieces.length == 3 ) {
-	    	libraryName = libraryCodeToName.get(locPieces[0]);
-	    }
-	    // TODO: fill in the logic for initializing the shelvingStr
-	    // TODO: figure out how to handle different locStr lengths like for LMC_BOOKS or LMCJOURNAL
-		Location location = new Location();
-		LocationLevel locLevel1 = new LocationLevel();
-		locLevel1.setLevel("UNIVERSITY");
-		locLevel1.setName("Lehigh University");
-		LocationLevel locLevel2 = new LocationLevel();
-		locLevel2.setLevel("LIBRARY");
-		locLevel2.setName(libraryName);
-		locLevel1.setSubLocationLevel(locLevel2);
-		LocationLevel locLevel3 = new LocationLevel();
-		locLevel3.setLevel("Shelving");
-		locLevel3.setName(shelvingStr);
-		locLevel2.setSubLocationLevel(locLevel3);
-		location.setLocLevel(locLevel1);
+    	String libraryName = "", shelvingStr = "";
+	    if ( locStr.equals(ELECTRONIC_RESOURCE) ) {
+	    	// No location to fill in ...
+	    } else {
+	    	String[] locPieces = locStr.split("-|_");
+	    	if ( locPieces.length == 3 ) {
+	    		libraryName = libraryCodeToName.get(locPieces[0]);
+	    		shelvingStr = floorToName(locPieces[1]) + " " + locPieces[2];
+	    	} else if ( locPieces.length == 2 ) {
+	    		libraryName = libraryCodeToName.get(locPieces[0]);
+	    		shelvingStr = locPieces[1];
+	    	} else {
+	    		libraryName = locStr;
+	    	}
 
-		//locLevel2.setName(libraryName);
-		//locLevel2.setName(name)
-		
+	    	Location location = new Location();
+	    	LocationLevel locLevel1 = new LocationLevel();
+	    	locLevel1.setLevel("UNIVERSITY");
+	    	locLevel1.setName("Lehigh University");
+	    	LocationLevel locLevel2 = new LocationLevel();
+	    	locLevel2.setLevel("LIBRARY");
+	    	locLevel2.setName(libraryName);
+	    	locLevel1.setSubLocationLevel(locLevel2);
+	    	if ( shelvingStr.length() > 0 ) {
+	    		LocationLevel locLevel3 = new LocationLevel();
+	    		locLevel3.setLevel("Shelving");
+	    		locLevel3.setName(shelvingStr);
+	    		locLevel2.setSubLocationLevel(locLevel3);
+	    	}
+	    	location.setLocLevel(locLevel1);
+		    oh.setLocation(location);
+	    }		
+	    
+	    CallNumber cn = new CallNumber();
+	    // Same as the shelvingscheme for now
+	    cn.setType(subfields.get("$w").get(0));
+	    ShelvingScheme shelvingScheme = new ShelvingScheme();
+	    shelvingScheme.setCodeValue(subfields.get("$w").get(0));
+	    shelvingScheme.setFullValue(subfields.get("$w").get(0));
+	    cn.setShelvingSchema(shelvingScheme);
+	    cn.setClassificationPart(subfields.get("$a").get(0));
+	    // Not used: callNumberType, callNumberPrefix, itemPart,
+	    // They make reference to MFHD 852 codes i, h, and k
+	    // Those don't appear to be in our data anywhere
+	    // TODO: run that by Doreen, et al ^^^
+	    // Also not used currently: shelving order
+	    oh.setCallNumber(cn);
+	    
+	    // TODO: receptStatus comes from the associated holdings record's
+	    // 008 field, position 6 (counting from 0 or 1, not sure, probably 1 given context)
+	    // There will need to be separate instances for each MFHD record, probably -- should
+	    // be either 1 or 2 MFHD records, if any, one for electronic version and one for physical
+	    oh.setReceiptStatus(recpeiptStatus);
+	    
 	    ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
 		extentOfOwnership.setType("public");
 		// TODO: probably need to split this

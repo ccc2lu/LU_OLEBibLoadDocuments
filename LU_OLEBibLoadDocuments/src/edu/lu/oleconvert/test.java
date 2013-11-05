@@ -1,22 +1,41 @@
 package edu.lu.oleconvert;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
+import javax.xml.bind.Marshaller;
+
+import org.marc4j.MarcWriter;
 import org.marc4j.MarcXmlReader;
+import org.marc4j.MarcXmlWriter;
 import org.marc4j.marc.Record;
 import org.marc4j.marc.VariableField;
 
+import OLEBibLoadDocuments.edu.indiana.libraries.OLEBibLoadDocuments.classes.BuildRequestDocument;
+
+import edu.indiana.libraries.JPADriver.classes.JPADriver;
+import edu.indiana.libraries.LoadDocstore.jaxb.RequestType;
 import edu.lu.oleconvert.ole.Note;
 
 public class test {
+
+public static final String BIBLIOGRAPHIC = "bibliographic";
+public static final String MARC_FORMAT = "marc";
+public static final String CATEGORY_WORK = "work";
 
 	private static HashMap<String, ArrayList<String>> callNumbers = new HashMap<String, ArrayList<String>>();
 	private static HashMap<String, ArrayList<String>> items = new HashMap<String, ArrayList<String>>();
@@ -139,6 +158,70 @@ public class test {
 	    for ( String piece : locPieces ) {
 	    	System.out.println(piece);
 	    }
+	}
+	
+	public static void countMFHDRecords() {
+        Marshaller marshaller;
+        Properties loadprops;
+        Properties oracleprops;
+        Properties instanceprops;
+        JPADriver jpaDriver = new JPADriver();
+        PreparedStatement statement;
+        Connection connection=null;
+        ResultSet resultSet;
+        BufferedWriter outFile = null;
+        BufferedReader inFile = null;
+        Record record = null;
+        ByteArrayOutputStream out = null;
+        MarcWriter writer;
+        RequestType request;
+        
+		try {
+        MarcXmlReader reader = new MarcXmlReader(new FileInputStream("/mnt/bigdrive/bibdata/catalog.07302013.plusholdings.mod.marcxml"));
+        int limit = 50, curr = 0;
+        List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
+        Record xmlrecord, nextrecord;
+        nextrecord = reader.next();
+    	ArrayList<Record> assocMFHDRecords = new ArrayList<Record>();;
+        do {
+        	assocMFHDRecords.clear();
+        	xmlrecord = nextrecord;
+        	nextrecord = reader.next();		
+        	assocMFHDRecords.clear();
+        	xmlrecord = nextrecord;
+        	nextrecord = reader.next();
+        	// The associated holdings records for a bib record should always come right after it
+        	// So we keep looping and adding them to an ArrayList as we go
+        	while ( holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
+        		
+        		assocMFHDRecords.add(nextrecord);
+        		// TODO:
+        		// Check if there's an 866 tag with a $a subfield
+        		// I think there shouldn't be more than 1 of these per bib record
+        		nextrecord = reader.next();
+        	}
+
+        	// ccc2 -- catalog was only needed to get some extra data elements, which we get from a 
+        	// separate file that I generated using selcatalog
+        	// Catalog catalog = (Catalog) JPADriver.getObject(resultSet,Catalog.class);
+
+            out = new ByteArrayOutputStream();
+            writer = new MarcXmlWriter(out,"UTF-8");
+            writer.write(xmlrecord);
+            writer.close();
+            String marcXML=out.toString("UTF-8"); // ccc2 -- this is what we already have -- could be we just need
+            									  // to process it one record at a time?  
+        } while (nextrecord != null && curr++ < limit );
+        
+        outFile.close();
+    } catch (IOException e) {
+    	//Log(System.err, e.getMessage(), LOG_ERROR);
+        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+    } catch (org.marc4j.MarcException e) {
+    	//Log(System.err, e.getMessage(), LOG_ERROR);
+        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.        	
+    }
+		
 	}
 	
 	public static void main(String arguments[]) {
