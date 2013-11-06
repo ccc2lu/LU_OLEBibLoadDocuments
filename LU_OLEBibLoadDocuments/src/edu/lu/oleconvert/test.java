@@ -160,70 +160,136 @@ public static final String CATEGORY_WORK = "work";
 	    }
 	}
 	
-	public static void countMFHDRecords() {
-        Marshaller marshaller;
-        Properties loadprops;
-        Properties oracleprops;
-        Properties instanceprops;
-        JPADriver jpaDriver = new JPADriver();
-        PreparedStatement statement;
-        Connection connection=null;
-        ResultSet resultSet;
-        BufferedWriter outFile = null;
-        BufferedReader inFile = null;
-        Record record = null;
-        ByteArrayOutputStream out = null;
-        MarcWriter writer;
-        RequestType request;
-        
+	public static void countMFHDRecordsAnd999Fields() {
+		Marshaller marshaller;
+		Properties loadprops;
+		Properties oracleprops;
+		Properties instanceprops;
+		JPADriver jpaDriver = new JPADriver();
+		PreparedStatement statement;
+		Connection connection=null;
+		ResultSet resultSet;
+		BufferedWriter outFile = null;
+		BufferedReader inFile = null;
+		ByteArrayOutputStream out = null;
+		MarcWriter writer;
+		RequestType request;
+
 		try {
-        MarcXmlReader reader = new MarcXmlReader(new FileInputStream("/mnt/bigdrive/bibdata/catalog.07302013.plusholdings.mod.marcxml"));
-        int limit = 50, curr = 0;
-        List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
-        Record xmlrecord, nextrecord;
-        nextrecord = reader.next();
-    	ArrayList<Record> assocMFHDRecords = new ArrayList<Record>();;
-        do {
-        	assocMFHDRecords.clear();
-        	xmlrecord = nextrecord;
-        	nextrecord = reader.next();		
-        	assocMFHDRecords.clear();
-        	xmlrecord = nextrecord;
-        	nextrecord = reader.next();
-        	// The associated holdings records for a bib record should always come right after it
-        	// So we keep looping and adding them to an ArrayList as we go
-        	while ( holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
-        		
-        		assocMFHDRecords.add(nextrecord);
-        		// TODO:
-        		// Check if there's an 866 tag with a $a subfield
-        		// I think there shouldn't be more than 1 of these per bib record
-        		nextrecord = reader.next();
-        	}
+			MarcXmlReader reader = new MarcXmlReader(new FileInputStream("/mnt/bigdrive/bibdata/catalog.07302013.plusholdings.mod.marcxml"));
+			int limit = -1, curr = 0;
+			List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
+			Record xmlrecord, nextrecord;
+			nextrecord = reader.next();
+			int counter = 0, showprogress = 10000;
+			ArrayList<Record> assocMFHDRecords = new ArrayList<Record>();		
+			do {
+				assocMFHDRecords.clear();
+				xmlrecord = nextrecord;
+				nextrecord = reader.next();
+				// The associated holdings records for a bib record should always come right after it
+				// So we keep looping and adding them to an ArrayList as we go
+				while ( nextrecord != null && 
+						holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
 
-        	// ccc2 -- catalog was only needed to get some extra data elements, which we get from a 
-        	// separate file that I generated using selcatalog
-        	// Catalog catalog = (Catalog) JPADriver.getObject(resultSet,Catalog.class);
+					assocMFHDRecords.add(nextrecord);
+					nextrecord = reader.next();
+				}
+				if ( assocMFHDRecords.size() > 0 &&
+					 assocMFHDRecords.size() != xmlrecord.getVariableFields("999").size() ) {
+					System.err.println("Found a record with different number of MFHD records and 999 fields: " + xmlrecord.toString());
+				}
+				// ccc2 -- catalog was only needed to get some extra data elements, which we get from a 
+				// separate file that I generated using selcatalog
+				// Catalog catalog = (Catalog) JPADriver.getObject(resultSet,Catalog.class);
 
-            out = new ByteArrayOutputStream();
-            writer = new MarcXmlWriter(out,"UTF-8");
-            writer.write(xmlrecord);
-            writer.close();
-            String marcXML=out.toString("UTF-8"); // ccc2 -- this is what we already have -- could be we just need
-            									  // to process it one record at a time?  
-        } while (nextrecord != null && curr++ < limit );
-        
-        outFile.close();
-    } catch (IOException e) {
-    	//Log(System.err, e.getMessage(), LOG_ERROR);
-        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-    } catch (org.marc4j.MarcException e) {
-    	//Log(System.err, e.getMessage(), LOG_ERROR);
-        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.        	
-    }
-		
+				if ( counter++ % showprogress == 0 ) {
+					System.out.println("On record " + counter);
+				}
+			} while (nextrecord != null && (limit <= 0 || counter < limit) );		
+		} catch(Exception e) {
+			System.err.println(e.getMessage());
+			e.printStackTrace(System.err);
+		}
 	}
 	
+	public static void countMFHDRecords866Fields() {
+		Marshaller marshaller;
+		Properties loadprops;
+		Properties oracleprops;
+		Properties instanceprops;
+		JPADriver jpaDriver = new JPADriver();
+		PreparedStatement statement;
+		Connection connection=null;
+		ResultSet resultSet;
+		BufferedWriter outFile = null;
+		BufferedReader inFile = null;
+		ByteArrayOutputStream out = null;
+		MarcWriter writer;
+		RequestType request;
+
+		try {
+			MarcXmlReader reader = new MarcXmlReader(new FileInputStream("/mnt/bigdrive/bibdata/catalog.07302013.plusholdings.mod.marcxml"));
+			int limit = -1, curr = 0;
+			List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
+			Record xmlrecord, nextrecord;
+			nextrecord = reader.next();
+			int count = 0, showprogress = 10000;
+			ArrayList<Record> assocMFHDRecords = new ArrayList<Record>();
+			do {
+				assocMFHDRecords.clear();
+				xmlrecord = nextrecord;
+				nextrecord = reader.next();
+				count = 0;
+				// The associated holdings records for a bib record should always come right after it
+				// So we keep looping and adding them to an ArrayList as we go
+				while ( nextrecord != null &&
+						holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
+					
+					//System.out.println("MFHD record: " + nextrecord.toString());
+					
+					// For each MFHD record:
+					// Check if there's an 866 tag with a $a subfield
+					// I think there shouldn't be more than 1 of these per bib record
+					List<VariableField> fields = nextrecord.getVariableFields("866");
+					for ( VariableField field : fields ) {
+						Map<String, List<String>> subfields = LU_BuildInstance.getSubfields(field);
+						if ( subfields.get("$a") != null ) {
+							count++;
+							//break;
+							//System.out.println("MFHD record with $a subfield: " + nextrecord.toString());
+						}
+						if ( count >= 2 ) {
+							System.err.println("More than 1 MFHD record with $a subfield for record " + nextrecord.toString());
+						}
+					}
+					nextrecord = reader.next();
+				}
+
+				// ccc2 -- catalog was only needed to get some extra data elements, which we get from a 
+				// separate file that I generated using selcatalog
+				// Catalog catalog = (Catalog) JPADriver.getObject(resultSet,Catalog.class);
+				if ( ++curr % showprogress == 0 ) {
+					System.out.println("On record " + curr);
+				}
+				if ( curr == 51 ) {
+					System.out.println("here is where it gets stuck ... " );
+				}
+			} while (nextrecord != null && (limit < 0  || curr++ < limit ));
+
+		} catch (IOException e) {
+			System.err.println(e.getMessage());
+			e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+		} catch (org.marc4j.MarcException e) {
+			System.err.println(e.getMessage());
+			e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.        	
+		} catch (Exception e) {
+			System.err.println(e.getMessage());
+			e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.        				
+		}
+
+	}
+
 	public static void main(String arguments[]) {
 		
 		String callNumbersFilename = "/mnt/bigdrive/bibdata/allcallnums.txt";
@@ -233,8 +299,8 @@ public static final String CATEGORY_WORK = "work";
 		BufferedReader callNumbersReader, itemsReader;
 		
 		try {
-        	callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
-        	itemsReader = new BufferedReader(new FileReader(itemsFilename));
+        	//callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
+        	//itemsReader = new BufferedReader(new FileReader(itemsFilename));
         	// test.testReadingFiles1(callNumbersReader, itemsReader);
 
         	//test.testReadingXMLRecord(instanceBuilder, "/mnt/bigdrive/bibdata/catalog.07302013.plusholdings.mod.marcxml", 1000);
@@ -248,10 +314,17 @@ public static final String CATEGORY_WORK = "work";
         	instanceBuilder.printHashMaps(0);
         	*/
 
-         	splitTest();
+         	//splitTest();
+        	
+         	//countMFHDRecords866Fields();
+         	countMFHDRecordsAnd999Fields();
+     
 		} catch(Exception e) {
 			System.err.println("Unable to read in call numbers and items: " + e.getMessage());
 			e.printStackTrace(System.err);
+		} catch(Throwable t) {
+			System.err.println("Throwable thrown" + t.getMessage());
+			t.printStackTrace(System.err);
 		}
 	}
 }

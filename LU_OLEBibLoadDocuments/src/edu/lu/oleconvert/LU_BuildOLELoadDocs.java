@@ -292,7 +292,8 @@ public class LU_BuildOLELoadDocs {
             	nextrecord = reader.next();
             	// The associated holdings records for a bib record should always come right after it
             	// So we keep looping and adding them to an ArrayList as we go
-            	while ( holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
+            	while ( nextrecord != null && 
+            			holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
             		
             		assocMFHDRecords.add(nextrecord);
             		nextrecord = reader.next();

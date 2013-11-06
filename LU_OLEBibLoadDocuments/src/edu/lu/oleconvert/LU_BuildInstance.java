@@ -308,7 +308,7 @@ public class LU_BuildInstance {
 		}
 	}
 	
-	public Map<String, List<String>> getSubfields(VariableField field) {
+	public static Map<String, List<String>> getSubfields(VariableField field) {
 		HashMap<String, List<String>> subfields = new HashMap<String, List<String>>();
 		String fieldStr = field.toString();
 		// Take the tag off of there
@@ -320,10 +320,11 @@ public class LU_BuildInstance {
 		String[] subfieldsarray = fieldStr.split("(?=\\$[a-z])");
 		String key = "", value = "";
 		for ( String subfield : subfieldsarray ) {
-			// After substition and split, there's an empty string element of
-			// the array that we want to skip
-			if ( subfield.length() == 0 ) 
+			// After substition and split, between the tag and the first subfield, there are 3 spots
+			// for "index" fields that we don't want.  They won't contain a $, though.
+			if ( subfield.length() < 2 || !subfield.contains("$") ) {
 				continue;
+			}
 			key = subfield.substring(0, 2);
 			value = subfield.substring(2);
 			if ( subfields.get(key) == null ) {
@@ -351,17 +352,27 @@ public class LU_BuildInstance {
 			// multiple 856 fields -- generate e-instances for each one
 			// no code to ingest these yet, so don't bother currently
 			// TODO: 
-			// When code to ingest e-instances exists, take the "&& false"
-			// out up above
+			// When code to ingest e-instances exists, change eInstanceReady to true
 		}
 
 		// Loop over the 999 fields of the bib record, which represent items
 		for ( VariableField field : itemsholdings ) {
 			Instance inst = new Instance();
 			Map<String, List<String>> subfields = this.getSubfields(field);			
-			List<String> itemnumber = subfields.get("$a"); // I think that's the subfield code, check that
-			this.buildHoldingsData(record, inst, subfields, assocMFHDRecords); 		
-			this.buildItemsData(record, inst, subfields);
+			//List<String> itemnumber = subfields.get("$a"); // I think that's the subfield code, check that
+			if ( assocMFHDRecords.size() > 0 ) {
+				// Find MFHDrec that goes with this 999 record and pass that
+				// into buildHoldingdsData and buildItemsData
+				for ( Record MFHDrec : assocMFHDRecords ) {
+					// TODO: not sure how to identify the MFHD recs that go with a 999 field
+					// TODO: maybe should reverse this structure -- if there are MFHD records, then
+					// loop over those, finding corresponding 999 fields, and make separate instances
+					// for each of those?
+				}
+			} else {
+				this.buildHoldingsData(record, inst, subfields, null); 		
+				this.buildItemsData(record, inst, subfields);
+			}
 			ic.getInstances().add(inst);
 		}
 		//ic.setInstance(inst);
@@ -661,7 +672,7 @@ public class LU_BuildInstance {
 	    // 008 field, position 6 (counting from 0 or 1, not sure, probably 1 given context)
 	    // There will need to be separate instances for each MFHD record, probably -- should
 	    // be either 1 or 2 MFHD records, if any, one for electronic version and one for physical
-	    oh.setReceiptStatus(recpeiptStatus);
+	    //oh.setReceiptStatus(recpeiptStatus);
 	    
 	    ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
 		extentOfOwnership.setType("public");
