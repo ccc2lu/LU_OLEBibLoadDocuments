@@ -311,11 +311,14 @@ public class LU_BuildOLELoadDocs {
                 									  // to process it one record at a time?  
             	request=BuildRequestDocument.buildRequest(loadprops.getProperty("load.user"));
             	//request=BuildRequestDocument.buildIngestDocument(request,Integer.toString(catalog.getCatalogKey()),BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,xmlrecord,catalog);
+
+            	// Build the instance data first, because we might be adding 
+            	instanceBuilder.buildInstanceCollection(record, ic, assocMFHDRecords);
+
             	request=buildIngestDocument(request,
             								xmlrecord.getLeader().toString(),
             								BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,
             								xmlrecord, marcXML);
-            	instanceBuilder.buildInstanceCollection(record, ic, assocMFHDRecords);
             	// Here would be a great place to generate instance records too, since we already have the catalog record in hand
             	
             	//  marshaller = getMarshaller(RequestType.class);

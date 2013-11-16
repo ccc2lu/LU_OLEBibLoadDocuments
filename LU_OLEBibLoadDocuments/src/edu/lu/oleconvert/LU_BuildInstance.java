@@ -355,25 +355,54 @@ public class LU_BuildInstance {
 			// When code to ingest e-instances exists, change eInstanceReady to true
 		}
 
-		// Loop over the 999 fields of the bib record, which represent items
-		for ( VariableField field : itemsholdings ) {
-			Instance inst = new Instance();
-			Map<String, List<String>> subfields = this.getSubfields(field);			
-			//List<String> itemnumber = subfields.get("$a"); // I think that's the subfield code, check that
-			if ( assocMFHDRecords.size() > 0 ) {
-				// Find MFHDrec that goes with this 999 record and pass that
-				// into buildHoldingdsData and buildItemsData
-				for ( Record MFHDrec : assocMFHDRecords ) {
-					// TODO: not sure how to identify the MFHD recs that go with a 999 field
-					// TODO: maybe should reverse this structure -- if there are MFHD records, then
-					// loop over those, finding corresponding 999 fields, and make separate instances
-					// for each of those?
+		if ( assocMFHDRecords.size() > 0 ) {
+			for ( Record MFHDrec : assocMFHDRecords ) {
+				// Instance inst = new Instance();
+				Map<String, List<String>> subfields = this.getSubfields(MFHDrec.getVariableField("852"));
+				String rectype = subfields.get("$c").get(0);
+				List<VariableField> mfhd_itemsholdings = new ArrayList<VariableField>();
+				// Find 999 records that go with this MFHD rec
+				// Search through 999 fields looking for those where the record type matches 
+				// this MFHD's record type.  Values should just be "WWW" or "LEHIGH"
+				for ( VariableField field : itemsholdings ) {
+					subfields  = getSubfields(field);
+					// If the MFHD is an electronic resource, then MFHD field 852 subfield c and 999 field
+					// subfield l should both be "WWW".  Otherwise, physical resource, and all those
+					// go in same instance record
+					if ( !rectype.equals(ELECTRONIC_RESOURCE) || 
+						  subfields.get("$l").get(0).equals(ELECTRONIC_RESOURCE) ) {
+						mfhd_itemsholdings.add(field);
+					}
 				}
-			} else {
+				// TODO: subfields refers to field 852 here, assumed to be a 999 field further down, doesn't make sense ...
+				// this.buildHoldingsData(record, inst, subfields, MFHDrec);					
+
+				// TODO: But we only want one oleHoldings object.  Do we need a wholely separate instance for every MFHD-999 field pairing?
+				// That's what the code below creates -- separate instances, each with only 1 item, and an oleHoldings object that 
+				// will be almost identical
+				
+				// Now loop over the mfhd_itemsholdings and call buildHoldingsData and buildItemsData, like below
+				for ( VariableField field : mfhd_itemsholdings ) {
+					Instance inst = new Instance();
+					subfields = this.getSubfields(field);			
+					this.buildHoldingsData(record, inst, subfields, MFHDrec); // this will be based on the MFHDrec, and will
+					// be almost identical for each separate instance created here.  Is that necessary?
+					this.buildItemsData(record, inst, subfields);
+					ic.getInstances().add(inst);					
+				}
+
+			}
+		} else {
+			// No MFHD records, just loop over the 999 fields of the bib record, which represent items
+			for ( VariableField field : itemsholdings ) {
+				Instance inst = new Instance();
+				Map<String, List<String>> subfields = this.getSubfields(field);			
+				//List<String> itemnumber = subfields.get("$a"); // I think that's the subfield code, check that
 				this.buildHoldingsData(record, inst, subfields, null); 		
 				this.buildItemsData(record, inst, subfields);
+
+				ic.getInstances().add(inst);
 			}
-			ic.getInstances().add(inst);
 		}
 		//ic.setInstance(inst);
 	}
@@ -548,7 +577,7 @@ public class LU_BuildInstance {
 		}
 	}
 	
-	public void buildHoldingsData(Record record, Instance inst, Map<String, List<String>> subfields, ArrayList<Record> assocMFHDRecords) {
+	public void buildHoldingsData(Record record, Instance inst, Map<String, List<String>> subfields, Record assocMFHDRec) {
 		// Use the first callNumber in the list to fill in some info 
 		
 	    // There should only be one subfield "a", as it's the item's call number and should be unique
@@ -585,7 +614,7 @@ public class LU_BuildInstance {
 		 */
 		String catalogKey = callNumberFields.get(2);
 		inst.setInstanceIdentifier(callNumberFields.get(0));
-		inst.setResourceIdentifier(callNumberFields.get(2));
+		inst.setResourceIdentifier(subfields.get("$a").get(0));
 		SourceHoldings sh = new SourceHoldings();
 		sh.setPrimary(callNumberFields.get(16).equals("1") ? "true" : "false");
 		inst.setSourceHoldings(sh);
@@ -676,10 +705,13 @@ public class LU_BuildInstance {
 	    
 	    ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
 		extentOfOwnership.setType("public");
-		// TODO: probably need to split this
-		Map<String, List<String>> tmpsubfields = this.getSubfields(record.getVariableField("866"));
-		// Should only be one 866 field with one "$a" subfield
-		extentOfOwnership.setTextualHoldings(tmpsubfields.get("$a").get(0));
+		if ( assocMFHDRec != null ) {
+			Map<String, List<String>> tmpsubfields = this.getSubfields(record.getVariableField("866"));
+			// Should only be one 866 field with one "$a" subfield
+			extentOfOwnership.setTextualHoldings(tmpsubfields.get("$a").get(0));
+			
+		} else {
+		}
 		oh.setExtentOfOwnership(extentOfOwnership);
 		
 		inst.setOleHoldings(oh);
