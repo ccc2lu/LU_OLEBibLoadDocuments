@@ -612,6 +612,8 @@ public class LU_BuildInstance {
 		 * 13 item number (call number at Lehigh)
 		 * 14 analytics
 		 */
+		
+		Map<String, List<String>> tmpsubfields;
 		String catalogKey = callNumberFields.get(2);
 		inst.setInstanceIdentifier(callNumberFields.get(0));
 		inst.setResourceIdentifier(subfields.get("$a").get(0));
@@ -647,6 +649,17 @@ public class LU_BuildInstance {
 	    	oh.getNotes().add(note);
 	    }
 
+	    ArrayList<VariableField> uriFields = (ArrayList<VariableField>) record.getVariableFields("856");
+	    if ( uriFields != null ){
+	    	for ( VariableField uriField : uriFields ) {
+	    		tmpsubfields = this.getSubfields(uriField);
+	    		URI uri = new URI();
+	    		uri.setUri(tmpsubfields.get("$u").get(0));
+	    		// TODO: what to do with the "z" subfields?  They would provide the coverage information in an e-instance
+	    		// Not sure how to handle them here.
+	    		oh.getURIs().add(uri);
+	    	}
+	    }
 		// Items can override the location from the containing OLE Holdings
 	    String locStr = subfields.get("$l").get(0);
     	String libraryName = "", shelvingStr = "";
@@ -690,6 +703,7 @@ public class LU_BuildInstance {
 	    shelvingScheme.setFullValue(subfields.get("$w").get(0));
 	    cn.setShelvingSchema(shelvingScheme);
 	    cn.setClassificationPart(subfields.get("$a").get(0));
+	    cn.setItemPart(subfields.get("$i").get(0));
 	    // Not used: callNumberType, callNumberPrefix, itemPart,
 	    // They make reference to MFHD 852 codes i, h, and k
 	    // Those don't appear to be in our data anywhere
@@ -701,7 +715,7 @@ public class LU_BuildInstance {
 	    ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
 		extentOfOwnership.setType("public");
 		if ( assocMFHDRec != null ) {
-			Map<String, List<String>> tmpsubfields = this.getSubfields(assocMFHDRec.getVariableField("866"));
+			tmpsubfields = this.getSubfields(assocMFHDRec.getVariableField("866"));
 			// Should only be one 866 field with one "$a" subfield
 			extentOfOwnership.setTextualHoldings(tmpsubfields.get("$a").get(0));
 
@@ -739,7 +753,7 @@ public class LU_BuildInstance {
 		oh.setPrimary("true");
 		URI uri = new URI();
 		uri.setResolvable("string");
-		oh.setUri(uri);
+		oh.getURIs().add(uri);
 		Note n = new Note();
 		n.setType("public");
 		oh.getNotes().add(n);

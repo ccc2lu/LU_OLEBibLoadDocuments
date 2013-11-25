@@ -335,9 +335,9 @@ public static final String CATEGORY_WORK = "work";
 
 	}
 
-	public static void readMFHCRec() {
+	public static void readMFHDRec() {
 		try {
-			MarcXmlReader reader = new MarcXmlReader(new FileInputStream("/mnt/bigdrive/bibdata/catalog.07302013.plusholdings.mod.marcxml"));
+			MarcXmlReader reader = new MarcXmlReader(new FileInputStream("/mnt/bigdrive/bibdata/sampleMFHDRec.marcxml"));
 			Record mfhdrec = reader.next();
 			String receiptStatus = mfhdrec.getVariableField("008").toString().substring(6, 7);
 			System.out.println("Whole record: " + mfhdrec.toString() + ", receipt status: " + receiptStatus);
@@ -373,7 +373,7 @@ public static final String CATEGORY_WORK = "work";
         	
          	//countMFHDRecords866Fields();
          	//countMFHDRecordsAnd999Fields();
-			count999Fields();
+			readMFHDRec();
 			
 		} catch(Exception e) {
 			System.err.println("Unable to read in call numbers and items: " + e.getMessage());

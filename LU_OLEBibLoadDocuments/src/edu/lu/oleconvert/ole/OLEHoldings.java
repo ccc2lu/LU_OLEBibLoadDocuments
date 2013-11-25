@@ -18,7 +18,7 @@ public class OLEHoldings implements Serializable {
 	private String primary;
 	private String holdingsIdentifier;
 	private String receiptStatus;
-	private URI uri;
+	private ArrayList<URI> uri;
 	private ArrayList<Note> notes;
 	private Location location;
 	private CallNumber callNumber;
@@ -44,7 +44,7 @@ public class OLEHoldings implements Serializable {
 
 	public OLEHoldings() {
 		super();
-		uri = new URI();
+		uri = new ArrayList<URI>();
 		extentOfOwnership = new ArrayList<ExtentOfOwnership>();
 		notes = new ArrayList<Note>();
 	}
@@ -73,10 +73,11 @@ public class OLEHoldings implements Serializable {
 		this.receiptStatus = recpeiptStatus;
 	}
 
-	public URI getUri() {
+	@XmlElement(name="uri")
+	public ArrayList<URI> getURIs() {
 		return uri;
 	}
-	public void setUri(URI uri) {
+	public void setURIs(ArrayList<URI> uri) {
 		this.uri = uri;
 	}
 	
