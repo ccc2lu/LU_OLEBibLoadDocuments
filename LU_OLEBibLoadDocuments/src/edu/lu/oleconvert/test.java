@@ -26,7 +26,6 @@ import org.marc4j.marc.Record;
 import org.marc4j.marc.VariableField;
 
 import OLEBibLoadDocuments.edu.indiana.libraries.OLEBibLoadDocuments.classes.BuildRequestDocument;
-
 import edu.indiana.libraries.JPADriver.classes.JPADriver;
 import edu.indiana.libraries.LoadDocstore.jaxb.RequestType;
 import edu.lu.oleconvert.ole.Note;
@@ -160,6 +159,52 @@ public static final String CATEGORY_WORK = "work";
 	    }
 	}
 	
+	public static void count999Fields() {
+		Marshaller marshaller;
+		Properties loadprops;
+		Properties oracleprops;
+		Properties instanceprops;
+		JPADriver jpaDriver = new JPADriver();
+		PreparedStatement statement;
+		Connection connection=null;
+		ResultSet resultSet;
+		BufferedWriter outFile = null;
+		BufferedReader inFile = null;
+		ByteArrayOutputStream out = null;
+		MarcWriter writer;
+		RequestType request;
+		int num999s = 0, numbibs = 0, numholdings = 0;
+		try {
+			MarcXmlReader reader = new MarcXmlReader(new FileInputStream("/Users/ccc2/dev/bibdata/catalog.20131113.mod.marcxml"));
+			int limit = -1, curr = 0;
+			Record xmlrecord;
+			int counter = 0, showprogress = 10000;
+			while (reader.hasNext() && (limit <= 0 || counter < limit) ) {
+				xmlrecord = reader.next();
+
+				List<VariableField> items = xmlrecord.getVariableFields("999");
+				if ( items != null && items.size() > 0 ) {
+					num999s += items.size();
+					numbibs++;
+				} else {
+					numholdings++;
+					//System.err.println("No items for record " + xmlrecord.toString());
+				}
+				// ccc2 -- catalog was only needed to get some extra data elements, which we get from a 
+				// separate file that I generated using selcatalog
+				// Catalog catalog = (Catalog) JPADriver.getObject(resultSet,Catalog.class);
+
+				if ( counter++ % showprogress == 0 ) {
+					System.out.println("On record " + counter);
+				}
+			}  		
+			System.out.println("Num bibs: " + numbibs + ", num items: " + num999s + ", num holdings: " + numholdings);
+		} catch(Exception e) {
+			System.err.println(e.getMessage());
+			e.printStackTrace(System.err);
+		}		
+	}
+	
 	public static void countMFHDRecordsAnd999Fields() {
 		Marshaller marshaller;
 		Properties loadprops;
@@ -290,6 +335,16 @@ public static final String CATEGORY_WORK = "work";
 
 	}
 
+	public static void readMFHCRec() {
+		try {
+			MarcXmlReader reader = new MarcXmlReader(new FileInputStream("/mnt/bigdrive/bibdata/catalog.07302013.plusholdings.mod.marcxml"));
+			Record mfhdrec = reader.next();
+			String receiptStatus = mfhdrec.getVariableField("008").toString().substring(6, 7);
+			System.out.println("Whole record: " + mfhdrec.toString() + ", receipt status: " + receiptStatus);
+		} catch (Exception e) {
+			e.printStackTrace(System.err);
+		}
+	}
 	public static void main(String arguments[]) {
 		
 		String callNumbersFilename = "/mnt/bigdrive/bibdata/allcallnums.txt";
@@ -317,8 +372,9 @@ public static final String CATEGORY_WORK = "work";
          	//splitTest();
         	
          	//countMFHDRecords866Fields();
-         	countMFHDRecordsAnd999Fields();
-     
+         	//countMFHDRecordsAnd999Fields();
+			count999Fields();
+			
 		} catch(Exception e) {
 			System.err.println("Unable to read in call numbers and items: " + e.getMessage());
 			e.printStackTrace(System.err);

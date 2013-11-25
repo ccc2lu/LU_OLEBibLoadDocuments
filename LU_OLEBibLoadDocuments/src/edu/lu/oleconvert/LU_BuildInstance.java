@@ -697,22 +697,26 @@ public class LU_BuildInstance {
 	    // Also not used currently: shelving order
 	    oh.setCallNumber(cn);
 	    
-	    // TODO: receptStatus comes from the associated holdings record's
-	    // 008 field, position 6 (counting from 0 or 1, not sure, probably 1 given context)
-	    // There will need to be separate instances for each MFHD record, probably -- should
-	    // be either 1 or 2 MFHD records, if any, one for electronic version and one for physical
-	    //oh.setReceiptStatus(recpeiptStatus);
 	    
 	    ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
 		extentOfOwnership.setType("public");
 		if ( assocMFHDRec != null ) {
-			Map<String, List<String>> tmpsubfields = this.getSubfields(record.getVariableField("866"));
+			Map<String, List<String>> tmpsubfields = this.getSubfields(assocMFHDRec.getVariableField("866"));
 			// Should only be one 866 field with one "$a" subfield
 			extentOfOwnership.setTextualHoldings(tmpsubfields.get("$a").get(0));
+
+			
+		    // TODO: receptStatus comes from the associated holdings record's
+		    // 008 field, position 6 (counting from 0 or 1, not sure, probably 1 given context)
+		    // There will need to be separate instances for each MFHD record, probably -- should
+		    // be either 1 or 2 MFHD records, if any, one for electronic version and one for physical
+			String receiptStatus = assocMFHDRec.getVariableField("008").toString().substring(6, 7);
+			oh.setReceiptStatus(receiptStatus);
+
 			
 		} else {
 		}
-		oh.setExtentOfOwnership(extentOfOwnership);
+		oh.getExtentOfOwnership().add(extentOfOwnership);
 		
 		inst.setOleHoldings(oh);
 	}
@@ -784,7 +788,7 @@ public class LU_BuildInstance {
 		n = new Note();
 		n.setType("nonpublic");
 		eoo.getNotes().add(n);
-		oh.setExtentOfOwnership(eoo);
+		oh.getExtentOfOwnership().add(eoo);
 		// Done building up oleHoldings
 		
 		// Build up Items

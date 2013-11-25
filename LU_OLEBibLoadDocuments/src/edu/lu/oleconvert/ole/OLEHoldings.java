@@ -22,14 +22,14 @@ public class OLEHoldings implements Serializable {
 	private ArrayList<Note> notes;
 	private Location location;
 	private CallNumber callNumber;
-	private ExtentOfOwnership extentOfOwnership;
+	private ArrayList<ExtentOfOwnership> extentOfOwnership;
 	
 	@XmlElement(name="extentOfOwnership")
-	public ExtentOfOwnership getExtentOfOwnership() {
+	public ArrayList<ExtentOfOwnership> getExtentOfOwnership() {
 		return extentOfOwnership;
 	}
 
-	public void setExtentOfOwnership(ExtentOfOwnership extentOfOwnership) {
+	public void setExtentOfOwnership(ArrayList<ExtentOfOwnership> extentOfOwnership) {
 		this.extentOfOwnership = extentOfOwnership;
 	}
 
@@ -45,6 +45,7 @@ public class OLEHoldings implements Serializable {
 	public OLEHoldings() {
 		super();
 		uri = new URI();
+		extentOfOwnership = new ArrayList<ExtentOfOwnership>();
 		notes = new ArrayList<Note>();
 	}
 	
