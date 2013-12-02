@@ -153,7 +153,7 @@ public class LU_BuildOLELoadDocs {
     }
 
     public static void main(String[] args) {
-        Marshaller marshaller;
+        Marshaller marshaller, instance_marshaller;
         Properties loadprops;
         Properties oracleprops;
         Properties instanceprops;
@@ -162,8 +162,9 @@ public class LU_BuildOLELoadDocs {
         Connection connection=null;
         ResultSet resultSet;
         BufferedWriter outFile = null;
+        BufferedWriter instance_outFile = null;
         BufferedReader inFile = null;
-        Record record = null;
+        //Record record = null;
         ByteArrayOutputStream out = null;
         MarcWriter writer;
         RequestType request;
@@ -184,6 +185,14 @@ public class LU_BuildOLELoadDocs {
         }
          */
 
+        /*
+         * arguments
+         * 0 - properties file
+         * 1 - map of catalog keys to dates/shadowed values/statuses
+         * 2 - MarcXML input file of bibs/items data
+         * 3 - bib ingest document output file
+         * 4 - instance ingest document output file
+         */
         Log("Args: " + args[0] + ", " + args[1]);
         
         loadprops = loadProps(args[0]);
@@ -191,11 +200,12 @@ public class LU_BuildOLELoadDocs {
         instanceprops = loadProps(loadprops.getProperty("instance.properties"));
         // OracleReader buildBib = new OracleReader(oracleprops); // ccc2 -- not using this
         marshaller = getMarshaller(RequestType.class);
+        instance_marshaller = getMarshaller(InstanceCollection.class);
         int counter = 0;
 
         try {
-            outFile = new BufferedWriter(new FileWriter(args[1]));
-            
+            outFile = new BufferedWriter(new FileWriter(args[3]));
+            instance_outFile = new BufferedWriter(new FileWriter(args[4]));
         } catch (IOException e) {
         	Log(System.err, e.getMessage(), LOG_ERROR);
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
@@ -225,7 +235,7 @@ public class LU_BuildOLELoadDocs {
         	
         	String line, key;
         	String parts[];
-        	inFile = new BufferedReader(new FileReader(args[2]));
+        	inFile = new BufferedReader(new FileReader(args[1]));
         	Log("Reading in map of catalog keys to dates, shadowed values, statuses ...");
         	counter = 0;
         	while(inFile.ready()) {
@@ -245,7 +255,7 @@ public class LU_BuildOLELoadDocs {
         	Log(System.err, "Unable to read in key-to-date mapping: " + e.toString(), LOG_ERROR);
         	e.printStackTrace(System.err);
         }
-        PrintWriter output = new PrintWriter(new BufferedWriter(outFile));
+        //PrintWriter output = new PrintWriter(new BufferedWriter(outFile));
         try {
         	/*
         	// ccc2 -- old, Oracle driven loop
@@ -277,11 +287,11 @@ public class LU_BuildOLELoadDocs {
 	        */
         	
         	Log("Creating OLE ingest documents ...");
-        	counter = 0;
             // ccc2 -- new loop over all records, perhaps?
             // not sure this accounts for holdings in addition to bibs, though
-            MarcXmlReader reader = new MarcXmlReader(new FileInputStream(args[3]));
-            int limit = 50, curr = 0;
+            MarcXmlReader reader = new MarcXmlReader(new FileInputStream(args[2]));
+            int limit = 50;
+            counter = 0;
             List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
             Record xmlrecord, nextrecord;
             nextrecord = reader.next();
@@ -313,7 +323,7 @@ public class LU_BuildOLELoadDocs {
             	//request=BuildRequestDocument.buildIngestDocument(request,Integer.toString(catalog.getCatalogKey()),BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,xmlrecord,catalog);
 
             	// Build the instance data first, because we might be adding 
-            	instanceBuilder.buildInstanceCollection(record, ic, assocMFHDRecords);
+            	instanceBuilder.buildInstanceCollection(xmlrecord, ic, assocMFHDRecords);
 
             	request=buildIngestDocument(request,
             								xmlrecord.getLeader().toString(),
@@ -325,11 +335,14 @@ public class LU_BuildOLELoadDocs {
             	
             	// output.print(marshallObjext(request,marshaller));      
             	marshallObjext(request,marshaller, outFile);
+            	
+            	instance_marshaller.marshal(ic, instance_outFile);
+    			
         		counter++;
         		if ( counter % 10000 == 0 ) {
         			Log(System.out, counter + " ingest documents created ...", LOG_DEBUG);
         		}
-            } while (nextrecord != null && curr++ < limit );
+            } while (nextrecord != null && counter++ < limit );
             Log("Done creating ingest documents");
             outFile.close();
         } catch (IOException e) {
@@ -338,7 +351,10 @@ public class LU_BuildOLELoadDocs {
         } catch (org.marc4j.MarcException e) {
         	Log(System.err, e.getMessage(), LOG_ERROR);
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.        	
-        }
+        } catch (JAXBException e) {
+			Log(System.err, e.getMessage(), LOG_ERROR);
+			e.printStackTrace();
+		}
     }
     
     public static RequestType buildIngestDocument(RequestType request, String id, String type, String format, String category, Record record, String marcXML){

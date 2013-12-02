@@ -618,7 +618,7 @@ public class LU_BuildInstance {
 		inst.setInstanceIdentifier(callNumberFields.get(0));
 		inst.setResourceIdentifier(subfields.get("$a").get(0));
 		SourceHoldings sh = new SourceHoldings();
-		sh.setPrimary(callNumberFields.get(16).equals("1") ? "true" : "false");
+		sh.setPrimary("false");
 		inst.setSourceHoldings(sh);
 		
 		// Build up oleHoldings within instance
@@ -626,29 +626,31 @@ public class LU_BuildInstance {
 		List<String> nonpublicNoteType = Arrays.asList(".CIRCNOTE.", ".STAFF.");
 		List<String> publicNoteType = Arrays.asList(".PUBLIC.");
 	    List<String> commentfields = subfields.get("$o"); // TODO: figure out the split and regex, test this
-	    for ( String comment : commentfields ) {
-	    	// Keep the delimiter on the preceding element of the split array
-	    	Note note = new Note();
-	    	String[] pieces = comment.split("(?<=\\. )");
-	    	if ( pieces.length != 2 ) {
-	    		LU_BuildOLELoadDocs.Log(System.err, "Badly formatted comment: " + comment, LU_BuildOLELoadDocs.LOG_ERROR);
-		    	for (String piece : pieces ) {
-		    		LU_BuildOLELoadDocs.Log(System.err, "Piece: " + piece, LU_BuildOLELoadDocs.LOG_ERROR);
-		    		System.out.println("Piece: " + piece);
-		    	}
+	    if ( commentfields != null && commentfields.size() > 0 ) {
+	    	for ( String comment : commentfields ) {
+	    		// Keep the delimiter on the preceding element of the split array
+	    		Note note = new Note();
+	    		String[] pieces = comment.split("(?<=\\. )");
+	    		if ( pieces.length != 2 ) {
+	    			LU_BuildOLELoadDocs.Log(System.err, "Badly formatted comment: " + comment, LU_BuildOLELoadDocs.LOG_ERROR);
+	    			for (String piece : pieces ) {
+	    				LU_BuildOLELoadDocs.Log(System.err, "Piece: " + piece, LU_BuildOLELoadDocs.LOG_ERROR);
+	    				System.out.println("Piece: " + piece);
+	    			}
+	    		}
+	    		if ( nonpublicNoteType.contains(pieces[0].trim())) {
+	    			System.out.println("Type is nonpublic");
+	    			note.setType("nonpublic");
+	    		} else if ( publicNoteType.contains(pieces[0].trim())) {
+	    			note.setType("public");
+	    		} else {
+	    			LU_BuildOLELoadDocs.Log(System.err, "Unknown type of comment: " + comment, LU_BuildOLELoadDocs.LOG_WARN);
+	    		}
+	    		note.setNote(pieces[1]);
+	    		oh.getNotes().add(note);
 	    	}
-	    	if ( nonpublicNoteType.contains(pieces[0].trim())) {
-	    		System.out.println("Type is nonpublic");
-	    		note.setType("nonpublic");
-	    	} else if ( publicNoteType.contains(pieces[0].trim())) {
-	    		note.setType("public");
-	    	} else {
-	    		LU_BuildOLELoadDocs.Log(System.err, "Unknown type of comment: " + comment, LU_BuildOLELoadDocs.LOG_WARN);
-	    	}
-	    	note.setNote(pieces[1]);
-	    	oh.getNotes().add(note);
 	    }
-
+	    
 	    ArrayList<VariableField> uriFields = (ArrayList<VariableField>) record.getVariableFields("856");
 	    if ( uriFields != null ){
 	    	for ( VariableField uriField : uriFields ) {
@@ -657,7 +659,7 @@ public class LU_BuildInstance {
 	    		uri.setUri(tmpsubfields.get("$u").get(0));
 	    		// TODO: what to do with the "z" subfields?  They would provide the coverage information in an e-instance
 	    		// Not sure how to handle them here.
-	    		oh.getURIs().add(uri);
+	    		oh.getUri().add(uri);
 	    	}
 	    }
 		// Items can override the location from the containing OLE Holdings
@@ -753,7 +755,7 @@ public class LU_BuildInstance {
 		oh.setPrimary("true");
 		URI uri = new URI();
 		uri.setResolvable("string");
-		oh.getURIs().add(uri);
+		oh.getUri().add(uri);
 		Note n = new Note();
 		n.setType("public");
 		oh.getNotes().add(n);

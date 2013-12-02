@@ -74,10 +74,10 @@ public class OLEHoldings implements Serializable {
 	}
 
 	@XmlElement(name="uri")
-	public ArrayList<URI> getURIs() {
+	public ArrayList<URI> getUri() {
 		return uri;
 	}
-	public void setURIs(ArrayList<URI> uri) {
+	public void setUri(ArrayList<URI> uri) {
 		this.uri = uri;
 	}
 	
