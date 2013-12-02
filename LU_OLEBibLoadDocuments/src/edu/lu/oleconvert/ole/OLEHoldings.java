@@ -46,6 +46,7 @@ public class OLEHoldings implements Serializable {
 		super();
 		uri = new ArrayList<URI>();
 		extentOfOwnership = new ArrayList<ExtentOfOwnership>();
+		extentOfOwnership = new ArrayList<ExtentOfOwnership>();
 		notes = new ArrayList<Note>();
 	}
 	

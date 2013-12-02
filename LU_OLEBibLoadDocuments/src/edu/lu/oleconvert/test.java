@@ -6,7 +6,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -205,6 +207,64 @@ public static final String CATEGORY_WORK = "work";
 		}		
 	}
 	
+	public static void countMFHDRecsMoreThanTwo() {
+		Marshaller marshaller;
+		Properties loadprops;
+		Properties oracleprops;
+		Properties instanceprops;
+		JPADriver jpaDriver = new JPADriver();
+		PreparedStatement statement;
+		Connection connection=null;
+		ResultSet resultSet;
+		BufferedWriter outFile = null;
+		BufferedReader inFile = null;
+		ByteArrayOutputStream out = null;
+		MarcWriter writer;
+		RequestType request;
+
+		try {
+			PrintWriter output = new PrintWriter("/Users/ccc2/dev/bibdata/MFHDReport.txt");
+			MarcXmlReader reader = new MarcXmlReader(new FileInputStream("/Users/ccc2/dev/bibdata/catalog.20131113.mod.marcxml"));
+			int limit = -1, curr = 0, mfhdcount = 0;
+			List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
+			Record xmlrecord, nextrecord;
+			nextrecord = reader.next();
+			int counter = 0, showprogress = 10000;
+			ArrayList<Record> assocMFHDRecords = new ArrayList<Record>();                
+			do {
+				assocMFHDRecords.clear();
+				xmlrecord = nextrecord;
+				nextrecord = reader.next();
+				// The associated holdings records for a bib record should always come right after it
+				// So we keep looping and adding them to an ArrayList as we go
+				while ( nextrecord != null && 
+						holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
+
+					assocMFHDRecords.add(nextrecord);
+					nextrecord = reader.next();
+				}
+				if ( assocMFHDRecords.size() > 2 ) {
+					output.println("Found a record with " + assocMFHDRecords.size() + " MFHD records: " + xmlrecord.toString());
+					for ( Record tmpRecord : assocMFHDRecords ) {
+						output.println("MFHD record: " + tmpRecord.toString());
+					}
+					mfhdcount++;
+				}
+				// ccc2 -- catalog was only needed to get some extra data elements, which we get from a 
+				// separate file that I generated using selcatalog
+				// Catalog catalog = (Catalog) JPADriver.getObject(resultSet,Catalog.class);
+
+				if ( counter++ % showprogress == 0 ) {
+					System.out.println("On record " + counter);
+				}
+			} while (nextrecord != null && (limit <= 0 || counter < limit) );                
+			System.out.println(mfhdcount + " records found with more than 2 MFHD records");
+		} catch(Exception e) {
+			System.err.println(e.getMessage());
+			e.printStackTrace(System.err);
+		}                
+	}
+
 	public static void countMFHDRecordsAnd999Fields() {
 		Marshaller marshaller;
 		Properties loadprops;
@@ -373,7 +433,9 @@ public static final String CATEGORY_WORK = "work";
         	
          	//countMFHDRecords866Fields();
          	//countMFHDRecordsAnd999Fields();
-			readMFHDRec();
+			//readMFHDRec();
+			countMFHDRecsMoreThanTwo();
+			
 			
 		} catch(Exception e) {
 			System.err.println("Unable to read in call numbers and items: " + e.getMessage());
