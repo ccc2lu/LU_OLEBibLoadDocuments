@@ -38,6 +38,7 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 import org.apache.xml.serialize.OutputFormat;
 import org.apache.xml.serialize.XMLSerializer;
+
 import static edu.indiana.libraries.LoadDocstore.classes.BuildOLEBibDocument.loadProps;
 
 /**
@@ -137,7 +138,7 @@ public class LU_BuildOLELoadDocs {
         try {
             marshaller = jc.createMarshaller();
             //marshaller.setProperty("com.sun.xml.internal.bind.namespacePrefixMapper", new NameSpaceMapper());
-            marshaller.setProperty("com.sun.xml.bind.marshaller.NamespacePrefixMapper", new LU_NamespacePrefixMapper());
+            //marshaller.setProperty("com.sun.xml.bind.marshaller.NamespacePrefixMapper", new LU_NamespacePrefixMapper());
             marshaller.setProperty(Marshaller.JAXB_ENCODING, "UTF-8");
             marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT,true);
             // TODO: I need to get the <content> tags to have CDATA wrappers around their values
@@ -168,11 +169,12 @@ public class LU_BuildOLELoadDocs {
         ByteArrayOutputStream out = null;
         MarcWriter writer;
         RequestType request;
-        LU_BuildInstance instanceBuilder = new LU_BuildInstance("/mnt/bigdrive/bibdata/allcallnums.txt", 
-        														"/mnt/bigdrive/bibdata/allcallnumsshelvingkeys.txt",
-        														"/mnt/bigdrive/bibdata/allcallnumsitemnumbers.txt",
-        														"/mnt/bigdrive/bibdata/allcallnumsanalytics.txt",        														
-        		                                                "/mnt/bigdrive/bibdata/allitems.txt");
+        String dumpdir = args[1];
+        LU_BuildInstance instanceBuilder = new LU_BuildInstance(dumpdir + "/allcallnums.txt", 
+        														dumpdir + "/allcallnumsshelvingkeys.txt",
+        														dumpdir + "/allcallnumsitemnumbers.txt",
+        														dumpdir + "/allcallnumsanalytics.txt",        														
+        		                                                dumpdir + "/allitems.txt");
         InstanceCollection ic = new InstanceCollection();
         
         Log("Starting ...");
@@ -188,12 +190,16 @@ public class LU_BuildOLELoadDocs {
         /*
          * arguments
          * 0 - properties file
-         * 1 - map of catalog keys to dates/shadowed values/statuses
-         * 2 - MarcXML input file of bibs/items data
-         * 3 - bib ingest document output file
-         * 4 - instance ingest document output file
+         * 1 - Sirsi dump directory
+         * 2 - map of catalog keys to dates/shadowed values/statuses
+         * 3 - MarcXML input file of bibs/items data
+         * 4 - bib ingest document output file
+         * 5 - instance ingest document output file
          */
-        Log("Args: " + args[0] + ", " + args[1]);
+        Log("Args: ");
+        for ( int i = 0; i < args.length; i++ ) {
+        	Log("arg " + i + "=" + args[i] + ", ");
+        }
         
         loadprops = loadProps(args[0]);
         oracleprops = loadProps(loadprops.getProperty("oracle.properties"));
@@ -204,8 +210,8 @@ public class LU_BuildOLELoadDocs {
         int counter = 0;
 
         try {
-            outFile = new BufferedWriter(new FileWriter(args[3]));
-            instance_outFile = new BufferedWriter(new FileWriter(args[4]));
+            outFile = new BufferedWriter(new FileWriter(dumpdir + "/" + args[4]));
+            instance_outFile = new BufferedWriter(new FileWriter(dumpdir + "/" + args[5]));
         } catch (IOException e) {
         	Log(System.err, e.getMessage(), LOG_ERROR);
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
@@ -235,7 +241,7 @@ public class LU_BuildOLELoadDocs {
         	
         	String line, key;
         	String parts[];
-        	inFile = new BufferedReader(new FileReader(args[1]));
+        	inFile = new BufferedReader(new FileReader(dumpdir + "/" + args[2]));
         	Log("Reading in map of catalog keys to dates, shadowed values, statuses ...");
         	counter = 0;
         	while(inFile.ready()) {
@@ -289,8 +295,12 @@ public class LU_BuildOLELoadDocs {
         	Log("Creating OLE ingest documents ...");
             // ccc2 -- new loop over all records, perhaps?
             // not sure this accounts for holdings in addition to bibs, though
-            MarcXmlReader reader = new MarcXmlReader(new FileInputStream(args[2]));
-            int limit = 50;
+            MarcXmlReader reader = new MarcXmlReader(new FileInputStream(dumpdir + "/" + args[3]));           
+            int limit = -1;
+            if ( args.length == 7 ) {
+            	limit = Integer.parseInt(args[6]);
+            	Log(System.out, "Only creating ingest documents for the first " + limit + " bib records", LOG_INFO);
+            }
             counter = 0;
             List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
             Record xmlrecord, nextrecord;
@@ -342,9 +352,10 @@ public class LU_BuildOLELoadDocs {
         		if ( counter % 10000 == 0 ) {
         			Log(System.out, counter + " ingest documents created ...", LOG_DEBUG);
         		}
-            } while (nextrecord != null && counter++ < limit );
+            } while (nextrecord != null && (limit < 0 || counter < limit) );
             Log("Done creating ingest documents");
             outFile.close();
+            System.exit(0);
         } catch (IOException e) {
         	Log(System.err, e.getMessage(), LOG_ERROR);
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.

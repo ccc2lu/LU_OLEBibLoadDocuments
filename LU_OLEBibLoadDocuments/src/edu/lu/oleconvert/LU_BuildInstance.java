@@ -240,12 +240,13 @@ public class LU_BuildInstance {
         			callNumbersByCatalogKey.get(callNumberFields.get(0)).add(callNumberFields);
         		}
         		// Now fill in the hashmap keyed by itemnumber, which should be index 13 in the field list
-        		if ( this.callNumbersByItemNumber.get(callNumberFields.get(13)) == null) {
+        		String callnumber = callNumberFields.get(13).trim();
+        		if ( this.callNumbersByItemNumber.get(callnumber) == null) {
         			List<List<String>> callNumberStrs = new ArrayList<List<String>>();
         			callNumberStrs.add(callNumberFields);
-        			callNumbersByItemNumber.put(callNumberFields.get(13), callNumberStrs);        			
+        			callNumbersByItemNumber.put(callnumber, callNumberStrs);        			
         		} else {
-        			callNumbersByItemNumber.get(callNumberFields.get(13)).add(callNumberFields);
+        			callNumbersByItemNumber.get(callnumber).add(callNumberFields);
         		}
         		if ( ++curr % increment == 0 ) {
         			LU_BuildOLELoadDocs.Log(System.out, "On call number " + curr, LU_BuildOLELoadDocs.LOG_DEBUG);
@@ -267,12 +268,13 @@ public class LU_BuildInstance {
         			itemsByCatalogKey.get(itemNumberFields.get(0)).add(itemNumberFields);
         		}
         		// Now fill in the hash keyed by Item ID, which is index 31
-        		if ( this.itemsByID.get(itemNumberFields.get(31)) == null ) {
+        		String itemID = itemNumberFields.get(31).trim();
+        		if ( this.itemsByID.get(itemID) == null ) {
         			List<List<String>> itemStrs = new ArrayList<List<String>>();
         			itemStrs.add(itemNumberFields);
-        			itemsByID.put(itemNumberFields.get(31), itemStrs);        			
+        			itemsByID.put(itemID, itemStrs);        			
         		} else {
-        			itemsByID.get(itemNumberFields.get(31)).add(itemNumberFields);
+        			itemsByID.get(itemID).add(itemNumberFields);
         		}
         		if ( ++curr % increment == 0 ) {
         			LU_BuildOLELoadDocs.Log(System.out, "On item number " + curr, LU_BuildOLELoadDocs.LOG_DEBUG);
@@ -433,10 +435,19 @@ public class LU_BuildInstance {
 	    // There should only be one subfield "i", as it's the item's barcode and should be unique
 	    // And there should be only 1 item with that item ID, so we can just get the first
 	    // element of each of those lists
-		if ( subfields.get("$i").size() != 1 ||
-			 itemsByID.get(subfields.get("$i").get(0)).size() != 1 ) {
+		if ( (subfields.get("$i").size() != 1) ||
+			 ( itemsByID.get(subfields.get("$i").get(0)) != null && 
+			   itemsByID.get(subfields.get("$i").get(0)).size() != 1 ) ){
 			LU_BuildOLELoadDocs.Log(System.err, "Bar code number (item ID) not unique for item: " + subfields.toString(), 
 									LU_BuildOLELoadDocs.LOG_ERROR);			
+		}
+		LU_BuildOLELoadDocs.Log(System.out, "Looking for item !" + subfields.get("$i").get(0) + "!", LU_BuildOLELoadDocs.LOG_DEBUG);
+		LU_BuildOLELoadDocs.Log(System.out, "Subfields: ", LU_BuildOLELoadDocs.LOG_DEBUG);
+		for ( String key : subfields.keySet() ) {
+			List<String> fields = subfields.get(key);
+			for ( String value : fields ) {
+				LU_BuildOLELoadDocs.Log(System.out, "	" + key + ": " + value, LU_BuildOLELoadDocs.LOG_DEBUG);
+			}
 		}
 	    List<String> itemString = this.itemsByID.get(subfields.get("$i").get(0)).get(0);
 		// The field order of the itemString is described here:		
@@ -490,16 +501,19 @@ public class LU_BuildInstance {
 		fids.add(fi);
 		// Some records may have multiple 035 fields, ex "British Pacific Fleet experience and legacy, 1944-50"
 		List<String> formerIDs = subfields.get("035");
-		for ( String fid : formerIDs ) {
-			fi = new FormerIdentifier();
-			id = new Identifier();
-			id.setSource("SIRIS_MARC_035");
-			id.setIdentifierValue(fid);
-			fi.setIdentifier(id);
-			fids.add(fi);
+		if ( formerIDs != null && 
+				formerIDs.size() > 0 ) {
+			for ( String fid : formerIDs ) {
+				fi = new FormerIdentifier();
+				id = new Identifier();
+				id.setSource("SIRIS_MARC_035");
+				id.setIdentifierValue(fid);
+				fi.setIdentifier(id);
+				fids.add(fi);
+			}
+			item.setFormerIdentifiers(fids);
 		}
-		item.setFormerIdentifiers(fids);
-		
+
 		ItemType type = new ItemType();
 		type.setCodeValue(subfields.get("$t").get(0)); // should be only one of these
 		type.setFullValue(subfields.get("$t").get(0));
@@ -507,7 +521,7 @@ public class LU_BuildInstance {
 		item.setItemType(type);
 		
 		// should also only be one of these
-		item.setCopyNumber(subfields.get("c").get(0));
+		item.setCopyNumber(subfields.get("$c").get(0));
 		
 		// Status could mean any number of things.  From Sirsi, we've got transit status and reserve status
 		// Could also be "current location".  I'm going to assume it's current location here, based on the data I've seen
@@ -524,8 +538,12 @@ public class LU_BuildInstance {
 		item.setStaffOnlyFlag(itemString.get(25));
 
 		// Should also only be one of these
-		item.setNumberOfPieces(subfields.get("$j").get(0));
-		item.setPrice(subfields.get("$p").get(0));
+		if ( subfields.get("$j") != null ) {
+			item.setNumberOfPieces(subfields.get("$j").get(0));
+		}
+		if ( subfields.get("$p") != null ) {
+			item.setPrice(subfields.get("$p").get(0));
+		}
 		
 		// Items can override the location from the containing OLE Holdings, but
 		// for our purposes, we've currently only got the 1 location
@@ -586,8 +604,11 @@ public class LU_BuildInstance {
 		if ( subfields.get("$a").size() != 1 ||
 			 callNumbersByItemNumber.get(subfields.get("$a").get(0)).size() != 1 ) {
 			LU_BuildOLELoadDocs.Log(System.err, "Call number (item number) not unique for item: " + subfields.toString(),
-									LU_BuildOLELoadDocs.LOG_ERROR);			
+									LU_BuildOLELoadDocs.LOG_ERROR);
+			// TODO: print list of callNumbers for this item number
 		}
+		// TODO: print assocMFHDrec and item we're building based on, like in buildItemsData above.
+
 		List<String> callNumberFields = this.callNumbersByItemNumber.get(subfields.get("$a").get(0)).get(0);
 		// The contents of the call numbers file was produced by this command:
 		// selcallnum -iS -oKabchpqryz2 > /ExtDisk/allcallnums.txt
