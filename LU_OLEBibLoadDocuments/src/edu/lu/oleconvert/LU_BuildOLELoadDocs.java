@@ -65,12 +65,23 @@ public class LU_BuildOLELoadDocs {
     static final int LOG_DEBUG = 0, LOG_INFO = 1, LOG_WARN = 2, LOG_ERROR = 3; 
     private static int currentLogLevel = LOG_DEBUG;
     private static int defaultLogLevel = LOG_INFO;
+
     public static void Log(PrintStream out, String message, int level) {
     	if ( level >= currentLogLevel ) {
     		out.println(message);
     	}
     }
 
+    public static void Log(PrintWriter out, String message, int level) {
+    	if ( level >= currentLogLevel ) {
+    		out.println(message);
+    	}
+    }
+
+    public static void Log(PrintWriter out, String message) {
+    	Log(out, message, defaultLogLevel);
+    }
+    
     public static void Log(PrintStream out, String message) {
     	Log(out, message, defaultLogLevel);
     }
@@ -173,11 +184,11 @@ public class LU_BuildOLELoadDocs {
         MarcWriter writer;
         RequestType request;
         String dumpdir = args[1];
-        LU_BuildInstance instanceBuilder = new LU_BuildInstance(dumpdir + "/allcallnums.txt", 
-        														dumpdir + "/allcallnumsshelvingkeys.txt",
-        														dumpdir + "/allcallnumsitemnumbers.txt",
-        														dumpdir + "/allcallnumsanalytics.txt",        														
-        		                                                dumpdir + "/allitems.txt");
+        LU_BuildInstance instanceBuilder = new LU_BuildInstance(dumpdir + "/mod.allcallnums.txt", 
+        														dumpdir + "/mod.allcallnumsshelvingkeys.txt",
+        														dumpdir + "/mod.allcallnumsitemnumbers.mod.txt",
+        														dumpdir + "/mod.allcallnumsanalytics.txt",        														
+        		                                                dumpdir + "/mod.allitems.txt");
         InstanceCollection ic = new InstanceCollection();
         
         Log("Starting ...");
@@ -344,7 +355,8 @@ public class LU_BuildOLELoadDocs {
             	request=BuildRequestDocument.buildRequest(loadprops.getProperty("load.user"));
             	//request=BuildRequestDocument.buildIngestDocument(request,Integer.toString(catalog.getCatalogKey()),BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,xmlrecord,catalog);
 
-            	// Build the instance data first, because we might be adding 
+            	// Build the instance data first, because we might be adding
+            	ic = new InstanceCollection();
             	instanceBuilder.buildInstanceCollection(xmlrecord, ic, assocMFHDRecords);
 
             	request=buildIngestDocument(request,
@@ -362,7 +374,7 @@ public class LU_BuildOLELoadDocs {
     			
         		counter++;
         		if ( counter % 10000 == 0 ) {
-        			Log(System.out, counter + " ingest documents created ...", LOG_DEBUG);
+        			Log(System.out, counter + " ingest documents created ...", LOG_INFO);
         		}
             } while (nextrecord != null && (limit < 0 || counter < limit) );
             Log("Done creating ingest documents");

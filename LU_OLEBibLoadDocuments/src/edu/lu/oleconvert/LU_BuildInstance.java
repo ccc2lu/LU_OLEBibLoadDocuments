@@ -7,6 +7,8 @@ package edu.lu.oleconvert;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -101,69 +103,69 @@ public class LU_BuildInstance {
 							itemsFilename);		
 	}
 	
-	public void printHashMaps(int limit) {
+	public void printHashMaps(int limit, PrintWriter output) {
 		int i = 0;
 		List<List<String>> callNumberStrings;
 		List<List<String>> itemStrings;
-		LU_BuildOLELoadDocs.Log("Printing hash maps ...");
-		LU_BuildOLELoadDocs.Log("");
-		LU_BuildOLELoadDocs.Log("Call numbers by catalog key ...");
+		LU_BuildOLELoadDocs.Log(output, "Printing hash maps ...");
+		LU_BuildOLELoadDocs.Log(output, "");
+		LU_BuildOLELoadDocs.Log(output, "Call numbers by catalog key ...");
 		for ( String catkey : callNumbersByCatalogKey.keySet() ) {
 			callNumberStrings = callNumbersByCatalogKey.get(catkey);
-			LU_BuildOLELoadDocs.Log("Catalog key: " + catkey + ", number of callnumbers: " + callNumberStrings.size());
+			LU_BuildOLELoadDocs.Log(output, "Catalog key: " + catkey + ", number of callnumbers: " + callNumberStrings.size());
 			for ( List<String> callNumberStr : callNumberStrings ) {
-				LU_BuildOLELoadDocs.Log("Call number by catalog key " + catkey + ": " + 
+				LU_BuildOLELoadDocs.Log(output, "Call number by catalog key " + catkey + ": " + 
 			                        	StringUtils.join(callNumberStr.toArray(), ","));
 			}
-			LU_BuildOLELoadDocs.Log("");
+			LU_BuildOLELoadDocs.Log(output, "");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
 		}
 		
 		i = 0;
-		LU_BuildOLELoadDocs.Log("");
-		LU_BuildOLELoadDocs.Log("Call numbers by item number (actual call number) ...");
+		LU_BuildOLELoadDocs.Log(output, "");
+		LU_BuildOLELoadDocs.Log(output, "Call numbers by item number (actual call number) ...");
 		for ( String itemnumber : callNumbersByItemNumber.keySet() ) {
 			callNumberStrings = callNumbersByItemNumber.get(itemnumber);
-			LU_BuildOLELoadDocs.Log("Item number: " + itemnumber + ", number of callnumbers: " + callNumberStrings.size());
+			LU_BuildOLELoadDocs.Log(output, "Item number: " + itemnumber + ", number of callnumbers: " + callNumberStrings.size());
 			for ( List<String> callNumberStr : callNumberStrings ) {
-				LU_BuildOLELoadDocs.Log("Call number by itemnumber " + itemnumber + ": " + 
+				LU_BuildOLELoadDocs.Log(output, "Call number by itemnumber " + itemnumber + ": " + 
 			                        	StringUtils.join(callNumberStr.toArray(), ","));
 			}
-			LU_BuildOLELoadDocs.Log("");
+			LU_BuildOLELoadDocs.Log(output, "");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
 		}
 
 		i = 0;
-		LU_BuildOLELoadDocs.Log("");
-		LU_BuildOLELoadDocs.Log("Items by catalog key ...");
+		LU_BuildOLELoadDocs.Log(output, "");
+		LU_BuildOLELoadDocs.Log(output, "Items by catalog key ...");
 		for ( String catkey : itemsByCatalogKey.keySet() ) {
 			itemStrings = itemsByCatalogKey.get(catkey);
-			LU_BuildOLELoadDocs.Log("Catalog key: " + catkey + ", number of items: " + itemStrings.size());
+			LU_BuildOLELoadDocs.Log(output, "Catalog key: " + catkey + ", number of items: " + itemStrings.size());
 			for ( List<String> itemStr : itemStrings ) {
-				LU_BuildOLELoadDocs.Log("Item by catalog key " + catkey + ": " + 
+				LU_BuildOLELoadDocs.Log(output, "Item by catalog key " + catkey + ": " + 
 			                        	StringUtils.join(itemStr.toArray(), ","));
 			}
-			LU_BuildOLELoadDocs.Log("");
+			LU_BuildOLELoadDocs.Log(output, "");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
 		}
 
 		i = 0;
-		LU_BuildOLELoadDocs.Log("");
-		LU_BuildOLELoadDocs.Log("Items by Item ID ...");
+		LU_BuildOLELoadDocs.Log(output, "");
+		LU_BuildOLELoadDocs.Log(output, "Items by Item ID ...");
 		for ( String itemID : itemsByID.keySet() ) {
 			itemStrings = itemsByID.get(itemID);
-			LU_BuildOLELoadDocs.Log("Item ID: " + itemID + ", number of items: " + itemStrings.size());
+			LU_BuildOLELoadDocs.Log(output, "Item ID: " + itemID + ", number of items: " + itemStrings.size());
 			for ( List<String> itemStr : itemStrings ) {
-				LU_BuildOLELoadDocs.Log("Item by ID " + itemID + ": " + 
+				LU_BuildOLELoadDocs.Log(output, "Item by ID " + itemID + ": " + 
 			                        	StringUtils.join(itemStr.toArray(), ","));
 			}
-			LU_BuildOLELoadDocs.Log("");
+			LU_BuildOLELoadDocs.Log(output, "");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
@@ -738,7 +740,20 @@ public class LU_BuildInstance {
 	    	String[] locPieces = locStr.split("-|_");
 	    	if ( locPieces.length == 3 ) {
 	    		libraryName = libraryCodeToName.get(locPieces[0]);
-	    		shelvingStr = floorToName(locPieces[1]) + " " + locPieces[2];
+	    		if ( locPieces[1].equals("SPCOLL") ) {
+	    			shelvingStr = "Special Collections, " + locPieces[2];
+	    		} else if ( locPieces[1].equals("JRNL") ) {
+	    			shelvingStr = "Journal " + locPieces[2];
+	    		} else {
+	    			if ( locPieces[2].equals("O") ) {
+	    				// Not sure what to do with location code L-3ROTND-O or L-4STACK-O yet,
+	    				// so I'm just throwing away the "-O" part and assuming it should have been
+	    				// L-3-ROTNDA and L-4-STACKS
+	    				locPieces[1] = locPieces[1].substring(0, 1);
+	    				locPieces[2] = locPieces[1].substring(1) + "Oversize";
+	    			}
+	    			shelvingStr = floorToName(locPieces[1]) + " " + locPieces[2];
+	    		}
 	    	} else if ( locPieces.length == 2 ) {
 	    		libraryName = libraryCodeToName.get(locPieces[0]);
 	    		shelvingStr = locPieces[1];

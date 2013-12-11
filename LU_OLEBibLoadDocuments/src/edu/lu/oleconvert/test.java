@@ -1,5 +1,8 @@
 package edu.lu.oleconvert;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -9,6 +12,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
@@ -170,7 +174,7 @@ public static final String CATEGORY_WORK = "work";
 	    }
 	}
 	
-	public static void convertStr() throws UnsupportedEncodingException {
+	public static void convertStr() throws IOException {
 		String str1 = "016.54122 R519b Supp¾., [no.1]";
 		System.out.println("str1 = " + str1);
 		String str2 = new String(str1.getBytes("ISO-8859-1"));
@@ -184,8 +188,10 @@ public static final String CATEGORY_WORK = "work";
 		writer.
 		pw.write(str1);
 		pw.close() */
+		writer.write("str2=" + str2 + "\n");
+		writer.flush();
 		str2 = bout.toString("UTF-8");
-		System.out.println("str2 = " + str2);
+		//System.out.println("str2 = " + str2);
 
 		str1 = "016.54122 R519b Supp<U+00be>., [no.1]";
 		System.out.println("Before replacing, str1 is " + str1);
@@ -466,14 +472,15 @@ public static final String CATEGORY_WORK = "work";
 
         	//test.testReadingXMLRecord(instanceBuilder, "/mnt/bigdrive/bibdata/catalog.07302013.plusholdings.mod.marcxml", 1000);
         	
-        	/*
-        	instanceBuilder.readSirsiFiles("/mnt/bigdrive/bibdata/allcallnums.txt", 
-										   "/mnt/bigdrive/bibdata/allcallnumsshelvingkeys.txt",
-										   "/mnt/bigdrive/bibdata/allcallnumsitemnumbers.txt",
-										   "/mnt/bigdrive/bibdata/allcallnumsanalytics.txt",        														
-										   "/mnt/bigdrive/bibdata/allitems.txt", -1);
-        	instanceBuilder.printHashMaps(0);
-        	*/
+			/*String workingdir = "/mnt/bigdrive/bibdata/sirsidump/20131209";
+        	PrintWriter writer = new PrintWriter(workingdir + "/testoutput.txt", "UTF-8");
+        	instanceBuilder.readSirsiFiles(workingdir + "/allcallnums.txt", 
+										   workingdir + "/allcallnumsshelvingkeys.txt",
+										   workingdir + "/allcallnumsitemnumbers.txt",
+										   workingdir + "/allcallnumsanalytics.txt",        														
+										   workingdir + "/allitems.txt", -1);
+        	instanceBuilder.printHashMaps(50000, writer);*/
+        	
 
          	//splitTest();
         	
