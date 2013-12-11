@@ -1,5 +1,6 @@
 package edu.lu.oleconvert;
 
+import java.io.OutputStreamWriter;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
@@ -9,6 +10,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -18,8 +20,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.xml.bind.Marshaller;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.sax.SAXTransformerFactory;
+import javax.xml.transform.sax.TransformerHandler;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
 
 import org.marc4j.MarcWriter;
 import org.marc4j.MarcXmlReader;
@@ -159,6 +168,43 @@ public static final String CATEGORY_WORK = "work";
 	    for ( String piece : locPieces ) {
 	    	System.out.println(piece);
 	    }
+	}
+	
+	public static void convertStr() throws UnsupportedEncodingException {
+		String str1 = "016.54122 R519b Supp¾., [no.1]";
+		System.out.println("str1 = " + str1);
+		String str2 = new String(str1.getBytes("ISO-8859-1"));
+		System.out.println("str2 = " + str2);
+		ByteArrayOutputStream bout = new ByteArrayOutputStream();
+		OutputStreamWriter writer = new OutputStreamWriter(System.out, "ISO-8859-1");
+		/*(writer = new BufferedWriter(writer);
+		TransformerFactory factory = TransformerFactory.newInstance();
+		SAXTransformerFactory saxFactory = (SAXTransformerFactory) factory;
+		TransformerHandler handler = saxFactory.newTransformerHandler();
+		writer.
+		pw.write(str1);
+		pw.close() */
+		str2 = bout.toString("UTF-8");
+		System.out.println("str2 = " + str2);
+
+		str1 = "016.54122 R519b Supp<U+00be>., [no.1]";
+		System.out.println("Before replacing, str1 is " + str1);
+
+		int num = 0x00be;
+		String s = Character.toString((char)num);
+		System.out.println("Funny character: " + s);
+//		p = Pattern.compile("<leader>(.*)&#[0-9]*;(.*)</leader>");
+//		Pattern p = Pattern.compile(".*<U\\+([0-9a-b]+)>.*");
+		Pattern p = Pattern.compile("<U\\+([0-9|a-z]+)>");
+		Matcher m = p.matcher(str1);
+		while ( m.find() ) {
+			System.out.println("Matched on group " + m.group(1));
+			int numval = Integer.parseInt(m.group(1), 16);
+			String replacement = Character.toString((char)numval);
+			System.out.println("replacement: " + replacement);
+			str1 = m.replaceAll(replacement);
+		}
+		System.out.println("After replacing, str1 is  " + str1);
 	}
 	
 	public static void count999Fields() {
@@ -434,7 +480,8 @@ public static final String CATEGORY_WORK = "work";
          	//countMFHDRecords866Fields();
          	//countMFHDRecordsAnd999Fields();
 			//readMFHDRec();
-			countMFHDRecsMoreThanTwo();
+			//countMFHDRecsMoreThanTwo();
+			convertStr();
 			
 			
 		} catch(Exception e) {

@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.xml.*;
 import javax.xml.bind.JAXB;
@@ -187,6 +189,10 @@ public class LU_BuildInstance {
 							   String itemNumbersFilename, String analyticsFilename,
 							   String itemsFilename, int limit) {
 		BufferedReader callNumbersReader, shelvingKeysReader, itemNumbersReader, analyticsReader, itemsReader;
+		Pattern p = Pattern.compile("&lt;U+([0-9a-b]+)&gt;");
+		Matcher m;
+		int numval = 0;
+		String replacement = "";
 		try {
         	callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
         	shelvingKeysReader = new BufferedReader(new FileReader(shelvingKeysFilename));
@@ -241,6 +247,22 @@ public class LU_BuildInstance {
         		}
         		// Now fill in the hashmap keyed by itemnumber, which should be index 13 in the field list
         		String callnumber = callNumberFields.get(13).trim();
+        		// We need to turn this callnumber into a unicode representation of it in ISO-8859-1
+        		// There are characters like U+00be, which shows up as 3/4 (as a single character) in the data from sirsi
+        		// Which then don't match what's in the MarcXML, e. g. 
+        		// Sirsi data: 283|1|016.54122 R519b Supp¾., [no.1]|
+        		// vs
+        		// MarcXML <subfield code="a">016.54122 R519b, Supp&lt;U+00be&gt;., [no.1]</subfield>
+        		// I spent some time trying to figure out how to get marc4j's MarcXMLWriter to not
+        		// do this when outputting the MarcXML, but couldn't figure it out.  This way is easier,
+        		// if inefficient.
+        		m = p.matcher(callnumber);
+        		while ( m.find() ) {
+        			numval = Integer.parseInt("0x" + m.group(1));
+        			replacement = Character.toString((char)numval);
+        			callnumber = m.replaceAll(replacement);
+        		}
+        		
         		if ( this.callNumbersByItemNumber.get(callnumber) == null) {
         			List<List<String>> callNumberStrs = new ArrayList<List<String>>();
         			callNumberStrs.add(callNumberFields);
@@ -601,15 +623,39 @@ public class LU_BuildInstance {
 	    // There should only be one subfield "a", as it's the item's call number and should be unique
 	    // And there should be only 1 call number with that "item number" in Sirsi, so we can just get the first
 	    // element of each of those lists
+		LU_BuildOLELoadDocs.Log(System.out, "Building holdings data for item !" + subfields.get("$a").get(0) + "!", LU_BuildOLELoadDocs.LOG_DEBUG);
+		LU_BuildOLELoadDocs.Log(System.out, "Subfields: ", LU_BuildOLELoadDocs.LOG_DEBUG);
+		for ( String key : subfields.keySet() ) {
+			List<String> fields = subfields.get(key);
+			for ( String value : fields ) {
+				LU_BuildOLELoadDocs.Log(System.out, "	" + key + ": " + value, LU_BuildOLELoadDocs.LOG_DEBUG);
+			}
+		}
+		if ( assocMFHDRec != null ) {
+			LU_BuildOLELoadDocs.Log(System.out, "Associated MFHD record: " + assocMFHDRec.toString(), LU_BuildOLELoadDocs.LOG_DEBUG);
+		}
+		Pattern p = Pattern.compile("<U\\+([0-9|a-z]+)>");
+		Matcher m;		
+		int numval = 0;
+		String replacement = "";
+
+		String callnumberstr = subfields.get("$a").get(0);
+		m = p.matcher(callnumberstr);
+		while ( m.find() ) {
+			numval = Integer.parseInt(m.group(1), 16);
+			replacement = Character.toString((char)numval);
+			callnumberstr = m.replaceAll(replacement);
+		}
+
+		LU_BuildOLELoadDocs.Log(System.out, "Callnumberstr: " + callnumberstr, LU_BuildOLELoadDocs.LOG_DEBUG);
+
 		if ( subfields.get("$a").size() != 1 ||
-			 callNumbersByItemNumber.get(subfields.get("$a").get(0)).size() != 1 ) {
+			 callNumbersByItemNumber.get(callnumberstr).size() != 1 ) {
 			LU_BuildOLELoadDocs.Log(System.err, "Call number (item number) not unique for item: " + subfields.toString(),
 									LU_BuildOLELoadDocs.LOG_ERROR);
 			// TODO: print list of callNumbers for this item number
 		}
-		// TODO: print assocMFHDrec and item we're building based on, like in buildItemsData above.
-
-		List<String> callNumberFields = this.callNumbersByItemNumber.get(subfields.get("$a").get(0)).get(0);
+		List<String> callNumberFields = this.callNumbersByItemNumber.get(callnumberstr).get(0);
 		// The contents of the call numbers file was produced by this command:
 		// selcallnum -iS -oKabchpqryz2 > /ExtDisk/allcallnums.txt
 		// The shelving Key, output by -oA, the "item number", called call number at Lehigh
@@ -739,9 +785,23 @@ public class LU_BuildInstance {
 		extentOfOwnership.setType("public");
 		if ( assocMFHDRec != null ) {
 			tmpsubfields = this.getSubfields(assocMFHDRec.getVariableField("866"));
+			LU_BuildOLELoadDocs.Log(System.out, "Subfields of 866 for MFHD record: ", LU_BuildOLELoadDocs.LOG_DEBUG);
+			for ( String key : tmpsubfields.keySet() ) {
+				List<String> fields = tmpsubfields.get(key);
+				for ( String value : fields ) {
+					LU_BuildOLELoadDocs.Log(System.out, "	" + key + ": " + value, LU_BuildOLELoadDocs.LOG_DEBUG);
+				}
+			}			
 			// Should only be one 866 field with one "$a" subfield
-			extentOfOwnership.setTextualHoldings(tmpsubfields.get("$a").get(0));
-
+			if ( tmpsubfields.get("$a") != null ) {
+				extentOfOwnership.setTextualHoldings(tmpsubfields.get("$a").get(0));
+			}
+			if ( tmpsubfields.get("$z") != null ) {
+				Note n = new Note();
+				n.setNote(tmpsubfields.get("$z").get(0));
+				n.setType("public");
+				extentOfOwnership.getNotes().add(n);
+			}
 			
 		    // TODO: receptStatus comes from the associated holdings record's
 		    // 008 field, position 6 (counting from 0 or 1, not sure, probably 1 given context)

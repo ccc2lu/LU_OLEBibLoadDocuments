@@ -11,12 +11,15 @@ import edu.indiana.libraries.LoadDocstore.jaxb.RequestType;
 //import edu.indiana.libraries.OracleConnection.classes.OracleReader; // ccc2 -- not using this, ourselves
 import edu.indiana.libraries.ole.classes.NameSpaceMapper;
 
+import org.marc4j.MarcReader;
+import org.marc4j.MarcStreamReader;
 import org.marc4j.MarcWriter;
 import org.marc4j.MarcXmlWriter;
 import org.marc4j.MarcXmlReader; // ccc2 added
 import org.marc4j.marc.Record;
 import org.marc4j.marc.VariableField;
 import org.marc4j.marc.Leader;
+import org.xml.sax.InputSource;
 
 import OLEBibLoadDocuments.edu.indiana.libraries.OLEBibLoadDocuments.classes.BuildRequestDocument;
 import edu.indiana.libraries.LoadDocstore.jaxb.*;
@@ -139,7 +142,7 @@ public class LU_BuildOLELoadDocs {
             marshaller = jc.createMarshaller();
             //marshaller.setProperty("com.sun.xml.internal.bind.namespacePrefixMapper", new NameSpaceMapper());
             //marshaller.setProperty("com.sun.xml.bind.marshaller.NamespacePrefixMapper", new LU_NamespacePrefixMapper());
-            marshaller.setProperty(Marshaller.JAXB_ENCODING, "UTF-8");
+            marshaller.setProperty(Marshaller.JAXB_ENCODING, "ISO-8859-1");
             marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT,true);
             // TODO: I need to get the <content> tags to have CDATA wrappers around their values
             // Create a CDataContentHandler or set 
@@ -295,7 +298,16 @@ public class LU_BuildOLELoadDocs {
         	Log("Creating OLE ingest documents ...");
             // ccc2 -- new loop over all records, perhaps?
             // not sure this accounts for holdings in addition to bibs, though
-            MarcXmlReader reader = new MarcXmlReader(new FileInputStream(dumpdir + "/" + args[3]));           
+           	
+        	//   PrintStream outputprintstream = new PrintStream(output);
+        	
+        	Reader input = new FileReader(dumpdir + "/" + args[3]);
+        	InputSource inputsource = new InputSource(input);
+        	inputsource.setEncoding("ISO-8859-1");
+            //MarcReader reader = new MarcStreamReader(input, "ISO-8859-1");
+            //MarcXmlReader reader = new MarcXmlReader(new FileInputStream(dumpdir + "/" + args[3]), "UTF-8");
+        	MarcXmlReader reader = new MarcXmlReader(inputsource);
+
             int limit = -1;
             if ( args.length == 7 ) {
             	limit = Integer.parseInt(args[6]);
@@ -324,10 +336,10 @@ public class LU_BuildOLELoadDocs {
             	// Catalog catalog = (Catalog) JPADriver.getObject(resultSet,Catalog.class);
 
                 out = new ByteArrayOutputStream();
-                writer = new MarcXmlWriter(out,"UTF-8");
+                writer = new MarcXmlWriter(out,"ISO-8859-1");
                 writer.write(xmlrecord);
                 writer.close();
-                String marcXML=out.toString("UTF-8"); // ccc2 -- this is what we already have -- could be we just need
+                String marcXML=out.toString("ISO-8859-1"); // ccc2 -- this is what we already have -- could be we just need
                 									  // to process it one record at a time?  
             	request=BuildRequestDocument.buildRequest(loadprops.getProperty("load.user"));
             	//request=BuildRequestDocument.buildIngestDocument(request,Integer.toString(catalog.getCatalogKey()),BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,xmlrecord,catalog);
