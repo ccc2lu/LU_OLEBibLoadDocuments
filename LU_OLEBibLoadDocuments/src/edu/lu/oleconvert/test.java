@@ -472,14 +472,15 @@ public static final String CATEGORY_WORK = "work";
 
         	//test.testReadingXMLRecord(instanceBuilder, "/mnt/bigdrive/bibdata/catalog.07302013.plusholdings.mod.marcxml", 1000);
         	
-			/*String workingdir = "/mnt/bigdrive/bibdata/sirsidump/20131209";
+			String workingdir = "/mnt/bigdrive/bibdata/sirsidump/20131211";
         	PrintWriter writer = new PrintWriter(workingdir + "/testoutput.txt", "UTF-8");
-        	instanceBuilder.readSirsiFiles(workingdir + "/allcallnums.txt", 
-										   workingdir + "/allcallnumsshelvingkeys.txt",
-										   workingdir + "/allcallnumsitemnumbers.txt",
-										   workingdir + "/allcallnumsanalytics.txt",        														
-										   workingdir + "/allitems.txt", -1);
-        	instanceBuilder.printHashMaps(50000, writer);*/
+        	instanceBuilder.readSirsiFiles(workingdir + "/mod.allcallnums.txt", 
+										   workingdir + "/mod.allcallnumsshelvingkeys.txt",
+										   workingdir + "/mod.allcallnumsitemnumbers.txt",
+										   workingdir + "/mod.allcallnumsanalytics.txt",        														
+										   workingdir + "/mod.allitems.txt", -1);
+        	//writer.print(Dumper.dump(instanceBuilder.callNumbersByItemNumber));
+        	instanceBuilder.printHashMaps(50000, writer);
         	
 
          	//splitTest();
@@ -488,7 +489,7 @@ public static final String CATEGORY_WORK = "work";
          	//countMFHDRecordsAnd999Fields();
 			//readMFHDRec();
 			//countMFHDRecsMoreThanTwo();
-			convertStr();
+			//convertStr();
 			
 			
 		} catch(Exception e) {

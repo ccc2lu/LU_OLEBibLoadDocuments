@@ -51,7 +51,7 @@ public class LU_BuildInstance {
 	// Items are linked by the "Item ID", which is 999 subfield code "i" in the MARC record.
 	// It's output by the "B" option to selitem and is field 31 in the output of selitem
 	private TreeMap<String, List<List<String>>> callNumbersByCatalogKey;
-	private TreeMap<String, List<List<String>>> callNumbersByItemNumber;
+	public TreeMap<String, List<List<String>>> callNumbersByItemNumber;
 	private TreeMap<String, List<List<String>>> itemsByCatalogKey;
 	private TreeMap<String, List<List<String>>> itemsByID;
 	private static int initSize = 2000000;
@@ -191,10 +191,7 @@ public class LU_BuildInstance {
 							   String itemNumbersFilename, String analyticsFilename,
 							   String itemsFilename, int limit) {
 		BufferedReader callNumbersReader, shelvingKeysReader, itemNumbersReader, analyticsReader, itemsReader;
-		Pattern p = Pattern.compile("&lt;U+([0-9a-b]+)&gt;");
-		Matcher m;
-		int numval = 0;
-		String replacement = "";
+
 		try {
         	callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
         	shelvingKeysReader = new BufferedReader(new FileReader(shelvingKeysFilename));
@@ -203,6 +200,8 @@ public class LU_BuildInstance {
         	itemsReader = new BufferedReader(new FileReader(itemsFilename));
         	LU_BuildOLELoadDocs.Log("Building hashmap of call number records by call number key " + 
         					   		"and by call number (called \"item number\" by Sirsi) ...");
+        	String workingdir = "/mnt/bigdrive/bibdata/sirsidump/20131211";
+        	PrintWriter writer = new PrintWriter(workingdir + "/testoutput.txt", "UTF-8");
         	int curr = 0, increment = 100000;
         	while(callNumbersReader.ready() && (limit < 0 || curr < limit)) {
         		// There should be the same number of lines in all 4 files containing callnum data,
@@ -212,6 +211,7 @@ public class LU_BuildInstance {
         		String line = callNumbersReader.readLine();
         		String shelvingKeysLine = shelvingKeysReader.readLine();
         		String itemNumbersLine = itemNumbersReader.readLine();
+        		writer.println(itemNumbersLine);
         		String analyticsLine = analyticsReader.readLine();
         		String fields[] = line.split("\\|");
         		// Can't just assign the return value of Arrays.asList(fields) to callNumberFields --
@@ -258,13 +258,15 @@ public class LU_BuildInstance {
         		// I spent some time trying to figure out how to get marc4j's MarcXMLWriter to not
         		// do this when outputting the MarcXML, but couldn't figure it out.  This way is easier,
         		// if inefficient.
+        		/*
         		m = p.matcher(callnumber);
         		while ( m.find() ) {
         			numval = Integer.parseInt("0x" + m.group(1));
         			replacement = Character.toString((char)numval);
         			callnumber = m.replaceAll(replacement);
         		}
-        		
+        		*/
+        		LU_BuildOLELoadDocs.Log(writer, "Putting call number into hash, key is " + callnumber, LU_BuildOLELoadDocs.LOG_DEBUG);
         		if ( this.callNumbersByItemNumber.get(callnumber) == null) {
         			List<List<String>> callNumberStrs = new ArrayList<List<String>>();
         			callNumberStrs.add(callNumberFields);
@@ -384,8 +386,15 @@ public class LU_BuildInstance {
 		if ( assocMFHDRecords.size() > 0 ) {
 			for ( Record MFHDrec : assocMFHDRecords ) {
 				// Instance inst = new Instance();
-				Map<String, List<String>> subfields = this.getSubfields(MFHDrec.getVariableField("852"));
-				String rectype = subfields.get("$c").get(0);
+				VariableField eightfivetwo = MFHDrec.getVariableField("852");
+				Map<String, List<String>> subfields;
+				String rectype = "";
+				if ( eightfivetwo != null ) {
+					subfields = this.getSubfields(eightfivetwo);
+					rectype = subfields.get("$c").get(0);
+				} else {
+					rectype = "LEHIGH"; // seems like a sensible default, given what's in the data
+				}
 				List<VariableField> mfhd_itemsholdings = new ArrayList<VariableField>();
 				// Find 999 records that go with this MFHD rec
 				// Search through 999 fields looking for those where the record type matches 
@@ -459,13 +468,14 @@ public class LU_BuildInstance {
 	    // There should only be one subfield "i", as it's the item's barcode and should be unique
 	    // And there should be only 1 item with that item ID, so we can just get the first
 	    // element of each of those lists
+	    String itemID = subfields.get("$i").get(0).trim();
 		if ( (subfields.get("$i").size() != 1) ||
-			 ( itemsByID.get(subfields.get("$i").get(0)) != null && 
-			   itemsByID.get(subfields.get("$i").get(0)).size() != 1 ) ){
+			 ( itemsByID.get(itemID) != null && 
+			   itemsByID.get(itemID).size() != 1 ) ){
 			LU_BuildOLELoadDocs.Log(System.err, "Bar code number (item ID) not unique for item: " + subfields.toString(), 
 									LU_BuildOLELoadDocs.LOG_ERROR);			
 		}
-		LU_BuildOLELoadDocs.Log(System.out, "Looking for item !" + subfields.get("$i").get(0) + "!", LU_BuildOLELoadDocs.LOG_DEBUG);
+		LU_BuildOLELoadDocs.Log(System.out, "Looking for item !" + itemID + "!", LU_BuildOLELoadDocs.LOG_DEBUG);
 		LU_BuildOLELoadDocs.Log(System.out, "Subfields: ", LU_BuildOLELoadDocs.LOG_DEBUG);
 		for ( String key : subfields.keySet() ) {
 			List<String> fields = subfields.get(key);
@@ -473,7 +483,7 @@ public class LU_BuildInstance {
 				LU_BuildOLELoadDocs.Log(System.out, "	" + key + ": " + value, LU_BuildOLELoadDocs.LOG_DEBUG);
 			}
 		}
-	    List<String> itemString = this.itemsByID.get(subfields.get("$i").get(0)).get(0);
+	    List<String> itemString = this.itemsByID.get(itemID).get(0);
 		// The field order of the itemString is described here:		
 		// The contents of the items file was produced by this command:
 		// selitem -oKabcdfhjlmnpqrstuvwyzA1234567Bk > /ExtDisk/allitems.txt
@@ -613,7 +623,7 @@ public class LU_BuildInstance {
 			// not an electronic resource, or eInstances are ready,
 			// so just set the barcode
 			AccessInformation ai = new AccessInformation();
-			ai.setBarcode(subfields.get("$i").get(0));
+			ai.setBarcode(itemID);
 			item.setAccessInformation(ai);
 			inst.getItems().getItems().add(item);
 		}
@@ -625,7 +635,8 @@ public class LU_BuildInstance {
 	    // There should only be one subfield "a", as it's the item's call number and should be unique
 	    // And there should be only 1 call number with that "item number" in Sirsi, so we can just get the first
 	    // element of each of those lists
-		LU_BuildOLELoadDocs.Log(System.out, "Building holdings data for item !" + subfields.get("$a").get(0) + "!", LU_BuildOLELoadDocs.LOG_DEBUG);
+		String callnumberstr = subfields.get("$a").get(0).trim();
+		LU_BuildOLELoadDocs.Log(System.out, "Building holdings data for item !" + callnumberstr + "!", LU_BuildOLELoadDocs.LOG_DEBUG);
 		LU_BuildOLELoadDocs.Log(System.out, "Subfields: ", LU_BuildOLELoadDocs.LOG_DEBUG);
 		for ( String key : subfields.keySet() ) {
 			List<String> fields = subfields.get(key);
@@ -641,15 +652,14 @@ public class LU_BuildInstance {
 		int numval = 0;
 		String replacement = "";
 
-		String callnumberstr = subfields.get("$a").get(0);
+		/*
 		m = p.matcher(callnumberstr);
 		while ( m.find() ) {
 			numval = Integer.parseInt(m.group(1), 16);
 			replacement = Character.toString((char)numval);
 			callnumberstr = m.replaceAll(replacement);
 		}
-
-		LU_BuildOLELoadDocs.Log(System.out, "Callnumberstr: " + callnumberstr, LU_BuildOLELoadDocs.LOG_DEBUG);
+		*/
 
 		if ( subfields.get("$a").size() != 1 ||
 			 callNumbersByItemNumber.get(callnumberstr).size() != 1 ) {
@@ -799,27 +809,30 @@ public class LU_BuildInstance {
 	    ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
 		extentOfOwnership.setType("public");
 		if ( assocMFHDRec != null ) {
-			tmpsubfields = this.getSubfields(assocMFHDRec.getVariableField("866"));
-			LU_BuildOLELoadDocs.Log(System.out, "Subfields of 866 for MFHD record: ", LU_BuildOLELoadDocs.LOG_DEBUG);
-			for ( String key : tmpsubfields.keySet() ) {
-				List<String> fields = tmpsubfields.get(key);
-				for ( String value : fields ) {
-					LU_BuildOLELoadDocs.Log(System.out, "	" + key + ": " + value, LU_BuildOLELoadDocs.LOG_DEBUG);
+			VariableField eightsixsix = assocMFHDRec.getVariableField("866");
+			if ( eightsixsix != null ) {
+				tmpsubfields = this.getSubfields(eightsixsix);
+				LU_BuildOLELoadDocs.Log(System.out, "Subfields of 866 for MFHD record: ", LU_BuildOLELoadDocs.LOG_DEBUG);
+				for ( String key : tmpsubfields.keySet() ) {
+					List<String> fields = tmpsubfields.get(key);
+					for ( String value : fields ) {
+						LU_BuildOLELoadDocs.Log(System.out, "	" + key + ": " + value, LU_BuildOLELoadDocs.LOG_DEBUG);
+					}
+				}			
+				// Should only be one 866 field with one "$a" subfield
+				if ( tmpsubfields.get("$a") != null ) {
+					extentOfOwnership.setTextualHoldings(tmpsubfields.get("$a").get(0));
 				}
-			}			
-			// Should only be one 866 field with one "$a" subfield
-			if ( tmpsubfields.get("$a") != null ) {
-				extentOfOwnership.setTextualHoldings(tmpsubfields.get("$a").get(0));
+				if ( tmpsubfields.get("$z") != null ) {
+					Note n = new Note();
+					n.setNote(tmpsubfields.get("$z").get(0));
+					n.setType("public");
+					extentOfOwnership.getNotes().add(n);
+				}
 			}
-			if ( tmpsubfields.get("$z") != null ) {
-				Note n = new Note();
-				n.setNote(tmpsubfields.get("$z").get(0));
-				n.setType("public");
-				extentOfOwnership.getNotes().add(n);
-			}
-			
-		    // TODO: receptStatus comes from the associated holdings record's
-		    // 008 field, position 6 (counting from 0 or 1, not sure, probably 1 given context)
+
+			// TODO: receptStatus comes from the associated holdings record's
+			// 008 field, position 6 (counting from 0 or 1, not sure, probably 1 given context)
 		    // There will need to be separate instances for each MFHD record, probably -- should
 		    // be either 1 or 2 MFHD records, if any, one for electronic version and one for physical
 			String receiptStatus = assocMFHDRec.getVariableField("008").toString().substring(6, 7);

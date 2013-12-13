@@ -186,7 +186,7 @@ public class LU_BuildOLELoadDocs {
         String dumpdir = args[1];
         LU_BuildInstance instanceBuilder = new LU_BuildInstance(dumpdir + "/mod.allcallnums.txt", 
         														dumpdir + "/mod.allcallnumsshelvingkeys.txt",
-        														dumpdir + "/mod.allcallnumsitemnumbers.mod.txt",
+        														dumpdir + "/mod.allcallnumsitemnumbers.txt",
         														dumpdir + "/mod.allcallnumsanalytics.txt",        														
         		                                                dumpdir + "/mod.allitems.txt");
         InstanceCollection ic = new InstanceCollection();
