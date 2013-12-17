@@ -211,7 +211,7 @@ public class LU_BuildInstance {
         		String line = callNumbersReader.readLine();
         		String shelvingKeysLine = shelvingKeysReader.readLine();
         		String itemNumbersLine = itemNumbersReader.readLine();
-        		writer.println(itemNumbersLine);
+        		writer.println("Item Numbers Line: " + itemNumbersLine);
         		String analyticsLine = analyticsReader.readLine();
         		String fields[] = line.split("\\|");
         		// Can't just assign the return value of Arrays.asList(fields) to callNumberFields --
@@ -233,7 +233,16 @@ public class LU_BuildInstance {
         		callNumberFields.add(tmpStr);
         		// Now we repeat that process for the itemNumbersLine and analyticsLine
         		fields = itemNumbersLine.split("\\|");
-        		tmpfields = Arrays.asList(fields).subList(2, fields.length);
+        		// I found a few callnumbers which contained 4 fields
+        		// in the output from from selcallnum -iS -oKD.  This 
+        		// should have only been 3 fields, and it turns out this
+        		// was because the item number field, output by -D from selcallnum,
+        		// can have | characters in it.  Sirsi's own MARC export of the catalog
+        		// didn't include the info after the pipe in the "call number" subfield
+        		// of the 999 field for an item -- it went in subfield v.  So, I'm stripping
+        		// it off here by only using fields[2] as the callnumber.
+        		//tmpfields = Arrays.asList(fields).subList(2, fields.length);
+        		tmpfields = Arrays.asList(fields).subList(2, 3);
         		tmpStr = StringUtils.join(tmpfields, "|");
         		callNumberFields.add(tmpStr);
         		fields = analyticsLine.split("\\|");
@@ -275,7 +284,7 @@ public class LU_BuildInstance {
         			callNumbersByItemNumber.get(callnumber).add(callNumberFields);
         		}
         		if ( ++curr % increment == 0 ) {
-        			LU_BuildOLELoadDocs.Log(System.out, "On call number " + curr, LU_BuildOLELoadDocs.LOG_DEBUG);
+        			LU_BuildOLELoadDocs.Log(System.out, "On call number " + curr, LU_BuildOLELoadDocs.LOG_INFO);
         		}
         	}
         	LU_BuildOLELoadDocs.Log("Building hashmap of item records by catalog key and by Item ID ...");
@@ -303,7 +312,7 @@ public class LU_BuildInstance {
         			itemsByID.get(itemID).add(itemNumberFields);
         		}
         		if ( ++curr % increment == 0 ) {
-        			LU_BuildOLELoadDocs.Log(System.out, "On item number " + curr, LU_BuildOLELoadDocs.LOG_DEBUG);
+        			LU_BuildOLELoadDocs.Log(System.out, "On item number " + curr, LU_BuildOLELoadDocs.LOG_INFO);
         		}
         		
         	}
@@ -471,7 +480,7 @@ public class LU_BuildInstance {
 	    String itemID = subfields.get("$i").get(0).trim();
 		if ( (subfields.get("$i").size() != 1) ||
 			 ( itemsByID.get(itemID) != null && 
-			   itemsByID.get(itemID).size() != 1 ) ){
+			   itemsByID.get(itemID).size() != 1 ) ) {
 			LU_BuildOLELoadDocs.Log(System.err, "Bar code number (item ID) not unique for item: " + subfields.toString(), 
 									LU_BuildOLELoadDocs.LOG_ERROR);			
 		}
@@ -662,9 +671,10 @@ public class LU_BuildInstance {
 		*/
 
 		if ( subfields.get("$a").size() != 1 ||
+			// TODO: not sure how to handle this -- it comes up a lot
 			 callNumbersByItemNumber.get(callnumberstr).size() != 1 ) {
 			LU_BuildOLELoadDocs.Log(System.err, "Call number (item number) not unique for item: " + subfields.toString(),
-									LU_BuildOLELoadDocs.LOG_ERROR);
+									LU_BuildOLELoadDocs.LOG_DEBUG);
 			// TODO: print list of callNumbers for this item number
 		}
 		List<String> callNumberFields = this.callNumbersByItemNumber.get(callnumberstr).get(0);
@@ -706,32 +716,43 @@ public class LU_BuildInstance {
 		List<String> publicNoteType = Arrays.asList(".PUBLIC.");
 	    List<String> commentfields = subfields.get("$o"); // TODO: figure out the split and regex, test this
 	    if ( commentfields != null && commentfields.size() > 0 ) {
+	    	LU_BuildOLELoadDocs.Log(System.out, "Adding " + commentfields.size() + " comments to instance", LU_BuildOLELoadDocs.LOG_DEBUG);
 	    	for ( String comment : commentfields ) {
 	    		// Keep the delimiter on the preceding element of the split array
 	    		Note note = new Note();
 	    		String[] pieces = comment.split("(?<=\\. )");
+    			// People put periods in their comments sometimes, and that's the delimiter Sirsi uses between
+    			// the comment type and the comment itself, so it blows up the comments array.
+    			// *sigh*
+    			// So, we just join all the pieces after element 0 together 
+	    		String commentstr = StringUtils.join(Arrays.asList(pieces).subList(1, pieces.length));
+	    		/*
 	    		if ( pieces.length != 2 ) {
 	    			LU_BuildOLELoadDocs.Log(System.err, "Badly formatted comment: " + comment, LU_BuildOLELoadDocs.LOG_ERROR);
 	    			for (String piece : pieces ) {
 	    				LU_BuildOLELoadDocs.Log(System.err, "Piece: " + piece, LU_BuildOLELoadDocs.LOG_ERROR);
 	    				System.out.println("Piece: " + piece);
 	    			}
-	    		}
+	    			
+	    		} else {
+	    			commentstr = pieces[1];
+	    		} 
+	    		*/
 	    		if ( nonpublicNoteType.contains(pieces[0].trim())) {
-	    			System.out.println("Type is nonpublic");
 	    			note.setType("nonpublic");
 	    		} else if ( publicNoteType.contains(pieces[0].trim())) {
 	    			note.setType("public");
 	    		} else {
 	    			LU_BuildOLELoadDocs.Log(System.err, "Unknown type of comment: " + comment, LU_BuildOLELoadDocs.LOG_WARN);
 	    		}
-	    		note.setNote(pieces[1]);
+	    		note.setNote(commentstr);
 	    		oh.getNotes().add(note);
 	    	}
 	    }
 	    
 	    ArrayList<VariableField> uriFields = (ArrayList<VariableField>) record.getVariableFields("856");
 	    if ( uriFields != null ){
+	    	LU_BuildOLELoadDocs.Log(System.out, "Adding " + uriFields.size() + " URIs to instance holdings data", LU_BuildOLELoadDocs.LOG_DEBUG);
 	    	for ( VariableField uriField : uriFields ) {
 	    		tmpsubfields = this.getSubfields(uriField);
 	    		URI uri = new URI();
@@ -747,6 +768,7 @@ public class LU_BuildInstance {
 	    if ( locStr.equals(ELECTRONIC_RESOURCE) ) {
 	    	// No location to fill in ...
 	    } else {
+	    	LU_BuildOLELoadDocs.Log(System.out, "Adding location information to instance holdings data", LU_BuildOLELoadDocs.LOG_DEBUG);
 	    	String[] locPieces = locStr.split("-|_");
 	    	if ( locPieces.length == 3 ) {
 	    		libraryName = libraryCodeToName.get(locPieces[0]);
@@ -789,6 +811,7 @@ public class LU_BuildInstance {
 		    oh.setLocation(location);
 	    }		
 	    
+    	LU_BuildOLELoadDocs.Log(System.out, "Adding callnumber info to instance holdings data", LU_BuildOLELoadDocs.LOG_DEBUG);
 	    CallNumber cn = new CallNumber();
 	    // Same as the shelvingscheme for now
 	    cn.setType(subfields.get("$w").get(0));
@@ -811,6 +834,7 @@ public class LU_BuildInstance {
 		if ( assocMFHDRec != null ) {
 			VariableField eightsixsix = assocMFHDRec.getVariableField("866");
 			if ( eightsixsix != null ) {
+		    	LU_BuildOLELoadDocs.Log(System.out, "Adding extent of ownership info to instance holdings data", LU_BuildOLELoadDocs.LOG_DEBUG);				
 				tmpsubfields = this.getSubfields(eightsixsix);
 				LU_BuildOLELoadDocs.Log(System.out, "Subfields of 866 for MFHD record: ", LU_BuildOLELoadDocs.LOG_DEBUG);
 				for ( String key : tmpsubfields.keySet() ) {
@@ -842,7 +866,8 @@ public class LU_BuildInstance {
 		} else {
 		}
 		oh.getExtentOfOwnership().add(extentOfOwnership);
-		
+    	LU_BuildOLELoadDocs.Log(System.out, "Done creating holdings data, adding to instance collection", LU_BuildOLELoadDocs.LOG_DEBUG);
+
 		inst.setOleHoldings(oh);
 	}
 	

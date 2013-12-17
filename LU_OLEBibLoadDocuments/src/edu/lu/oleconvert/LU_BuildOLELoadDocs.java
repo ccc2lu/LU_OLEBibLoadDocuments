@@ -28,6 +28,10 @@ import edu.lu.oleconvert.ole.InstanceCollection;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
 import java.io.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -59,11 +63,13 @@ public class LU_BuildOLELoadDocs {
                                                                                 put("6", "LOCKTEXT"); put("1000", "USERLOCK");
     																	     }};
     public static final String BIBLIOGRAPHIC = "bibliographic";
+    public static final String INSTANCE = "instance";
     public static final String MARC_FORMAT = "marc";
+    public static final String OLEML_FORMAT = "oleml";
     public static final String CATEGORY_WORK = "work";
 
     static final int LOG_DEBUG = 0, LOG_INFO = 1, LOG_WARN = 2, LOG_ERROR = 3; 
-    private static int currentLogLevel = LOG_DEBUG;
+    private static int currentLogLevel = LOG_INFO;
     private static int defaultLogLevel = LOG_INFO;
 
     public static void Log(PrintStream out, String message, int level) {
@@ -108,7 +114,7 @@ public class LU_BuildOLELoadDocs {
         // set any other options you'd like
         of.setPreserveSpace(true);
         of.setIndenting(true);
-
+        of.setOmitXMLDeclaration(true);
         // create the serializer
         XMLSerializer l_serializer = new XMLSerializer(of);
         //serializer.setOutputByteStream(out);        
@@ -118,7 +124,15 @@ public class LU_BuildOLELoadDocs {
 
     private static XMLSerializer serializer = null;
     
-    private static void marshallObjext(Object object,Marshaller marshaller, BufferedWriter out){
+    private static void marshallObjext(Object object, Marshaller marshaller, XMLSerializer serializer) {
+    	try {
+    		marshaller.marshal(object, serializer);
+    	} catch (JAXBException e) {
+    		e.printStackTrace();
+    	}
+    }
+    
+    private static void marshallObjext(Object object, Marshaller marshaller, BufferedWriter out){
         //StringWriter writer = new StringWriter();
     	//XMLSerializer serializer = getXMLSerializer(out);
         try {
@@ -147,7 +161,7 @@ public class LU_BuildOLELoadDocs {
         } catch (JAXBException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }
-        XMLSerializer serial;
+        //XMLSerializer serial;
         Marshaller marshaller = null;
         try {
             marshaller = jc.createMarshaller();
@@ -155,9 +169,7 @@ public class LU_BuildOLELoadDocs {
             //marshaller.setProperty("com.sun.xml.bind.marshaller.NamespacePrefixMapper", new LU_NamespacePrefixMapper());
             marshaller.setProperty(Marshaller.JAXB_ENCODING, "ISO-8859-1");
             marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT,true);
-            // TODO: I need to get the <content> tags to have CDATA wrappers around their values
-            // Create a CDataContentHandler or set 
-            // I probably should actual
+ 
             marshaller.setProperty("com.sun.xml.bind.marshaller.CharacterEscapeHandler",
             	    			   new NullCharacterEscapeHandler());
         } catch (JAXBException e) {
@@ -178,11 +190,13 @@ public class LU_BuildOLELoadDocs {
         ResultSet resultSet;
         BufferedWriter outFile = null;
         BufferedWriter instance_outFile = null;
+        XMLSerializer bib_serializer = null, instance_serializer = null;
         BufferedReader inFile = null;
         //Record record = null;
         ByteArrayOutputStream out = null;
         MarcWriter writer;
-        RequestType request;
+        RequestType bib_request;
+        RequestType inst_request;
         String dumpdir = args[1];
         LU_BuildInstance instanceBuilder = new LU_BuildInstance(dumpdir + "/mod.allcallnums.txt", 
         														dumpdir + "/mod.allcallnumsshelvingkeys.txt",
@@ -226,6 +240,8 @@ public class LU_BuildOLELoadDocs {
         try {
             outFile = new BufferedWriter(new FileWriter(dumpdir + "/" + args[4]));
             instance_outFile = new BufferedWriter(new FileWriter(dumpdir + "/" + args[5]));
+            bib_serializer = getXMLSerializer(outFile);
+            instance_serializer = getXMLSerializer(instance_outFile);
         } catch (IOException e) {
         	Log(System.err, e.getMessage(), LOG_ERROR);
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
@@ -266,7 +282,7 @@ public class LU_BuildOLELoadDocs {
         		KeyToDate.put(key, line);
         		counter++;
         		if ( counter % 100000 == 0 ) {
-        			Log(System.out, counter + " records mapped ...", LOG_DEBUG);
+        			Log(System.out, counter + " records mapped ...", LOG_INFO);
         		}
         	}
         	Log("Done reading in catalog keys map");
@@ -275,6 +291,7 @@ public class LU_BuildOLELoadDocs {
         	Log(System.err, "Unable to read in key-to-date mapping: " + e.toString(), LOG_ERROR);
         	e.printStackTrace(System.err);
         }
+        
         //PrintWriter output = new PrintWriter(new BufferedWriter(outFile));
         try {
         	/*
@@ -328,8 +345,12 @@ public class LU_BuildOLELoadDocs {
             List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
             Record xmlrecord, nextrecord;
             nextrecord = reader.next();
-        	ArrayList<Record> assocMFHDRecords = new ArrayList<Record>();;
-            do {
+        	ArrayList<Record> assocMFHDRecords = new ArrayList<Record>();
+
+        	bib_request=BuildRequestDocument.buildRequest(loadprops.getProperty("load.user"));
+        	inst_request=BuildRequestDocument.buildRequest(loadprops.getProperty("load.user"));
+        	
+        	do {
             	assocMFHDRecords.clear();
             	xmlrecord = nextrecord;
             	nextrecord = reader.next();
@@ -351,27 +372,45 @@ public class LU_BuildOLELoadDocs {
                 writer.write(xmlrecord);
                 writer.close();
                 String marcXML=out.toString("ISO-8859-1"); // ccc2 -- this is what we already have -- could be we just need
-                									  // to process it one record at a time?  
-            	request=BuildRequestDocument.buildRequest(loadprops.getProperty("load.user"));
-            	//request=BuildRequestDocument.buildIngestDocument(request,Integer.toString(catalog.getCatalogKey()),BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,xmlrecord,catalog);
+                									  // to process it one record at a time?
+                
+            	//request=BuildRequestDocument.buildRequest(loadprops.getProperty("load.user"));
+                
+                //request=BuildRequestDocument.buildIngestDocument(request,Integer.toString(catalog.getCatalogKey()),BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,xmlrecord,catalog);
 
             	// Build the instance data first, because we might be adding
             	ic = new InstanceCollection();
             	instanceBuilder.buildInstanceCollection(xmlrecord, ic, assocMFHDRecords);
 
-            	request=buildIngestDocument(request,
-            								xmlrecord.getLeader().toString(),
+            	bib_request=buildIngestDocument(bib_request,
+            								//xmlrecord.getLeader().toString(),
+            								xmlrecord.getControlNumber(),
             								BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,
             								xmlrecord, marcXML);
+            	marshallObjext(bib_request,marshaller, bib_serializer);
+
             	// Here would be a great place to generate instance records too, since we already have the catalog record in hand
             	
             	//  marshaller = getMarshaller(RequestType.class);
             	
             	// output.print(marshallObjext(request,marshaller));      
-            	marshallObjext(request,marshaller, outFile);
+            	//marshallObjext(request,marshaller, outFile);
             	
-            	instance_marshaller.marshal(ic, instance_outFile);
-    			
+            	
+            	//instance_marshaller.marshal(ic, instance_outFile);
+            	
+            	out = new ByteArrayOutputStream();
+            	writer = new MarcXmlWriter(out, "ISO-8859-1");
+            	instance_marshaller.marshal(ic, out);
+            	String ingestxml = out.toString("ISO-8859-1");
+            	
+               	inst_request=buildIngestDocument(inst_request,
+						//xmlrecord.getLeader().toString(),
+						xmlrecord.getControlNumber(),
+						INSTANCE,OLEML_FORMAT,CATEGORY_WORK,
+						ingestxml);
+            	marshallObjext(inst_request, marshaller, instance_serializer);
+
         		counter++;
         		if ( counter % 10000 == 0 ) {
         			Log(System.out, counter + " ingest documents created ...", LOG_INFO);
@@ -392,6 +431,19 @@ public class LU_BuildOLELoadDocs {
 		}
     }
     
+    public static RequestType buildIngestDocument(RequestType request, String id, String type, String format, String category, String XML){
+        RequestDocumentsType requestDocuments = objectFactory.createRequestDocumentsType();
+        IngestDocumentType ingestDocument = objectFactory.createIngestDocumentType();
+        ingestDocument.setContent(XML);
+        ingestDocument.setId(id);
+        ingestDocument.setFormat(format);
+        ingestDocument.setCategory(category);
+        ingestDocument.setType(type);
+        requestDocuments.getIngestDocument().add(ingestDocument);
+        request.setRequestDocuments(requestDocuments);
+        return request;
+    }
+        
     public static RequestType buildIngestDocument(RequestType request, String id, String type, String format, String category, Record record, String marcXML){
         RequestDocumentsType requestDocuments = objectFactory.createRequestDocumentsType();
         IngestDocumentType ingestDocument = objectFactory.createIngestDocumentType();

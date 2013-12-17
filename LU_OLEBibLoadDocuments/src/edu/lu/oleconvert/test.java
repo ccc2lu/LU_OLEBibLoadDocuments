@@ -480,7 +480,7 @@ public static final String CATEGORY_WORK = "work";
 										   workingdir + "/mod.allcallnumsanalytics.txt",        														
 										   workingdir + "/mod.allitems.txt", -1);
         	//writer.print(Dumper.dump(instanceBuilder.callNumbersByItemNumber));
-        	instanceBuilder.printHashMaps(50000, writer);
+        	//instanceBuilder.printHashMaps(50000, writer);
         	
 
          	//splitTest();
