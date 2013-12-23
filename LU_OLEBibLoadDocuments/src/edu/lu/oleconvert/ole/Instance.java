@@ -55,7 +55,7 @@ public class Instance implements Serializable {
 		this.instanceIdentifier = instanceIdentifier;
 	}
 	
-	@XmlElement(name="resourceIdentitier")
+	@XmlElement(name="resourceIdentifier")
 	public String getResourceIdentifier() {
 		return resourceIdentifier;
 	}

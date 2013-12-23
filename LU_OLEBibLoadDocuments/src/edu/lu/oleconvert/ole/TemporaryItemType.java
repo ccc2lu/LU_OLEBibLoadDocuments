@@ -13,6 +13,9 @@ public class TemporaryItemType extends ItemType implements Serializable {
 	 */
 	private static final long serialVersionUID = 8411477653644636082L;
 
+	// Since I commented codeValue out in this class's parent class, I have to declare it here
+	protected String codeValue;
+	
 	public TemporaryItemType() {
 		super();
 		this.codeValue = "";

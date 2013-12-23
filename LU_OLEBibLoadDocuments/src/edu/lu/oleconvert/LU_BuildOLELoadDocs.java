@@ -31,6 +31,8 @@ import javax.xml.bind.Marshaller;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Result;
+import javax.xml.transform.sax.SAXResult;
 
 import java.io.*;
 import java.sql.Connection;
@@ -114,7 +116,7 @@ public class LU_BuildOLELoadDocs {
         // set any other options you'd like
         of.setPreserveSpace(true);
         of.setIndenting(true);
-        of.setOmitXMLDeclaration(true);
+        //of.setOmitXMLDeclaration(true);
         // create the serializer
         XMLSerializer l_serializer = new XMLSerializer(of);
         //serializer.setOutputByteStream(out);        
@@ -349,7 +351,15 @@ public class LU_BuildOLELoadDocs {
 
         	bib_request=BuildRequestDocument.buildRequest(loadprops.getProperty("load.user"));
         	inst_request=BuildRequestDocument.buildRequest(loadprops.getProperty("load.user"));
-        	
+        	OutputFormat of = new OutputFormat("xml", "ISO-8859-1", true);
+        	of.setOmitXMLDeclaration(true);
+            of.setPreserveSpace(true);
+            of.setIndenting(true);
+            of.setCDataElements(
+                    new String[] { "^content" } ); 
+            XMLSerializer tmpserializer;
+            Result result;
+            
         	do {
             	assocMFHDRecords.clear();
             	xmlrecord = nextrecord;
@@ -368,8 +378,14 @@ public class LU_BuildOLELoadDocs {
             	// Catalog catalog = (Catalog) JPADriver.getObject(resultSet,Catalog.class);
 
                 out = new ByteArrayOutputStream();
-                writer = new MarcXmlWriter(out,"ISO-8859-1");
+            	//tmpserializer = new XMLSerializer();
+            	//tmpserializer.setOutputFormat(of);
+            	//tmpserializer.setOutputByteStream(out);
+            	//result = new SAXResult(tmpserializer.asContentHandler());
+                //writer = new MarcXmlWriter(result);
+                writer = new MarcXmlWriter(out, "ISO-8859-1");
                 writer.write(xmlrecord);
+                //out.close();
                 writer.close();
                 String marcXML=out.toString("ISO-8859-1"); // ccc2 -- this is what we already have -- could be we just need
                 									  // to process it one record at a time?
@@ -387,7 +403,7 @@ public class LU_BuildOLELoadDocs {
             								xmlrecord.getControlNumber(),
             								BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,
             								xmlrecord, marcXML);
-            	marshallObjext(bib_request,marshaller, bib_serializer);
+            	marshallObjext(bib_request, marshaller, bib_serializer);
 
             	// Here would be a great place to generate instance records too, since we already have the catalog record in hand
             	
@@ -400,8 +416,9 @@ public class LU_BuildOLELoadDocs {
             	//instance_marshaller.marshal(ic, instance_outFile);
             	
             	out = new ByteArrayOutputStream();
-            	writer = new MarcXmlWriter(out, "ISO-8859-1");
-            	instance_marshaller.marshal(ic, out);
+            	tmpserializer = new XMLSerializer(out, of);
+            	result = new SAXResult(tmpserializer.asContentHandler());
+            	instance_marshaller.marshal(ic, tmpserializer);
             	String ingestxml = out.toString("ISO-8859-1");
             	
                	inst_request=buildIngestDocument(inst_request,

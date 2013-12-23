@@ -558,7 +558,9 @@ public class LU_BuildInstance {
 		}
 
 		ItemType type = new ItemType();
-		type.setCodeValue(subfields.get("$t").get(0)); // should be only one of these
+		// Commenting out setting the itemType's codeValue, since OLE's bulk ingest
+		// choked on the field
+		//type.setCodeValue(subfields.get("$t").get(0)); // should be only one of these
 		type.setFullValue(subfields.get("$t").get(0));
 		// Don't worry about the typeOrSource of the itemType, not sure what that would be
 		item.setItemType(type);
@@ -756,10 +758,15 @@ public class LU_BuildInstance {
 	    	for ( VariableField uriField : uriFields ) {
 	    		tmpsubfields = this.getSubfields(uriField);
 	    		URI uri = new URI();
-	    		uri.setUri(tmpsubfields.get("$u").get(0));
-	    		// TODO: what to do with the "z" subfields?  They would provide the coverage information in an e-instance
-	    		// Not sure how to handle them here.
-	    		oh.getUri().add(uri);
+	    		if ( tmpsubfields.get("$u") != null ) {
+	    			uri.setUri(tmpsubfields.get("$u").get(0));
+	    			// TODO: what to do with the "z" subfields?  They would provide the coverage information in an e-instance
+	    			// Not sure how to handle them here.
+	    			oh.getUri().add(uri);
+	    		} else {
+	    			LU_BuildOLELoadDocs.Log(System.err, "856 with no $u subfield for record " + record.getControlNumber() + 
+	    						        ", 856 field is" + uriField.toString(), LU_BuildOLELoadDocs.LOG_WARN);	    			
+	    		}
 	    	}
 	    }
 		// Items can override the location from the containing OLE Holdings
