@@ -707,7 +707,8 @@ public class LU_BuildInstance {
 		Map<String, List<String>> tmpsubfields;
 		String catalogKey = callNumberFields.get(2);
 		inst.setInstanceIdentifier(callNumberFields.get(0));
-		inst.setResourceIdentifier(subfields.get("$a").get(0));
+		//inst.setResourceIdentifier(subfields.get("$a").get(0));
+		inst.setResourceIdentifier(record.getControlNumber()); // need to set this to what's in 001 of the bib to link them
 		SourceHoldings sh = new SourceHoldings();
 		sh.setPrimary("false");
 		inst.setSourceHoldings(sh);
@@ -753,7 +754,7 @@ public class LU_BuildInstance {
 	    }
 	    
 	    ArrayList<VariableField> uriFields = (ArrayList<VariableField>) record.getVariableFields("856");
-	    if ( uriFields != null ){
+	    if ( uriFields != null && uriFields.size() > 0 ){
 	    	LU_BuildOLELoadDocs.Log(System.out, "Adding " + uriFields.size() + " URIs to instance holdings data", LU_BuildOLELoadDocs.LOG_DEBUG);
 	    	for ( VariableField uriField : uriFields ) {
 	    		tmpsubfields = this.getSubfields(uriField);
@@ -768,6 +769,7 @@ public class LU_BuildInstance {
 	    						        ", 856 field is" + uriField.toString(), LU_BuildOLELoadDocs.LOG_WARN);	    			
 	    		}
 	    	}
+	    	
 	    }
 		// Items can override the location from the containing OLE Holdings
 	    String locStr = subfields.get("$l").get(0);
