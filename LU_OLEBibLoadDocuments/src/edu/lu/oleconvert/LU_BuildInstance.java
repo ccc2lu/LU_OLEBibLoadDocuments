@@ -708,7 +708,8 @@ public class LU_BuildInstance {
 		String catalogKey = callNumberFields.get(2);
 		inst.setInstanceIdentifier(callNumberFields.get(0));
 		//inst.setResourceIdentifier(subfields.get("$a").get(0));
-		inst.setResourceIdentifier(record.getControlNumber()); // need to set this to what's in 001 of the bib to link them
+		//inst.setResourceIdentifier(record.getControlNumber()); // need to set this to what's in 001 of the bib to link them
+		inst.setResourceIdentifier(LU_BuildOLELoadDocs.formatCatKey(callNumberFields.get(0)));
 		SourceHoldings sh = new SourceHoldings();
 		sh.setPrimary("false");
 		inst.setSourceHoldings(sh);

@@ -16,6 +16,7 @@ import org.marc4j.MarcStreamReader;
 import org.marc4j.MarcWriter;
 import org.marc4j.MarcXmlWriter;
 import org.marc4j.MarcXmlReader; // ccc2 added
+import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Record;
 import org.marc4j.marc.VariableField;
 import org.marc4j.marc.Leader;
@@ -45,6 +46,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 import java.util.regex.Pattern;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.xml.serialize.OutputFormat;
 import org.apache.xml.serialize.XMLSerializer;
 
@@ -180,7 +183,21 @@ public class LU_BuildOLELoadDocs {
 
         return marshaller;
     }
-
+    
+    public static String formatCatKey(String key) {
+    	// If there's an "a" at the beginning of what should be a numeric key,
+    	// get rid of it.  Sirsi's MARC export put the "a" before the catalog
+    	// keys in the MARC record's 001 fields.  luconvert.java should be
+    	// removing that from the only place it ends up, but just in case, we 
+    	// get rid of it here too
+    	if ( key.substring(0, 1).equals("a") ) {
+    		key = key.substring(1);
+    	}
+    	// Then pad the key out to 11 characters with leading zeros -- that's how
+    	// it will be in the MarcXML, and how OLE wants it in the database
+    	return StringUtils.leftPad(key, 11, "0");
+    }
+    
     public static void main(String[] args) {
         Marshaller marshaller, instance_marshaller;
         Properties loadprops;
@@ -279,7 +296,9 @@ public class LU_BuildOLELoadDocs {
         	while(inFile.ready()) {
         		line = inFile.readLine();
         		parts = line.split("\\|");
-        		key = "a" + parts[0];
+        		//key = "a" + parts[0];
+        		key = formatCatKey(parts[0]);
+                
         		//System.err.println("K=" + key + ", V=" + line);
         		KeyToDate.put(key, line);
         		counter++;
@@ -359,7 +378,7 @@ public class LU_BuildOLELoadDocs {
                     new String[] { "^content" } ); 
             XMLSerializer tmpserializer;
             Result result;
-            
+
         	do {
             	assocMFHDRecords.clear();
             	xmlrecord = nextrecord;
@@ -397,12 +416,14 @@ public class LU_BuildOLELoadDocs {
             	// Build the instance data first, because we might be adding
             	ic = new InstanceCollection();
             	instanceBuilder.buildInstanceCollection(xmlrecord, ic, assocMFHDRecords);
-
+                
             	bib_request=buildIngestDocument(bib_request,
             								//xmlrecord.getLeader().toString(),
             								xmlrecord.getControlNumber(),
             								BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,
             								xmlrecord, marcXML);
+            	
+                
             	marshallObjext(bib_request, marshaller, bib_serializer);
 
             	// Here would be a great place to generate instance records too, since we already have the catalog record in hand
