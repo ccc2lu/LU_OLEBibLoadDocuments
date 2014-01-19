@@ -101,7 +101,7 @@ public class LU_BuildOLELoadDocs {
     	Log(System.out, message);
     }
     
-    private static XMLSerializer getXMLSerializer(BufferedWriter out) {
+    protected static XMLSerializer getXMLSerializer(BufferedWriter out) {
         // configure an OutputFormat to handle CDATA
         OutputFormat of = new OutputFormat();
 
@@ -129,7 +129,7 @@ public class LU_BuildOLELoadDocs {
 
     private static XMLSerializer serializer = null;
     
-    private static void marshallObjext(Object object, Marshaller marshaller, XMLSerializer serializer) {
+    protected static void marshallObjext(Object object, Marshaller marshaller, XMLSerializer serializer) {
     	try {
     		marshaller.marshal(object, serializer);
     	} catch (JAXBException e) {
@@ -137,7 +137,7 @@ public class LU_BuildOLELoadDocs {
     	}
     }
     
-    private static void marshallObjext(Object object, Marshaller marshaller, BufferedWriter out){
+    protected static void marshallObjext(Object object, Marshaller marshaller, BufferedWriter out){
         //StringWriter writer = new StringWriter();
     	//XMLSerializer serializer = getXMLSerializer(out);
         try {
@@ -159,7 +159,7 @@ public class LU_BuildOLELoadDocs {
         */
     }
     
-    private static Marshaller getMarshaller(Class classObject){
+    protected static Marshaller getMarshaller(Class classObject){
         JAXBContext jc = null;
         try {
             jc = JAXBContext.newInstance(classObject);
@@ -195,7 +195,8 @@ public class LU_BuildOLELoadDocs {
     	}
     	// Then pad the key out to 11 characters with leading zeros -- that's how
     	// it will be in the MarcXML, and how OLE wants it in the database
-    	return StringUtils.leftPad(key, 11, "0");
+    	//return StringUtils.leftPad(key, 11, "0");
+    	return key;
     }
     
     public static void main(String[] args) {
@@ -217,11 +218,14 @@ public class LU_BuildOLELoadDocs {
         RequestType bib_request;
         RequestType inst_request;
         String dumpdir = args[1];
+        String lehighDataDir = "/mnt/bigdrive/bibdata/LehighData"; // this won't change with each export
+        
         LU_BuildInstance instanceBuilder = new LU_BuildInstance(dumpdir + "/mod.allcallnums.txt", 
         														dumpdir + "/mod.allcallnumsshelvingkeys.txt",
         														dumpdir + "/mod.allcallnumsitemnumbers.txt",
         														dumpdir + "/mod.allcallnumsanalytics.txt",        														
-        		                                                dumpdir + "/mod.allitems.txt");
+        		                                                dumpdir + "/mod.allitems.txt",
+        		                                                lehighDataDir + "/Lehigh Locations.csv");
         InstanceCollection ic = new InstanceCollection();
         
         Log("Starting ...");
@@ -508,7 +512,7 @@ public class LU_BuildOLELoadDocs {
         // Date cataloged in the first one, last modified in the last, potentially
         // TODO: there has GOT to be a better way to get the data from 
         // the 001 field in one line than this:
-        String catkey = record.getVariableField("001").toString().split(" ")[1];
+        String catkey = LU_BuildOLELoadDocs.formatCatKey(record.getVariableField("001").toString().split(" ")[1]);
         //System.err.println("Looking for dates for record with catalog key " + catkey);
         String dateLine = (String) KeyToDate.get(catkey);
         

@@ -59,7 +59,16 @@ public class LU_BuildInstance {
 	// Once OLE has a way to ingest e-instance documents, then set this to true
 	// and the code to generate e-instances will run
 	private boolean eInstanceReady = false;
+	private static int instanceNum = 1;
 	
+	Map<String, String> locationCodeToLibraryCode = new HashMap<String, String>();
+	Map<String, String> locationCodeToShelvingString = new HashMap<String, String>();
+	Map<String, String> libraryCodeToName = new HashMap<String, String>();
+	Map<String, String> collectionCodeToName = new HashMap<String, String>();
+	Map<String, String> collectionCodeToLibraryCode = new HashMap<String, String>();
+	Map<String, String> locationCodeToCollectionCode = new HashMap<String, String>();
+	
+	/*
 	Map<String, String> libraryCodeToName = new HashMap<String, String>(){{
 		put("FM", "Fairchild-Martindale");
 		put("L", "Linderman");
@@ -86,6 +95,8 @@ public class LU_BuildInstance {
 		}
 		return name + " " + "Floor";
 	}
+	*/
+	
 	public LU_BuildInstance() {
 		super();
 		callNumbersByCatalogKey = new TreeMap<String, List<List<String>>>();
@@ -96,11 +107,12 @@ public class LU_BuildInstance {
 
 	public LU_BuildInstance(String callNumbersFilename, String shelvingKeysFilename,
 							String itemNumbersFilename, String analyticsFilename,
-							String itemsFilename) {
+							String itemsFilename, String LocationsFileName) {
 		this();
 		this.readSirsiFiles(callNumbersFilename, shelvingKeysFilename,
 							itemNumbersFilename, analyticsFilename,
-							itemsFilename);		
+							itemsFilename);
+		this.readLehighData(LocationsFileName);
 	}
 	
 	public void printHashMaps(int limit, PrintWriter output) {
@@ -171,6 +183,35 @@ public class LU_BuildInstance {
 				break;
 		}		
 		
+	}
+	
+	public void readLehighData(String locationsFilename) {
+		BufferedReader locationsReader;
+		try {
+			locationsReader = new BufferedReader(new FileReader(locationsFilename));
+			locationsReader.readLine(); // strip off the line of headers
+			while (locationsReader.ready()) {
+				String line = locationsReader.readLine();
+				String parts[] = line.split(",");
+				// NB: the LIBRARY and COLLECTION level locations must be listed first
+				if (parts[2].equals("SHELVING")) {
+					this.locationCodeToShelvingString.put(parts[1], parts[0]);
+					if ( libraryCodeToName.get(parts[3]) != null ) {
+						this.locationCodeToLibraryCode.put(parts[1], parts[3]);
+					} else if ( collectionCodeToName.get(parts[3]) != null ) {
+						this.locationCodeToCollectionCode.put(parts[1], parts[3]);
+					}
+				} else if (parts[2].equals("LIBRARY")) {
+					this.libraryCodeToName.put(parts[1], parts[0]);
+				} else if (parts[2].equals("COLLECTION")) {
+					this.collectionCodeToName.put(parts[1], parts[0]);
+					this.collectionCodeToLibraryCode.put(parts[1], parts[3]);
+				}
+			}
+		} catch(Exception e) {
+			LU_BuildOLELoadDocs.Log(System.err, "Unable to read in Lehigh locations: " + e.getMessage(), LU_BuildOLELoadDocs.LOG_ERROR);
+			e.printStackTrace(System.err);
+		}
 	}
 	
 	public void readSirsiFiles(String callNumbersFilename, String shelvingKeysFilename,
@@ -400,7 +441,13 @@ public class LU_BuildInstance {
 				String rectype = "";
 				if ( eightfivetwo != null ) {
 					subfields = this.getSubfields(eightfivetwo);
-					rectype = subfields.get("$c").get(0);
+					if ( subfields.get("$c") != null && subfields.get("$c").size() > 0 ) {
+						rectype = subfields.get("$c").get(0);
+					} else {
+						LU_BuildOLELoadDocs.Log(System.err, "MFHD Record with 852 field and no $c subfield: " + MFHDrec.toString(), 
+								LU_BuildOLELoadDocs.LOG_WARN);
+						rectype = "LEHIGH"; // seems like a sensible default, given what's in the data
+					}
 				} else {
 					rectype = "LEHIGH"; // seems like a sensible default, given what's in the data
 				}
@@ -478,6 +525,9 @@ public class LU_BuildInstance {
 	    // And there should be only 1 item with that item ID, so we can just get the first
 	    // element of each of those lists
 	    String itemID = subfields.get("$i").get(0).trim();
+	    if ( itemID.equals("$737988-1001") ) { // found this extra $ in one item, it's a typo -- it's not in the output from selitem
+	    	itemID = itemID.substring(1); // chop the $ off of there
+	    }
 		if ( (subfields.get("$i").size() != 1) ||
 			 ( itemsByID.get(itemID) != null && 
 			   itemsByID.get(itemID).size() != 1 ) ) {
@@ -492,7 +542,18 @@ public class LU_BuildInstance {
 				LU_BuildOLELoadDocs.Log(System.out, "	" + key + ": " + value, LU_BuildOLELoadDocs.LOG_DEBUG);
 			}
 		}
-	    List<String> itemString = this.itemsByID.get(itemID).get(0);
+		List<String> itemString = null;
+	    if ( this.itemsByID.get(itemID) == null || itemsByID.get(itemID).size() == 0 ) {
+	    	LU_BuildOLELoadDocs.Log(System.err, "No item in itemsByID map for ID " + itemID + ", record: " + record.toString(), LU_BuildOLELoadDocs.LOG_ERROR);
+	    	itemString = new ArrayList<String>();
+	    } else {
+	    	itemString = this.itemsByID.get(itemID).get(0);
+	    }
+		// 
+	    
+	    if ( this.itemsByID.get(itemID) == null ) {
+	    	LU_BuildOLELoadDocs.Log(System.err, "No item in itemsByID map for ID " + itemID + ", record: " + record.toString(), LU_BuildOLELoadDocs.LOG_ERROR);
+	    }
 		// The field order of the itemString is described here:		
 		// The contents of the items file was produced by this command:
 		// selitem -oKabcdfhjlmnpqrstuvwyzA1234567Bk > /ExtDisk/allitems.txt
@@ -542,21 +603,8 @@ public class LU_BuildInstance {
 		id.setSource("SIRSI_ITEMKEY");
 		fi.setIdentifier(id);
 		fids.add(fi);
-		// Some records may have multiple 035 fields, ex "British Pacific Fleet experience and legacy, 1944-50"
-		List<String> formerIDs = subfields.get("035");
-		if ( formerIDs != null && 
-				formerIDs.size() > 0 ) {
-			for ( String fid : formerIDs ) {
-				fi = new FormerIdentifier();
-				id = new Identifier();
-				id.setSource("SIRIS_MARC_035");
-				id.setIdentifierValue(fid);
-				fi.setIdentifier(id);
-				fids.add(fi);
-			}
-			item.setFormerIdentifiers(fids);
-		}
-
+		item.setFormerIdentifiers(fids);
+		
 		ItemType type = new ItemType();
 		// Commenting out setting the itemType's codeValue, since OLE's bulk ingest
 		// choked on the field
@@ -672,14 +720,22 @@ public class LU_BuildInstance {
 		}
 		*/
 
+		List<String> callNumberFields = new ArrayList<String>();
+		if ( callNumbersByItemNumber.get(callnumberstr) == null ) {
+			LU_BuildOLELoadDocs.Log(System.err, "No call number exists for item: " + subfields.toString(),
+					LU_BuildOLELoadDocs.LOG_ERROR);
+		} else {
+			callNumberFields = this.callNumbersByItemNumber.get(callnumberstr).get(0);			
+		}
 		if ( subfields.get("$a").size() != 1 ||
 			// TODO: not sure how to handle this -- it comes up a lot
-			 callNumbersByItemNumber.get(callnumberstr).size() != 1 ) {
+				(callNumbersByItemNumber.get(callnumberstr) != null && 
+				 callNumbersByItemNumber.get(callnumberstr).size() != 1) ) {
 			LU_BuildOLELoadDocs.Log(System.err, "Call number (item number) not unique for item: " + subfields.toString(),
 									LU_BuildOLELoadDocs.LOG_DEBUG);
 			// TODO: print list of callNumbers for this item number
 		}
-		List<String> callNumberFields = this.callNumbersByItemNumber.get(callnumberstr).get(0);
+
 		// The contents of the call numbers file was produced by this command:
 		// selcallnum -iS -oKabchpqryz2 > /ExtDisk/allcallnums.txt
 		// The shelving Key, output by -oA, the "item number", called call number at Lehigh
@@ -705,11 +761,30 @@ public class LU_BuildInstance {
 		 */
 		
 		Map<String, List<String>> tmpsubfields;
-		String catalogKey = callNumberFields.get(2);
-		inst.setInstanceIdentifier(callNumberFields.get(0));
+		//inst.setInstanceIdentifier(callNumberFields.get(0));
+		inst.setInstanceIdentifier(Integer.toString(instanceNum++));
 		//inst.setResourceIdentifier(subfields.get("$a").get(0));
-		//inst.setResourceIdentifier(record.getControlNumber()); // need to set this to what's in 001 of the bib to link them
-		inst.setResourceIdentifier(LU_BuildOLELoadDocs.formatCatKey(callNumberFields.get(0)));
+		inst.setResourceIdentifier(LU_BuildOLELoadDocs.formatCatKey(record.getControlNumber())); // need to set this to what's in 001 of the bib to link them
+		//inst.setResourceIdentifier(LU_BuildOLELoadDocs.formatCatKey(callNumberFields.get(0)));
+
+		// Some records may have multiple 035 fields, ex "British Pacific Fleet experience and legacy, 1944-50"
+		List<String> formerIDs = subfields.get("035");
+		FormerIdentifier fi;
+		Identifier id;
+		ArrayList<FormerIdentifier> fids = new ArrayList<FormerIdentifier>();
+		if ( formerIDs != null && 
+				formerIDs.size() > 0 ) {
+			for ( String fid : formerIDs ) {
+				fi = new FormerIdentifier();
+				id = new Identifier();
+				id.setSource("SIRIS_MARC_035");
+				id.setIdentifierValue(fid);
+				fi.setIdentifier(id);
+				fids.add(fi);
+			}
+			inst.setFormerResourceIdentifiers(fids);
+		}
+
 		SourceHoldings sh = new SourceHoldings();
 		sh.setPrimary("false");
 		inst.setSourceHoldings(sh);
@@ -759,14 +834,22 @@ public class LU_BuildInstance {
 	    	LU_BuildOLELoadDocs.Log(System.out, "Adding " + uriFields.size() + " URIs to instance holdings data", LU_BuildOLELoadDocs.LOG_DEBUG);
 	    	for ( VariableField uriField : uriFields ) {
 	    		tmpsubfields = this.getSubfields(uriField);
-	    		URI uri = new URI();
 	    		if ( tmpsubfields.get("$u") != null ) {
+		    		URI uri = new URI();
 	    			uri.setUri(tmpsubfields.get("$u").get(0));
 	    			// TODO: what to do with the "z" subfields?  They would provide the coverage information in an e-instance
 	    			// Not sure how to handle them here.
 	    			oh.getUri().add(uri);
-	    		} else {
-	    			LU_BuildOLELoadDocs.Log(System.err, "856 with no $u subfield for record " + record.getControlNumber() + 
+	    		} 
+	    		if ( tmpsubfields.get("$a") != null ) {
+		    		URI uri = new URI();
+	    			uri.setUri(tmpsubfields.get("$a").get(0));
+	    			// TODO: what to do with the "z" subfields?  They would provide the coverage information in an e-instance
+	    			// Not sure how to handle them here.
+	    			oh.getUri().add(uri);	    				    			
+	    		}
+	    		if ( oh.getUri().size() == 0 ) {
+	    			LU_BuildOLELoadDocs.Log(System.err, "856 with no $u or $a subfields for record " + record.getControlNumber() + 
 	    						        ", 856 field is" + uriField.toString(), LU_BuildOLELoadDocs.LOG_WARN);	    			
 	    		}
 	    	}
@@ -774,11 +857,12 @@ public class LU_BuildInstance {
 	    }
 		// Items can override the location from the containing OLE Holdings
 	    String locStr = subfields.get("$l").get(0);
-    	String libraryName = "", shelvingStr = "";
+    	String libraryName = "", shelvingStr = "", collectionCode = "", collectionName = "";
 	    if ( locStr.equals(ELECTRONIC_RESOURCE) ) {
 	    	// No location to fill in ...
 	    } else {
 	    	LU_BuildOLELoadDocs.Log(System.out, "Adding location information to instance holdings data", LU_BuildOLELoadDocs.LOG_DEBUG);
+	    	/*
 	    	String[] locPieces = locStr.split("-|_");
 	    	if ( locPieces.length == 3 ) {
 	    		libraryName = libraryCodeToName.get(locPieces[0]);
@@ -799,11 +883,47 @@ public class LU_BuildInstance {
 	    	} else if ( locPieces.length == 2 ) {
 	    		libraryName = libraryCodeToName.get(locPieces[0]);
 	    		shelvingStr = locPieces[1];
+	    	} else if ( locPieces[0].equals("LMCJOURNAL") ){
+	    		libraryName = "LMC";
+	    		shelvingStr = "JOURNAL";
 	    	} else {
 	    		libraryName = locStr;
 	    	}
-
+			*/
+	    	collectionCode = locationCodeToCollectionCode.get(locStr);
+	    	if (collectionCode != null) {
+		    	collectionName = collectionCodeToName.get(collectionCode);
+		    	libraryName = this.libraryCodeToName.get(collectionCodeToLibraryCode.get(collectionCode));
+	    	} else {
+	    		libraryName = libraryCodeToName.get(locationCodeToLibraryCode.get(locStr));	
+	    	}
+	    	shelvingStr = locationCodeToShelvingString.get(locStr);
 	    	Location location = new Location();
+	    	LocationLevel institution = new LocationLevel();
+	    	institution.setLevel("INSTITUTION");
+	    	institution.setName("Lehigh University");
+	    	
+	    	LocationLevel library = new LocationLevel();
+	    	library.setLevel("LIBRARY");
+	    	library.setName(libraryName);
+	    	institution.setSubLocationLevel(library);
+	    	
+	    	LocationLevel shelving = new LocationLevel();
+	    	shelving.setLevel("SHELVING");
+	    	shelving.setName(shelvingStr);
+	    	
+	    	if ( collectionCode != null ) {
+	    		LocationLevel collection = new LocationLevel();
+	    		collection.setLevel("COLLECTION");
+	    		collection.setName(collectionName);
+	    		library.setSubLocationLevel(collection);
+	    		collection.setSubLocationLevel(shelving);
+	    	} else {
+	    		library.setSubLocationLevel(shelving);
+	    	}
+	    	location.setLocLevel(institution);
+	    	
+	    	/* old code 
 	    	LocationLevel locLevel1 = new LocationLevel();
 	    	locLevel1.setLevel("UNIVERSITY");
 	    	locLevel1.setName("Lehigh University");
@@ -811,13 +931,15 @@ public class LU_BuildInstance {
 	    	locLevel2.setLevel("LIBRARY");
 	    	locLevel2.setName(libraryName);
 	    	locLevel1.setSubLocationLevel(locLevel2);
-	    	if ( shelvingStr.length() > 0 ) {
+	    	if ( shelvingStr != null && shelvingStr.length() > 0 ) {
 	    		LocationLevel locLevel3 = new LocationLevel();
 	    		locLevel3.setLevel("Shelving");
 	    		locLevel3.setName(shelvingStr);
 	    		locLevel2.setSubLocationLevel(locLevel3);
 	    	}
 	    	location.setLocLevel(locLevel1);
+	    	*/
+	    	
 		    oh.setLocation(location);
 	    }		
 	    

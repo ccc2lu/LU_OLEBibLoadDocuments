@@ -1,12 +1,13 @@
 package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
-@XmlType(name="instance", propOrder={"instanceIdentifier", "resourceIdentifier", "oleHoldings", "sourceHoldings", "items"})
+@XmlType(name="instance", propOrder={"instanceIdentifier", "resourceIdentifier", "formerResourceIdentifiers", "oleHoldings", "sourceHoldings", "items"})
 public class Instance implements Serializable {
 
 	/**
@@ -16,9 +17,19 @@ public class Instance implements Serializable {
 
 	private String instanceIdentifier;
 	private String resourceIdentifier;
+	private ArrayList<FormerIdentifier> formerResourceIdentifiers;
 	private OLEHoldings oleHoldings; 
 	private SourceHoldings sourceHoldings;
 	private Items items;
+	
+	@XmlElement(name="formerResourceIdentifier")
+	public ArrayList<FormerIdentifier> getFormerResourceIdentifiers() {
+		return formerResourceIdentifiers;
+	}
+
+	public void setFormerResourceIdentifiers(ArrayList<FormerIdentifier> formerResourceIdentifiers) {
+		this.formerResourceIdentifiers = formerResourceIdentifiers;
+	}
 	
 	@XmlElement(name="oleHoldings")
 	public OLEHoldings getOleHoldings() {

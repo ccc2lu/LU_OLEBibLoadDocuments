@@ -5,7 +5,7 @@ import java.io.Serializable;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
-@XmlType(name="formerIdentifier")
+@XmlType(name="formerResourceIdentifier")
 public class FormerIdentifier implements Serializable {
 
 	/**
