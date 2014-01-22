@@ -2,9 +2,15 @@ package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
 
+import javax.persistence.AttributeOverride;
+import javax.persistence.AttributeOverrides;
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
+import javax.persistence.Embedded;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+@Embeddable
 @XmlType(name="location")
 public class Location implements Serializable {
 	
@@ -19,6 +25,7 @@ public class Location implements Serializable {
 		locLevel = new LocationLevel();
 	}
 
+	@Embedded
 	@XmlElement(name="locationLevel")
 	public LocationLevel getLocLevel() {
 		return locLevel;

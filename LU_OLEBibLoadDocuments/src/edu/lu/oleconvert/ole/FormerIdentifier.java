@@ -2,9 +2,14 @@ package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
 
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Table;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+@Entity()
+@Table(name="ole_ds_former_identifier_t")
 @XmlType(name="formerResourceIdentifier")
 public class FormerIdentifier implements Serializable {
 
@@ -22,6 +27,7 @@ public class FormerIdentifier implements Serializable {
 		this.identifierType = "";
 	}
 
+	@Column(name="value")
 	@XmlElement(name="identifier")
 	public Identifier getIdentifier() {
 		return identifier;
@@ -31,6 +37,7 @@ public class FormerIdentifier implements Serializable {
 		this.identifier = identifier;
 	}
 
+	@Column(name="type")
 	@XmlElement(name="identifierType")
 	public String getIdentifierType() {
 		return identifierType;

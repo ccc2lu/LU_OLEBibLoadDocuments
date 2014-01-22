@@ -2,7 +2,10 @@ package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
 
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
 import javax.persistence.Entity;
+import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -12,28 +15,38 @@ import javax.xml.bind.annotation.XmlValue;
 
 @Entity
 @XmlType(name="note")
-public class Note implements Serializable {
+public class OLEHoldingsNote implements Serializable {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 8646311373822424985L;
 	
-	Item item;
+	Long id;
+	OLEHoldings oleHoldings;
 	String type;
 	String note;
 	
-	public Note() {
+	public OLEHoldingsNote() {
 		super();
 	}
 
-	@ManyToOne
-	@JoinColumn(name="ITEM_ID")
-	public Item getItem() {
-		return this.item;
+	@Id
+	@Column(name="HOLDINGS_NOTE_ID")
+	public Long getId() {
+		return this.id;
 	}
-	public void setItem(Item i) {
-		this.item = i;
+	public void setId(Long i) {
+		this.id = i;
+	}
+	
+	@ManyToOne
+	@JoinColumn(name="HOLDINGS_ID")
+	public OLEHoldings getItem() {
+		return this.oleHoldings;
+	}
+	public void setItem(OLEHoldings oh) {
+		this.oleHoldings = oh;
 	}
 	
 	@XmlAttribute(name="type")

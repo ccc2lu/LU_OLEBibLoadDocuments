@@ -2,10 +2,13 @@ package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
 
+import javax.persistence.Entity;
+import javax.persistence.Table;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.XmlValue;
+
 
 @XmlType(name="uri")
 public class URI implements Serializable {

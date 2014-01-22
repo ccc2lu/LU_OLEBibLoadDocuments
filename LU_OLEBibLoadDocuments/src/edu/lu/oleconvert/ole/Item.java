@@ -3,10 +3,18 @@ package edu.lu.oleconvert.ole;
 import java.io.Serializable;
 import java.util.ArrayList;
 
+import javax.persistence.Column;
+import javax.persistence.Embedded;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+@Entity
+@Table(name="ole_ds_item_t")
 @XmlType(name="item", propOrder={"analytic", "resourceIdentifier", "itemIdentifier", "purchaseOrderLineItemIdentifier",
 		                         "vendorLineItemIdentifier", "accessInformation", "barcodeARSL", "formerIdentifiers",
 		                         "statisticalSearchingCodes", "itemType", "location", "copyNumber", "copyNumberLabel",
@@ -38,7 +46,7 @@ public class Item implements Serializable {
 	private String copyNumberLabel;
 	private String volumeNumber;
 	private String volumeNumberLabel;
-	private ArrayList<Note> notes;
+	private ArrayList<ItemNote> notes;
 	private String enumeration;
 	private String chronology;
 	private HighDensityStorage highDensityStorage;
@@ -73,7 +81,7 @@ public class Item implements Serializable {
 		this.highDensityStorage = new HighDensityStorage();
 		this.temporaryItemType = new TemporaryItemType();
 		this.extension = new Extension();
-		this.notes = new ArrayList<Note>();
+		this.notes = new ArrayList<ItemNote>();
 		copyNumber = copyNumberLabel = volumeNumber = volumeNumberLabel = "";
 		fund = donorPublicDisplay = donorNote = "";
 		price = numberOfPieces = itemStatus = itemStatusEffectiveDate = "";
@@ -99,7 +107,7 @@ public class Item implements Serializable {
 		this.highDensityStorage = i.getHighDensityStorage();
 		this.temporaryItemType = i.getTemporaryItemType();
 		this.extension = i.getExtension();
-		this.notes = (ArrayList<Note>) i.getNotes().clone();
+		this.notes = (ArrayList<ItemNote>) i.getNotes().clone();
 		this.enumeration = i.getEnumeration();
 		this.chronology = i.getChronology();
 		copyNumber = i.getCopyNumber(); 
@@ -119,7 +127,7 @@ public class Item implements Serializable {
 		this.accessInformation = i.getAccessInformation();
 	}
 	
-	
+	@Column(name="COPY_NUMBER")
 	@XmlElement(name="copyNumber", required=true, nillable=true)
 	public String getCopyNumber() {
 		return copyNumber;
@@ -129,6 +137,7 @@ public class Item implements Serializable {
 		this.copyNumber = copyNumber;
 	}
 
+	// These next few seem to be gone from the data model now
 	@XmlElement(name="copyNumberLabel", required=true, nillable=true)
 	public String getCopyNumberLabel() {
 		return copyNumberLabel;
@@ -137,7 +146,8 @@ public class Item implements Serializable {
 	public void setCopyNumberLabel(String copyNumberLabel) {
 		this.copyNumberLabel = copyNumberLabel;
 	}
-
+	
+	
 	@XmlElement(name="volumeNumber", required=true, nillable=true)
 	public String getVolumeNumber() {
 		return volumeNumber;
@@ -155,13 +165,14 @@ public class Item implements Serializable {
 	public void setVolumeNumberLabel(String volumeNumberLabel) {
 		this.volumeNumberLabel = volumeNumberLabel;
 	}
-
+	
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="item")
 	@XmlElement(name="note")
-	public ArrayList<Note> getNotes() {
+	public ArrayList<ItemNote> getNotes() {
 		return notes;
 	}
 
-	public void setNotes(ArrayList<Note> notes) {
+	public void setNotes(ArrayList<ItemNote> notes) {
 		this.notes = notes;
 	}
 
@@ -300,6 +311,7 @@ public class Item implements Serializable {
 		this.extension = extension;
 	}
 
+	@Embedded
 	@XmlElement(name="location")
 	public Location getLocation() {
 		return location;

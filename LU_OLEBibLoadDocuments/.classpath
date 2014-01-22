@@ -1,15 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
-	<classpathentry kind="lib" path="/home/ccc2/Dropbox/OLE Conversion/marc4j.jar"/>
-	<classpathentry kind="lib" path="/home/ccc2/Dropbox/OLE Conversion/olebibloadfile.jar"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/J2SE-1.5">
+	<classpathentry kind="src" output="target/classes" path="src">
+		<attributes>
+			<attribute name="optional" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6">
 		<attributes>
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="/home/ccc2/dev/xerces-2_11_0/xercesImpl.jar"/>
-	<classpathentry kind="lib" path="/home/ccc2/dev/jaxb-impl-2.1.13.jar"/>
-	<classpathentry kind="output" path="bin"/>
+	<classpathentry kind="lib" path="/home/ccc2/dev/ole_convert_lib/marc4j-2.6.0.jar"/>
+	<classpathentry kind="lib" path="/home/ccc2/dev/ole_convert_lib/olebibloadfile.jar"/>
+	<classpathentry kind="lib" path="/home/ccc2/dev/ole_convert_lib/xercesImpl.jar" sourcepath="/home/ccc2/.m2/repository/xerces/xercesImpl/2.11.0/xercesImpl-2.11.0-sources.jar"/>
+	<classpathentry kind="lib" path="/home/ccc2/dev/ole_convert_lib/jaxb-impl-2.1.13.jar"/>
+	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
+		<attributes>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/hibernate">
+		<attributes>
+			<attribute name="owner.project.facets" value="jpt.jpa"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="output" path="target/classes"/>
 </classpath>

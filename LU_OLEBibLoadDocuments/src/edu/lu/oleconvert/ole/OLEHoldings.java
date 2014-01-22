@@ -19,7 +19,7 @@ public class OLEHoldings implements Serializable {
 	private String holdingsIdentifier;
 	private String receiptStatus;
 	private ArrayList<URI> uri;
-	private ArrayList<Note> notes;
+	private ArrayList<OLEHoldingsNote> notes;
 	private Location location;
 	private CallNumber callNumber;
 	private ArrayList<ExtentOfOwnership> extentOfOwnership;
@@ -47,7 +47,7 @@ public class OLEHoldings implements Serializable {
 		uri = new ArrayList<URI>();
 		extentOfOwnership = new ArrayList<ExtentOfOwnership>();
 		extentOfOwnership = new ArrayList<ExtentOfOwnership>();
-		notes = new ArrayList<Note>();
+		notes = new ArrayList<OLEHoldingsNote>();
 	}
 	
 	@XmlAttribute(name="primary")
@@ -83,10 +83,10 @@ public class OLEHoldings implements Serializable {
 	}
 	
 	@XmlElement(name="note")
-	public ArrayList<Note> getNotes() {
+	public ArrayList<OLEHoldingsNote> getNotes() {
 		return notes;
 	}
-	public void setNotes(ArrayList<Note> notes) {
+	public void setNotes(ArrayList<OLEHoldingsNote> notes) {
 		this.notes = notes;
 	}
 

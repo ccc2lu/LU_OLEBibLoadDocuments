@@ -3,10 +3,12 @@ package edu.lu.oleconvert.ole;
 import java.io.Serializable;
 import java.util.ArrayList;
 
+import javax.persistence.Entity;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+@Entity
 @XmlType(name="instance", propOrder={"instanceIdentifier", "resourceIdentifier", "formerResourceIdentifiers", "oleHoldings", "sourceHoldings", "items"})
 public class Instance implements Serializable {
 

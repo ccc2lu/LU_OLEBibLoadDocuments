@@ -2,9 +2,13 @@ package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
 
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
+import javax.persistence.Embedded;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+@Embeddable
 @XmlType(name="locationLevel")
 public class LocationLevel implements Serializable {
 
@@ -22,6 +26,7 @@ public class LocationLevel implements Serializable {
 		name = "";
 	}
 
+	@Column(name="LOCATION_LEVEL")
 	@XmlElement(name="level")
 	public String getLevel() {
 		return level;
@@ -31,6 +36,7 @@ public class LocationLevel implements Serializable {
 		this.level = level;
 	}
 
+	@Column(name="LOCATION")
 	@XmlElement(name="name")
 	public String getName() {
 		return name;
@@ -40,6 +46,7 @@ public class LocationLevel implements Serializable {
 		this.name = name;
 	}
 
+	@Embedded
 	@XmlElement(name="locationLevel")
 	public LocationLevel getSubLocationLevel() {
 // can't do this or there will be a stack overflow exception
