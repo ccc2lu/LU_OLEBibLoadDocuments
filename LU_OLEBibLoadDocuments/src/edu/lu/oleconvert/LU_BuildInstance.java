@@ -515,7 +515,8 @@ public class LU_BuildInstance {
 	public void buildItemsData(Record record, Instance inst, Map<String, List<String>> subfields) {
 		if ( inst.getItems() == null ) {
 			// Constructor for Items class will initialize the ArrayList
-			inst.setItems(new Items());
+			//inst.setItems(new Items());
+			inst.setItems(new ArrayList<Item>());
 		}
 		
 	    Item item = new Item();		
@@ -636,20 +637,7 @@ public class LU_BuildInstance {
 		}
 		if ( subfields.get("$p") != null ) {
 			item.setPrice(subfields.get("$p").get(0));
-		}
-		
-		// Items can override the location from the containing OLE Holdings, but
-		// for our purposes, we've currently only got the 1 location
-		//Location location = new Location();
-		//LocationLevel locLevel1 = new LocationLevel();
-		//locLevel1.setLevel("UNIVERSITY");
-		//locLevel1.setName("Lehigh University");
-		//LocationLevel locLevel2 = new LocationLevel();
-		//locLevel2.setLevel("LIBRARY");
-
-		//locLevel2.setName(libraryName);
-		//locLevel2.setName(name)
-	
+		}	
 		
 		// TODO: go over these with Doreen
 		// Fields not used:
@@ -670,12 +658,12 @@ public class LU_BuildInstance {
 			List<VariableField> accessinfofields = record.getVariableFields("856");
 			for ( VariableField accessinfofield : accessinfofields ) {
 				Item itemcopy = new Item(item); // copy the item
-				List<String> URLs = this.getSubfields(accessinfofield).get("$u");
+				List<String> URLs = this.getSubfields(accessinfofield).get("$u"); // TODO: sometimes URI is in $a or $z
 				if ( URLs != null && URLs.size() > 0 ) {
 					AccessInformation ai = new AccessInformation();
 					ai.setUri(new URI(URLs.get(0)));
 					itemcopy.setAccessInformation(ai);
-					inst.getItems().getItems().add(itemcopy);
+					inst.getItems().add(itemcopy);
 				}
 			}
 		} else {
@@ -684,7 +672,7 @@ public class LU_BuildInstance {
 			AccessInformation ai = new AccessInformation();
 			ai.setBarcode(itemID);
 			item.setAccessInformation(ai);
-			inst.getItems().getItems().add(item);
+			inst.getItems().add(item);
 		}
 	}
 	
@@ -768,6 +756,7 @@ public class LU_BuildInstance {
 		//inst.setResourceIdentifier(LU_BuildOLELoadDocs.formatCatKey(callNumberFields.get(0)));
 
 		// Some records may have multiple 035 fields, ex "British Pacific Fleet experience and legacy, 1944-50"
+		/* Taking this out, as it looks like there isn't a former identifier set associated with an instance anymore
 		List<String> formerIDs = subfields.get("035");
 		FormerIdentifier fi;
 		Identifier id;
@@ -784,10 +773,13 @@ public class LU_BuildInstance {
 			}
 			inst.setFormerResourceIdentifiers(fids);
 		}
+		*/
 
+		/*
 		SourceHoldings sh = new SourceHoldings();
 		sh.setPrimary("false");
 		inst.setSourceHoldings(sh);
+		*/
 		
 		// Build up oleHoldings within instance
 		OLEHoldings oh = new OLEHoldings();
@@ -980,7 +972,7 @@ public class LU_BuildInstance {
 					extentOfOwnership.setTextualHoldings(tmpsubfields.get("$a").get(0));
 				}
 				if ( tmpsubfields.get("$z") != null ) {
-					Note n = new Note();
+					ExtentOfOwnershipNote n = new ExtentOfOwnershipNote();
 					n.setNote(tmpsubfields.get("$z").get(0));
 					n.setType("public");
 					extentOfOwnership.getNotes().add(n);
@@ -1001,6 +993,7 @@ public class LU_BuildInstance {
     	LU_BuildOLELoadDocs.Log(System.out, "Done creating holdings data, adding to instance collection", LU_BuildOLELoadDocs.LOG_DEBUG);
 
 		inst.setOleHoldings(oh);
+		oh.setInstance(inst);
 	}
 	
 	public static void testoutput(InstanceCollection ic) {

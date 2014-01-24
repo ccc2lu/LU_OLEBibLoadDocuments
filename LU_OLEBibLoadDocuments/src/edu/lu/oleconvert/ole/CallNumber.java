@@ -2,9 +2,17 @@ package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
 
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
+import javax.persistence.FetchType;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToOne;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+@Embeddable
 @XmlType(name="callNumber", propOrder={"type", "prefix", "number", "classificationPart", "itemPart", "shelvingScheme", "shelvingOrder"})
 public class CallNumber implements Serializable {
 
@@ -48,6 +56,9 @@ public class CallNumber implements Serializable {
 		this.itemPart = itemPart;
 	}
 
+	// TODO: I guess we'll need a new class for this one?
+	// There's a table OLE_DS_CALL_NUMBER_TYPE_T, which this
+	// should be related to
 	@XmlElement(name="type")
 	public String getType() {
 		return type;
@@ -57,6 +68,7 @@ public class CallNumber implements Serializable {
 		this.type = type;
 	}
 
+	@Column(name="CALL_NUMBER_PREFIX")
 	@XmlElement(name="prefix", required=true, nillable=true)
 	public String getPrefix() {
 		return prefix;
@@ -66,6 +78,7 @@ public class CallNumber implements Serializable {
 		this.prefix = prefix;
 	}
 
+	@Column(name="CALL_NUMBER")
 	@XmlElement(name="number")
 	public String getNumber() {
 		return number;
@@ -84,6 +97,7 @@ public class CallNumber implements Serializable {
 		this.shelvingScheme = shelvingSchema;
 	}
 
+	@Column(name="SHELVING_ORDER")
 	@XmlElement(name="shelvingOrder")	
 	public ShelvingOrder getShelvingOrder() {
 		return shelvingOrder;
@@ -91,7 +105,6 @@ public class CallNumber implements Serializable {
 
 	public void setShelvingOrder(ShelvingOrder shelvingOrder) {
 		this.shelvingOrder = shelvingOrder;
-	}
-	
+	}	
 	
 }

@@ -3,11 +3,17 @@ package edu.lu.oleconvert.ole;
 import java.io.Serializable;
 import java.util.ArrayList;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
 import javax.persistence.Table;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
@@ -29,9 +35,10 @@ public class Item implements Serializable {
 	 */
 	private static final long serialVersionUID = -3405820085871602535L;
 	
+	private Instance instance;
 	private String analytic;
 	private String resourceIdentifier;
-	private String itemIdentifier;
+	private Long itemIdentifier;
 	
 	private String purchaseOrderLineItemIdentifier;
 	private String vendorLineItemIdentifier;
@@ -50,14 +57,18 @@ public class Item implements Serializable {
 	private String enumeration;
 	private String chronology;
 	private HighDensityStorage highDensityStorage;
-	private TemporaryItemType temporaryItemType;
+	//private TemporaryItemType temporaryItemType;
+	private ItemType temporaryItemType;
 	private String fund;
-	private String donorPublicDisplay;
-	private String donorNote;
+	private ItemDonor itemDonor;
+	//private String donorPublicDisplay;
+	//private String donorNote;
 	private CallNumber callNumber;
+	private CallNumberType callNumberType;
 	private String price;
 	private String numberOfPieces;
-	private String itemStatus;
+	//private String itemStatus;
+	private ItemStatus itemStatus;
 	private String itemStatusEffectiveDate;
 	private String checkinNote;
 	private String staffOnlyFlag;
@@ -77,21 +88,27 @@ public class Item implements Serializable {
 		this.callNumber = new CallNumber();
 		this.callNumber.setClassificationPart("");
 		this.callNumber.setItemPart("");
+		this.callNumberType = new CallNumberType();
 		this.location = new Location();
 		this.highDensityStorage = new HighDensityStorage();
 		this.temporaryItemType = new TemporaryItemType();
-		this.extension = new Extension();
+		//this.extension = new Extension();
 		this.notes = new ArrayList<ItemNote>();
 		copyNumber = copyNumberLabel = volumeNumber = volumeNumberLabel = "";
-		fund = donorPublicDisplay = donorNote = "";
-		price = numberOfPieces = itemStatus = itemStatusEffectiveDate = "";
+		//fund = donorPublicDisplay = donorNote = "";
+		fund = "";
+		this.itemDonor = new ItemDonor();
+		price = numberOfPieces;
+		//itemStatus = itemStatusEffectiveDate = "";
+		this.itemStatus = new ItemStatus();
 		checkinNote = staffOnlyFlag = fastAddFlag = "";
+		this.instance = new Instance();
 	}
 	
 	// This copy constructor needs to assign all the fields
 	public Item(Item i) {
 		super();
-		this.analytic = i.getAnalytic();
+		//this.analytic = i.getAnalytic();
 		this.resourceIdentifier = i.getResourceIdentifier();
 		this.itemIdentifier = i.getItemIdentifier();
 		this.barcodeARSL = i.getBarcodeARSL();
@@ -103,10 +120,11 @@ public class Item implements Serializable {
 		this.callNumber = i.getCallNumber();
 		this.callNumber.setClassificationPart(i.getCallNumber().getClassificationPart());
 		this.callNumber.setItemPart(i.getCallNumber().getClassificationPart());
+		this.callNumberType = i.getCallNumberType();
 		this.location = i.getLocation();
 		this.highDensityStorage = i.getHighDensityStorage();
 		this.temporaryItemType = i.getTemporaryItemType();
-		this.extension = i.getExtension();
+		//this.extension = i.getExtension();
 		this.notes = (ArrayList<ItemNote>) i.getNotes().clone();
 		this.enumeration = i.getEnumeration();
 		this.chronology = i.getChronology();
@@ -115,8 +133,9 @@ public class Item implements Serializable {
 		volumeNumber = i.getVolumeNumber();
 		volumeNumberLabel = i.getVolumeNumberLabel();
 		fund = i.getFund();
-		donorPublicDisplay = i.getDonorPublicDisplay();
-		donorNote = i.getDonorNote();
+		//donorPublicDisplay = i.getDonorPublicDisplay();
+		//donorNote = i.getDonorNote();
+		itemDonor = i.getItemDonor();
 		price = i.getPrice();
 		numberOfPieces = i.getNumberOfPieces();
 		itemStatus = i.getItemStatus();
@@ -125,6 +144,17 @@ public class Item implements Serializable {
 		staffOnlyFlag = i.getStaffOnlyFlag();
 		fastAddFlag = i.getFastAddFlag();
 		this.accessInformation = i.getAccessInformation();
+		itemStatus = i.getItemStatus();
+		this.instance = i.getInstance();
+	}
+	
+	@ManyToOne
+	@JoinColumn(name="INSTANCE_ID")
+	public Instance getInstance() {
+		return this.instance;
+	}
+	public void setInstance(Instance inst) { 
+		this.instance = inst;
 	}
 	
 	@Column(name="COPY_NUMBER")
@@ -176,6 +206,7 @@ public class Item implements Serializable {
 		this.notes = notes;
 	}
 
+	@Column(name="enumeration")
 	@XmlElement(name="enumeration")
 	public String getEnumeration() {
 		return enumeration;
@@ -185,6 +216,7 @@ public class Item implements Serializable {
 		this.enumeration = enumeration;
 	}
 
+	@Column(name="chronology")
 	@XmlElement(name="chronology")
 	public String getChronology() {
 		return chronology;
@@ -194,6 +226,8 @@ public class Item implements Serializable {
 		this.chronology = chronology;
 	}
 
+	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	@JoinColumn(name="HIGH_DENSITY_STORAGE_ID")
 	@XmlElement(name="highDensityStorage")
 	public HighDensityStorage getHighDensityStorage() {
 		return highDensityStorage;
@@ -203,15 +237,20 @@ public class Item implements Serializable {
 		this.highDensityStorage = highDensityStorage;
 	}
 
+	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	@JoinColumn(name="TEMP_ITEM_TYPE_ID", referencedColumnName="ITEM_TYPE_ID")
 	@XmlElement(name="temporaryItemType")
-	public TemporaryItemType getTemporaryItemType() {
+//	public TemporaryItemType getTemporaryItemType() {
+	public ItemType getTemporaryItemType() {
 		return temporaryItemType;
 	}
 
-	public void setTemporaryItemType(TemporaryItemType temporaryItemType) {
+	//public void setTemporaryItemType(TemporaryItemType temporaryItemType) {
+	public void setTemporaryItemType(ItemType temporaryItemType) {
 		this.temporaryItemType = temporaryItemType;
 	}
 
+	@Column(name="FUND")
 	@XmlElement(name="fund", required=true, nillable=true)
 	public String getFund() {
 		return fund;
@@ -221,6 +260,16 @@ public class Item implements Serializable {
 		this.fund = fund;
 	}
 
+	@OneToOne(mappedBy="item")
+	public ItemDonor getItemDonor() {
+		return this.itemDonor;
+	}
+	public void setItemDonor(ItemDonor ID) {
+		this.itemDonor = ID;
+	}
+	// The below stuff was moved into the separate ole_ds_item_donor_t table, 
+	// so I made an ItemDonor class
+	/*
 	@XmlElement(name="donorPublicDisplay", required=true, nillable=true)
 	public String getDonorPublicDisplay() {
 		return donorPublicDisplay;
@@ -238,7 +287,9 @@ public class Item implements Serializable {
 	public void setDonorNote(String donorNote) {
 		this.donorNote = donorNote;
 	}
-
+	*/
+	
+	@Column(name="PRICE")
 	@XmlElement(name="price", required=true, nillable=true)
 	public String getPrice() {
 		return price;
@@ -248,6 +299,7 @@ public class Item implements Serializable {
 		this.price = price;
 	}
 
+	@Column(name="NUM_PIECES")
 	@XmlElement(name="numberOfPieces", required=true, nillable=true)
 	public String getNumberOfPieces() {
 		return numberOfPieces;
@@ -257,6 +309,7 @@ public class Item implements Serializable {
 		this.numberOfPieces = numberOfPieces;
 	}
 
+	/*
 	@XmlElement(name="itemStatus", required=true, nillable=true)
 	public String getItemStatus() {
 		return itemStatus;
@@ -265,7 +318,22 @@ public class Item implements Serializable {
 	public void setItemStatus(String itemStatus) {
 		this.itemStatus = itemStatus;
 	}
+	*/
+	
+	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	@JoinColumn(name="ITEM_STATUS_ID")
+	@XmlElement(name="itemStatus", required=true, nillable=true)
+	public ItemStatus getItemStatus() {
+		return itemStatus;
+	}
 
+	public void setItemStatus(ItemStatus itemStatus) {
+		this.itemStatus = itemStatus;
+	}
+
+	
+	// I'm assuming the database's "EFFECTIVE_DATE" field refers to the item status ...
+	@Column(name="EFFECTIVE_DATE")
 	@XmlElement(name="itemStatusEffectiveDate", required=true, nillable=true)
 	public String getItemStatusEffectiveDate() {
 		return itemStatusEffectiveDate;
@@ -275,6 +343,7 @@ public class Item implements Serializable {
 		this.itemStatusEffectiveDate = itemStatusEffectiveDate;
 	}
 
+	@Column(name="CHECK_IN_NOTE")
 	@XmlElement(name="checkinNote", required=true, nillable=true)
 	public String getCheckinNote() {
 		return checkinNote;
@@ -284,6 +353,7 @@ public class Item implements Serializable {
 		this.checkinNote = checkinNote;
 	}
 
+	@Column(name="STAFF_ONLY")
 	@XmlElement(name="staffOnlyFlag", required=true, nillable=true)
 	public String getStaffOnlyFlag() {
 		return staffOnlyFlag;
@@ -293,6 +363,7 @@ public class Item implements Serializable {
 		this.staffOnlyFlag = staffOnlyFlag;
 	}
 
+	@Column(name="FAST_ADD")
 	@XmlElement(name="fastAddFlag", required=true, nillable=true)
 	public String getFastAddFlag() {
 		return fastAddFlag;
@@ -302,6 +373,7 @@ public class Item implements Serializable {
 		this.fastAddFlag = fastAddFlag;
 	}
 
+	/*
 	@XmlElement(name="extension")
 	public Extension getExtension() {
 		return extension;
@@ -310,7 +382,8 @@ public class Item implements Serializable {
 	public void setExtension(Extension extension) {
 		this.extension = extension;
 	}
-
+	*/
+	
 	@Embedded
 	@XmlElement(name="location")
 	public Location getLocation() {
@@ -321,6 +394,7 @@ public class Item implements Serializable {
 		this.location = location;
 	}
 	
+	@Embedded
 	@XmlElement(name="callNumber", required=true, nillable=true)
 	public CallNumber getCallNumber() {
 		return callNumber;
@@ -330,6 +404,18 @@ public class Item implements Serializable {
 		this.callNumber = callNumber;
 	}
 
+	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	@JoinColumn(name="CALL_NUMBER_TYPE_ID")
+	public CallNumberType getCallNumberType() {
+		return callNumberType;
+	}
+
+	public void setCallNumberType(CallNumberType callNumberType) {
+		this.callNumberType = callNumberType;
+	}
+	
+	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	@JoinColumn(name="ITEM_TYPE_ID")
 	@XmlElement(name="itemType")
 	public ItemType getItemType() {
 		return itemType;
@@ -339,6 +425,7 @@ public class Item implements Serializable {
 		this.itemType = itemType;
 	}
 
+	@Column(name="PURCHASE_ORDER_LINE_ITEM_ID")
 	@XmlElement(name="purchaseOrderLineItemIdentifier", required=true, nillable=true)
 	public String getPurchaseOrderLineItemIdentifier() {
 		return purchaseOrderLineItemIdentifier;
@@ -349,6 +436,7 @@ public class Item implements Serializable {
 		this.purchaseOrderLineItemIdentifier = purchaseOrderLineItemIdentifier;
 	}
 
+	@Column(name="VENDOR_LINE_ITEM_ID")
 	@XmlElement(name="vendorLineItemIdentifier", required=true, nillable=true)
 	public String getVendorLineItemIdentifier() {
 		return vendorLineItemIdentifier;
@@ -358,6 +446,7 @@ public class Item implements Serializable {
 		this.vendorLineItemIdentifier = vendorLineItemIdentifier;
 	}
 
+	@Embedded
 	@XmlElement(name="accessInformation")
 	public AccessInformation getAccessInformation() {
 		return accessInformation;
@@ -367,6 +456,7 @@ public class Item implements Serializable {
 		this.accessInformation = accessInformation;
 	}
 
+	@Column(name="BARCODE_ARSL")
 	@XmlElement(name="barcodeARSL", required=true, nillable=true)
 	public String getBarcodeARSL() {
 		return barcodeARSL;
@@ -376,6 +466,7 @@ public class Item implements Serializable {
 		this.barcodeARSL = barcodeARSL;
 	}
 
+	@OneToMany(fetch=FetchType.LAZY, cascade=CascadeType.ALL, mappedBy="item")
 	@XmlElement(name="formerIdentifier")
 	public ArrayList<FormerIdentifier> getFormerIdentifiers() {
 		return formerIdentifiers;
@@ -385,6 +476,8 @@ public class Item implements Serializable {
 		this.formerIdentifiers = formerIdentifiers;
 	}
 
+	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	@JoinColumn(name="STATISTICAL_SEARCHING_ID")
 	@XmlElement(name="statisticalSearchingCode")
 	public ArrayList<StatisticalSearchingCode> getStatisticalSearchingCodes() {
 		return statisticalSearchingCodes;
@@ -395,6 +488,8 @@ public class Item implements Serializable {
 		this.statisticalSearchingCodes = statisticalSearchingCodes;
 	}
 
+	// seems to be gone from the data model now
+	/*
 	@XmlAttribute(name="analytic")
 	public String getAnalytic() {
 		return analytic;
@@ -403,7 +498,8 @@ public class Item implements Serializable {
 	public void setAnalytic(String analytic) {
 		this.analytic = analytic;
 	}
-
+	*/
+	
 	@XmlAttribute(name="resourceIdentifier")
 	public String getResourceIdentifier() {
 		return resourceIdentifier;
@@ -413,12 +509,15 @@ public class Item implements Serializable {
 		this.resourceIdentifier = resourceIdentifier;
 	}
 
+	@Id
+	@GeneratedValue
+	@Column(name="ITEM_ID")
 	@XmlElement(name="itemIdentifier")
-	public String getItemIdentifier() {
+	public Long getItemIdentifier() {
 		return itemIdentifier;
 	}
 
-	public void setItemIdentifier(String itemIdentifier) {
+	public void setItemIdentifier(Long itemIdentifier) {
 		this.itemIdentifier = itemIdentifier;
 	}
 

@@ -2,9 +2,12 @@ package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
 
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+@Embeddable
 @XmlType(name="accessInformation")
 public class AccessInformation implements Serializable {
 
@@ -23,6 +26,7 @@ public class AccessInformation implements Serializable {
 		this.uri.setUri("");
 	}
 
+	@Column(name="BARCODE")
 	@XmlElement(name="barcode")
 	public String getBarcode() {
 		return barcode;
@@ -32,6 +36,7 @@ public class AccessInformation implements Serializable {
 		this.barcode = barcode;
 	}
 
+	@Column(name="URI")
 	@XmlElement(name="uri")
 	public URI getUri() {
 		return uri;

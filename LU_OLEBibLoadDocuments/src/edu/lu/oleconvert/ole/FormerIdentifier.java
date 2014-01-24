@@ -4,6 +4,8 @@ import java.io.Serializable;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
@@ -20,7 +22,8 @@ public class FormerIdentifier implements Serializable {
 	
 	private Identifier identifier;
 	private String identifierType;
-
+	private Item item;
+	
 	public FormerIdentifier() {
 		super();
 		this.identifier = new Identifier();
@@ -47,5 +50,13 @@ public class FormerIdentifier implements Serializable {
 		this.identifierType = identifierType;
 	}
 	
+	@ManyToOne
+	@JoinColumn(name="ITEM_ID")
+	public Item getItem() {
+		return this.item;
+	}
+	public void setItem(Item it) {
+		this.item = it;
+	}
 	
 }
