@@ -2,6 +2,7 @@ package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -44,8 +45,8 @@ public class Item implements Serializable {
 	private String vendorLineItemIdentifier;
 	private AccessInformation accessInformation; 
 	private String barcodeARSL;
-	private ArrayList<FormerIdentifier> formerIdentifiers;
-	private ArrayList<StatisticalSearchingCode> statisticalSearchingCodes; 
+	private List<FormerIdentifier> formerIdentifiers;
+	private List<StatisticalSearchingCode> statisticalSearchingCodes; 
 	private ItemType itemType;
 	
 	Location location;
@@ -53,7 +54,7 @@ public class Item implements Serializable {
 	private String copyNumberLabel;
 	private String volumeNumber;
 	private String volumeNumberLabel;
-	private ArrayList<ItemNote> notes;
+	private List<ItemNote> notes;
 	private String enumeration;
 	private String chronology;
 	private HighDensityStorage highDensityStorage;
@@ -337,11 +338,11 @@ public class Item implements Serializable {
 	
 	@OneToMany(fetch=FetchType.LAZY, mappedBy="item")
 	@XmlElement(name="note")
-	public ArrayList<ItemNote> getNotes() {
+	public List<ItemNote> getNotes() {
 		return notes;
 	}
 
-	public void setNotes(ArrayList<ItemNote> notes) {
+	public void setNotes(List<ItemNote> notes) {
 		this.notes = notes;
 	}
 
@@ -607,23 +608,23 @@ public class Item implements Serializable {
 
 	@OneToMany(fetch=FetchType.LAZY, cascade=CascadeType.ALL, mappedBy="item")
 	@XmlElement(name="formerIdentifier")
-	public ArrayList<FormerIdentifier> getFormerIdentifiers() {
+	public List<FormerIdentifier> getFormerIdentifiers() {
 		return formerIdentifiers;
 	}
 
-	public void setFormerIdentifiers(ArrayList<FormerIdentifier> formerIdentifiers) {
+	public void setFormerIdentifiers(List<FormerIdentifier> formerIdentifiers) {
 		this.formerIdentifiers = formerIdentifiers;
 	}
 
 	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
 	@JoinColumn(name="STATISTICAL_SEARCHING_ID")
 	@XmlElement(name="statisticalSearchingCode")
-	public ArrayList<StatisticalSearchingCode> getStatisticalSearchingCodes() {
+	public List<StatisticalSearchingCode> getStatisticalSearchingCodes() {
 		return statisticalSearchingCodes;
 	}
 
 	public void setStatisticalSearchingCodes(
-			ArrayList<StatisticalSearchingCode> statisticalSearchingCodes) {
+			List<StatisticalSearchingCode> statisticalSearchingCodes) {
 		this.statisticalSearchingCodes = statisticalSearchingCodes;
 	}
 

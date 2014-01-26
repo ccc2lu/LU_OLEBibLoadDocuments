@@ -2,6 +2,8 @@ package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
 
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
 import javax.persistence.Entity;
 import javax.persistence.Table;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -9,7 +11,7 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.XmlValue;
 
-
+@Embeddable
 @XmlType(name="uri")
 public class URI implements Serializable {
 
@@ -39,6 +41,7 @@ public class URI implements Serializable {
 		this.resolvable = res;
 	}
 
+	@Column(name="URI")
 	@XmlValue
 	public String getUri() {
 		return uri;

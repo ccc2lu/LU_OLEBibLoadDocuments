@@ -5,6 +5,7 @@ import java.io.Serializable;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
+import javax.persistence.Embedded;
 import javax.persistence.FetchType;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
@@ -97,7 +98,7 @@ public class CallNumber implements Serializable {
 		this.shelvingScheme = shelvingSchema;
 	}
 
-	@Column(name="SHELVING_ORDER")
+	@Embedded
 	@XmlElement(name="shelvingOrder")	
 	public ShelvingOrder getShelvingOrder() {
 		return shelvingOrder;

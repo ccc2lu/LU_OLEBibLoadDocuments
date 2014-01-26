@@ -4,6 +4,7 @@ import java.io.Serializable;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
+import javax.persistence.Embedded;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
@@ -36,7 +37,7 @@ public class AccessInformation implements Serializable {
 		this.barcode = barcode;
 	}
 
-	@Column(name="URI")
+	@Embedded
 	@XmlElement(name="uri")
 	public URI getUri() {
 		return uri;
