@@ -75,6 +75,20 @@ public class Item implements Serializable {
 	private String fastAddFlag;
 	private Extension extension;
 	
+	private String claimsReturnedFlag;
+	private String claimsReturnedFlagCreateDate;
+	private String claimsReturnedNote;
+	
+	private String currentBorrower;
+	private String proxyBorrower;
+	private String dueDateTime;
+	private String itemDmgStatus;
+	private String itemDmgNote;
+	private String itemMissingPicsFlag;
+	private String missingPicsNote;
+	private String missingPicsEffectDate;
+	private Long missingPicsCount;
+	
 	// This default, no-args constructor only puts a value in those fields
 	// that need it initialized so they show up properly in the XML output
 	public Item() {
@@ -100,6 +114,7 @@ public class Item implements Serializable {
 		this.itemDonor = new ItemDonor();
 		price = numberOfPieces;
 		//itemStatus = itemStatusEffectiveDate = "";
+		itemStatusEffectiveDate = "";
 		this.itemStatus = new ItemStatus();
 		checkinNote = staffOnlyFlag = fastAddFlag = "";
 		this.instance = new Instance();
@@ -157,6 +172,130 @@ public class Item implements Serializable {
 		this.instance = inst;
 	}
 	
+	public String getAnalytic() {
+		return analytic;
+	}
+
+	public void setAnalytic(String analytic) {
+		this.analytic = analytic;
+	}
+
+	public Extension getExtension() {
+		return extension;
+	}
+
+	public void setExtension(Extension extension) {
+		this.extension = extension;
+	}
+
+	@Column(name="CLMS_RET_FLAG")
+	public String getClaimsReturnedFlag() {
+		return claimsReturnedFlag;
+	}
+
+	public void setClaimsReturnedFlag(String claimsReturnedFlag) {
+		this.claimsReturnedFlag = claimsReturnedFlag;
+	}
+
+	@Column(name="CLMS_RET_FLAG_CRE_DATE")
+	public String getClaimsReturnedFlagCreateDate() {
+		return claimsReturnedFlagCreateDate;
+	}
+
+	public void setClaimsReturnedFlagCreateDate(String claimsReturnedFlagCreateDate) {
+		this.claimsReturnedFlagCreateDate = claimsReturnedFlagCreateDate;
+	}
+
+	@Column(name="CLMS_RET_NOTE")
+	public String getClaimsReturnedNote() {
+		return claimsReturnedNote;
+	}
+
+	public void setClaimsReturnedNote(String claimsReturnedNote) {
+		this.claimsReturnedNote = claimsReturnedNote;
+	}
+
+	@Column(name="CURRENT_BORROWER")
+	public String getCurrentBorrower() {
+		return currentBorrower;
+	}
+
+	public void setCurrentBorrower(String currentBorrower) {
+		this.currentBorrower = currentBorrower;
+	}
+
+	@Column(name="PROXY_BORROWER")
+	public String getProxyBorrower() {
+		return proxyBorrower;
+	}
+
+	public void setProxyBorrower(String proxyBorrower) {
+		this.proxyBorrower = proxyBorrower;
+	}
+
+	@Column(name="DUE_DATE_TIME")
+	public String getDueDateTime() {
+		return dueDateTime;
+	}
+
+	public void setDueDateTime(String dueDateTime) {
+		this.dueDateTime = dueDateTime;
+	}
+
+	@Column(name="ITEM_DMG_STATUS")
+	public String getItemDmgStatus() {
+		return itemDmgStatus;
+	}
+
+	public void setItemDmgStatus(String itemDmgStatus) {
+		this.itemDmgStatus = itemDmgStatus;
+	}
+
+	@Column(name="ITEM_DMG_NOTE")
+	public String getItemDmgNote() {
+		return itemDmgNote;
+	}
+
+	public void setItemDmgNote(String itemDmgNote) {
+		this.itemDmgNote = itemDmgNote;
+	}
+
+	@Column(name="ITEM_MISSING_PICS_FLAG")
+	public String getItemMissingPicsFlag() {
+		return itemMissingPicsFlag;
+	}
+
+	public void setItemMissingPicsFlag(String itemMissingPicsFlag) {
+		this.itemMissingPicsFlag = itemMissingPicsFlag;
+	}
+
+	@Column(name="MISSING_PICS_NOTE")
+	public String getMissingPicsNote() {
+		return missingPicsNote;
+	}
+
+	public void setMissingPicsNote(String missingPicsNote) {
+		this.missingPicsNote = missingPicsNote;
+	}
+
+	@Column(name="MISSING_PICS_EFFECTIVE_DATE")
+	public String getMissingPicsEffectDate() {
+		return missingPicsEffectDate;
+	}
+
+	public void setMissingPicsEffectDate(String missingPicsEffectDate) {
+		this.missingPicsEffectDate = missingPicsEffectDate;
+	}
+
+	@Column(name="MISSING_PICS_COUNT")
+	public Long getMissingPicsCount() {
+		return missingPicsCount;
+	}
+
+	public void setMissingPicsCount(Long missingPicsCount) {
+		this.missingPicsCount = missingPicsCount;
+	}
+
 	@Column(name="COPY_NUMBER")
 	@XmlElement(name="copyNumber", required=true, nillable=true)
 	public String getCopyNumber() {

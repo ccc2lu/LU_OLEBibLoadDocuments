@@ -5,15 +5,18 @@ import java.io.Serializable;
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import javax.persistence.Table;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.XmlValue;
 
 @Entity
+@Table(name="ole_ds_holdings_note_t")
 @XmlType(name="note")
 public class OLEHoldingsNote implements Serializable {
 
@@ -32,6 +35,7 @@ public class OLEHoldingsNote implements Serializable {
 	}
 
 	@Id
+	@GeneratedValue
 	@Column(name="HOLDINGS_NOTE_ID")
 	public Long getId() {
 		return this.id;

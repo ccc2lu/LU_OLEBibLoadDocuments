@@ -13,7 +13,7 @@ import javax.xml.bind.annotation.XmlType;
 
 //@XmlType(name="itemType", propOrder={"codeValue", "fullValue", "typeOrSource"})
 @Entity
-@Table(name="ole_ds_item_type")
+@Table(name="ole_ds_item_type_t")
 @XmlType(name="itemType", propOrder={"fullValue", "typeOrSource"})
 public class ItemType implements Serializable {
 

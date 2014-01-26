@@ -7,8 +7,6 @@ import java.util.ArrayList;
 import javax.persistence.Entity;
 import javax.xml.bind.annotation.*;
 
-
-@Entity
 @XmlRootElement(name="instanceCollection")
 @XmlType(name="instanceCollection")
 public class InstanceCollection implements Serializable {
@@ -18,7 +16,6 @@ public class InstanceCollection implements Serializable {
 	 */
 	private static final long serialVersionUID = 281402036232987261L;
 
-	@Embedded
 	private ArrayList<Instance> instances;
 	//private Instance instance;
 	

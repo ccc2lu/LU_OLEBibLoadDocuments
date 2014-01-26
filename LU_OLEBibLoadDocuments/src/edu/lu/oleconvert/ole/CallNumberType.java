@@ -6,8 +6,10 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.Table;
 
 @Entity
+@Table(name="ole_ds_call_number_type_t")
 public class CallNumberType implements Serializable {
 
 	private Long id;
