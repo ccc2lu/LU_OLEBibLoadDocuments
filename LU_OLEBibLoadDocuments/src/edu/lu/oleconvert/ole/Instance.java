@@ -20,6 +20,8 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+import edu.lu.oleconvert.LU_DBLoadInstances;
+
 @Entity
 @Table(name="ole_ds_instance_t")
 @XmlType(name="instance", propOrder={"instanceIdentifier", "resourceIdentifier", "formerResourceIdentifiers", "oleHoldings", "sourceHoldings", "items"})
@@ -29,8 +31,9 @@ public class Instance implements Serializable {
 	 * 
 	 */
 	private static final long serialVersionUID = 4883146897656280004L;
+	private static Long instanceNum = (long) 1;
 
-	private String instanceIdentifier;
+	private Long instanceIdentifier;
 	private String resourceIdentifier;
 	//private ArrayList<FormerIdentifier> formerResourceIdentifiers;
 	private OLEHoldings oleHoldings; 
@@ -52,6 +55,15 @@ public class Instance implements Serializable {
 	*/
 	
 	public Instance() {
+		// shouldn't be necessary -- happens in the database now
+		//this.setInstanceIdentifier(instanceNum++);
+		oleHoldings = new OLEHoldings();
+		items = new ArrayList<Item>();
+	}
+	
+	public Instance(String bib_id) {
+		//this.setInstanceIdentifier(instanceNum++);
+		this.setResourceIdentifier(bib_id);
 		oleHoldings = new OLEHoldings();
 		items = new ArrayList<Item>();
 	}
@@ -90,8 +102,8 @@ public class Instance implements Serializable {
 	}
 	*/
 	
-	//@OneToMany(fetch=FetchType.LAZY, mappedBy="instance", cascade=CascadeType.PERSIST)
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="instance")
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="itemInstance", cascade=CascadeType.ALL)
+	//@OneToMany(fetch=FetchType.LAZY, mappedBy="instance")
 	public List<Item> getItems() {
 		return this.items;
 	}
@@ -103,10 +115,10 @@ public class Instance implements Serializable {
 	@GeneratedValue
 	@Column(name="INSTANCE_ID")
 	@XmlElement(name="instanceIdentifier")
-	public String getInstanceIdentifier() {
+	public Long getInstanceIdentifier() {
 		return instanceIdentifier;
 	}
-	public void setInstanceIdentifier(String instanceIdentifier) {
+	public void setInstanceIdentifier(Long instanceIdentifier) {
 		this.instanceIdentifier = instanceIdentifier;
 	}
 	

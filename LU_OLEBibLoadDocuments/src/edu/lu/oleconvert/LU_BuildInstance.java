@@ -59,7 +59,6 @@ public class LU_BuildInstance {
 	// Once OLE has a way to ingest e-instance documents, then set this to true
 	// and the code to generate e-instances will run
 	private boolean eInstanceReady = false;
-	private static int instanceNum = 1;
 	
 	Map<String, String> locationCodeToLibraryCode = new HashMap<String, String>();
 	Map<String, String> locationCodeToShelvingString = new HashMap<String, String>();
@@ -474,7 +473,8 @@ public class LU_BuildInstance {
 				
 				// Now loop over the mfhd_itemsholdings and call buildHoldingsData and buildItemsData, like below
 				for ( VariableField field : mfhd_itemsholdings ) {
-					Instance inst = new Instance();
+					Instance inst = new Instance(LU_BuildOLELoadDocs.formatCatKey(record.getControlNumber()));
+
 					subfields = this.getSubfields(field);			
 					this.buildHoldingsData(record, inst, subfields, MFHDrec); // this will be based on the MFHDrec, and will
 					// be almost identical for each separate instance created here.  Is that necessary?
@@ -486,7 +486,8 @@ public class LU_BuildInstance {
 		} else {
 			// No MFHD records, just loop over the 999 fields of the bib record, which represent items
 			for ( VariableField field : itemsholdings ) {
-				Instance inst = new Instance();
+				Instance inst = new Instance(LU_BuildOLELoadDocs.formatCatKey(record.getControlNumber()));
+				
 				Map<String, List<String>> subfields = this.getSubfields(field);			
 				//List<String> itemnumber = subfields.get("$a"); // I think that's the subfield code, check that
 				this.buildHoldingsData(record, inst, subfields, null); 		
@@ -600,7 +601,8 @@ public class LU_BuildInstance {
 		FormerIdentifier fi = new FormerIdentifier();
 		Identifier id = new Identifier();
 		id.setIdentifierValue(itemString.get(0) + "|" + itemString.get(1) + "|" + itemString.get(2));
-		id.setSource("SIRSI_ITEMKEY");
+		//id.setSource("SIRSI_ITEMKEY");
+		fi.setIdentifierType("SIRSI_ITEMKEY");
 		fi.setIdentifier(id);
 		fi.setItem(item);
 		fids.add(fi);
@@ -638,7 +640,8 @@ public class LU_BuildInstance {
 		// If it were "reserve status", then we'd use this:
 		//item.setItemStatus(itemString.get(28));
 		// Nothing to put here from Sirsi, just going to make it today
-		DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
+		//DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
+		DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 		item.setItemStatusEffectiveDate(df.format(Calendar.getInstance().getTime()));
 		
 		// Use the "shadowed" attribute to set the staffOnlyFlag
@@ -676,6 +679,7 @@ public class LU_BuildInstance {
 					AccessInformation ai = new AccessInformation();
 					ai.setUri(new URI(URLs.get(0)));
 					itemcopy.setAccessInformation(ai);
+					itemcopy.setItemInstance(inst);
 					inst.getItems().add(itemcopy);
 				}
 			}
@@ -685,6 +689,7 @@ public class LU_BuildInstance {
 			AccessInformation ai = new AccessInformation();
 			ai.setBarcode(itemID);
 			item.setAccessInformation(ai);
+			item.setItemInstance(inst);
 			inst.getItems().add(item);
 		}
 	}
@@ -763,9 +768,7 @@ public class LU_BuildInstance {
 		
 		Map<String, List<String>> tmpsubfields;
 		//inst.setInstanceIdentifier(callNumberFields.get(0));
-		
-		// shouldn't be necessary -- happens in the database now
-		//inst.setInstanceIdentifier(Integer.toString(instanceNum++));
+	
 		
 		//inst.setResourceIdentifier(subfields.get("$a").get(0));
 		inst.setResourceIdentifier(LU_BuildOLELoadDocs.formatCatKey(record.getControlNumber())); // need to set this to what's in 001 of the bib to link them

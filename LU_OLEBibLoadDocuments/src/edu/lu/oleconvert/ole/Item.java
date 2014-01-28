@@ -37,7 +37,7 @@ public class Item implements Serializable {
 	 */
 	private static final long serialVersionUID = -3405820085871602535L;
 	
-	private Instance instance;
+	private Instance itemInstance;
 	//private String analytic;
 	//private String resourceIdentifier;
 	private Long itemIdentifier;
@@ -121,7 +121,7 @@ public class Item implements Serializable {
 		itemStatusEffectiveDate = "";
 		this.itemStatus = new ItemStatus();
 		checkinNote = staffOnlyFlag = fastAddFlag = "";
-		this.instance = new Instance();
+		this.itemInstance = new Instance();
 	}
 	
 	// This copy constructor needs to assign all the fields
@@ -167,16 +167,16 @@ public class Item implements Serializable {
 		fastAddFlag = i.getFastAddFlag();
 		this.accessInformation = i.getAccessInformation();
 		itemStatus = i.getItemStatus();
-		this.instance = i.getInstance();
+		this.itemInstance = i.getItemInstance();
 	}
 	
 	@ManyToOne
 	@JoinColumn(name="INSTANCE_ID")
-	public Instance getInstance() {
-		return this.instance;
+	public Instance getItemInstance() {
+		return this.itemInstance;
 	}
-	public void setInstance(Instance inst) { 
-		this.instance = inst;
+	public void setItemInstance(Instance inst) { 
+		this.itemInstance = inst;
 	}
 	
 	// Also gone from the data model
@@ -378,8 +378,8 @@ public class Item implements Serializable {
 		this.chronology = chronology;
 	}
 
-	//@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
-	@ManyToOne(fetch=FetchType.LAZY)
+	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="HIGH_DENSITY_STORAGE_ID")
 	@XmlElement(name="highDensityStorage")
 	public HighDensityStorage getHighDensityStorage() {
@@ -390,8 +390,8 @@ public class Item implements Serializable {
 		this.highDensityStorage = highDensityStorage;
 	}
 
-	//@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
-	@ManyToOne(fetch=FetchType.LAZY)
+	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="TEMP_ITEM_TYPE_ID", referencedColumnName="ITEM_TYPE_ID")
 	@XmlElement(name="temporaryItemType")
 //	public TemporaryItemType getTemporaryItemType() {
@@ -414,7 +414,7 @@ public class Item implements Serializable {
 		this.fund = fund;
 	}
 
-	@OneToOne(mappedBy="item")
+	@OneToOne(fetch=FetchType.LAZY, mappedBy="item", cascade=CascadeType.ALL)
 	public ItemDonor getItemDonor() {
 		return this.itemDonor;
 	}
@@ -474,8 +474,8 @@ public class Item implements Serializable {
 	}
 	*/
 	
-	//@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
-	@ManyToOne(fetch=FetchType.LAZY)
+	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="ITEM_STATUS_ID")
 	@XmlElement(name="itemStatus", required=true, nillable=true)
 	public ItemStatus getItemStatus() {
@@ -559,8 +559,8 @@ public class Item implements Serializable {
 		this.callNumber = callNumber;
 	}
 
-	//@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
-	@ManyToOne(fetch=FetchType.LAZY)
+	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="CALL_NUMBER_TYPE_ID")
 	public CallNumberType getCallNumberType() {
 		return callNumberType;
@@ -570,8 +570,8 @@ public class Item implements Serializable {
 		this.callNumberType = callNumberType;
 	}
 	
-	//@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
-	@ManyToOne(fetch=FetchType.LAZY)
+	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="ITEM_TYPE_ID")
 	@XmlElement(name="itemType")
 	public ItemType getItemType() {
@@ -623,8 +623,8 @@ public class Item implements Serializable {
 		this.barcodeARSL = barcodeARSL;
 	}
 
-	//@OneToMany(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST, mappedBy="item")
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="item")
+	@OneToMany(fetch=FetchType.LAZY, cascade=CascadeType.ALL, mappedBy="item")
+	//@OneToMany(fetch=FetchType.LAZY, mappedBy="item")
 	@XmlElement(name="formerIdentifier")
 	public List<FormerIdentifier> getFormerIdentifiers() {
 		return formerIdentifiers;
@@ -634,8 +634,8 @@ public class Item implements Serializable {
 		this.formerIdentifiers = formerIdentifiers;
 	}
 
-	//@OneToMany(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
-	@OneToMany(fetch=FetchType.LAZY)
+	@OneToMany(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@OneToMany(fetch=FetchType.LAZY)
 	@JoinColumn(name="STATISTICAL_SEARCHING_ID")
 	@XmlElement(name="statisticalSearchingCode")
 	public List<StatisticalSearchingCode> getStatisticalSearchingCodes() {

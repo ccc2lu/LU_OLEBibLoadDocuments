@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -67,7 +68,7 @@ public class ExtentOfOwnership implements Serializable {
 		this.textualHoldings = textualHoldings;
 	}
 
-	@OneToOne(fetch=FetchType.LAZY)
+	@OneToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
 	@JoinColumn(name="EXT_OWNERSHIP_TYPE_ID")
 	@XmlElement(name="type")
 	public ExtentOfOwnershipType getType() {
@@ -84,7 +85,7 @@ public class ExtentOfOwnership implements Serializable {
 		return notes;
 	}
 
-	public void setNotes(ArrayList<ExtentOfOwnershipNote> notes) {
+	public void setNotes(List<ExtentOfOwnershipNote> notes) {
 		this.notes = notes;
 	}
 

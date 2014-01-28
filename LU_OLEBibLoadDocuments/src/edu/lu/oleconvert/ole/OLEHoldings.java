@@ -31,7 +31,7 @@ public class OLEHoldings implements Serializable {
 	private static final long serialVersionUID = 7571390668933186865L;
 
 	//private String primary;
-	private String holdingsIdentifier;
+	private Long holdingsIdentifier;
 	private ReceiptStatus receiptStatus;
 	//private ArrayList<URI> uri;
 	private List<AccessURI> accessURIs;
@@ -79,8 +79,8 @@ public class OLEHoldings implements Serializable {
 	
 	// since I annotated the getters, the mappedBy field has to have what appears after "get"
 	// in the getter method's signature
-	//@OneToMany(fetch=FetchType.LAZY, mappedBy="OLEHoldings", cascade=CascadeType.PERSIST)
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="OLEHoldings")
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="OLEHoldings", cascade=CascadeType.ALL)
+	//@OneToMany(fetch=FetchType.LAZY, mappedBy="OLEHoldings")
 	@XmlElement(name="extentOfOwnership")
 	public List<ExtentOfOwnership> getExtentOfOwnership() {
 		return extentOfOwnership;
@@ -114,10 +114,10 @@ public class OLEHoldings implements Serializable {
 	@GeneratedValue
 	@Column(name="HOLDINGS_ID")
 	@XmlElement(name="holdingsIdentifier")
-	public String getHoldingsIdentifier() {
+	public Long getHoldingsIdentifier() {
 		return holdingsIdentifier;
 	}
-	public void setHoldingsIdentifier(String holdingsIdentifier) {
+	public void setHoldingsIdentifier(Long holdingsIdentifier) {
 		this.holdingsIdentifier = holdingsIdentifier;
 	}
 	
@@ -132,8 +132,8 @@ public class OLEHoldings implements Serializable {
 		this.receiptStatus = recpeiptStatus;
 	}
 
-	//@OneToMany(fetch=FetchType.LAZY, mappedBy="oleHoldings", cascade=CascadeType.PERSIST)
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="oleHoldings")
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="oleHoldings", cascade=CascadeType.ALL)
+	//@OneToMany(fetch=FetchType.LAZY, mappedBy="oleHoldings")
 	@XmlElement(name="uri")
 	public List<AccessURI> getAccessURIs() {
 		return accessURIs;
@@ -142,8 +142,8 @@ public class OLEHoldings implements Serializable {
 		this.accessURIs = uris;
 	}
 	
-	//@OneToMany(fetch=FetchType.LAZY, mappedBy="OLEHoldings", cascade=CascadeType.PERSIST)
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="OLEHoldings")
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="OLEHoldings", cascade=CascadeType.ALL)
+	//@OneToMany(fetch=FetchType.LAZY, mappedBy="OLEHoldings")
 	@XmlElement(name="note")
 	public List<OLEHoldingsNote> getNotes() {
 		return notes;

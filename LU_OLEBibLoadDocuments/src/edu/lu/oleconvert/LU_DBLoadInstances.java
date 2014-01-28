@@ -14,8 +14,11 @@ import java.io.Reader;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
@@ -45,8 +48,8 @@ import edu.lu.oleconvert.ole.InstanceCollection;
 
 public class LU_DBLoadInstances {
 
-	static EntityManagerFactory emf;
-	static EntityManager em;
+	public static EntityManagerFactory emf;
+	public static EntityManager em;
 
     static String[] booleanValues = {"false","true"};
     static HashMap<String, String> KeyToDate = new HashMap<String, String>();
@@ -168,7 +171,7 @@ public class LU_DBLoadInstances {
 			//PrintWriter output = new PrintWriter(new BufferedWriter(outFile));
 			try {
 
-				LU_BuildOLELoadDocs.Log("Creating OLE ingest documents ...");
+				LU_BuildOLELoadDocs.Log("Loading instances ...");
 				// ccc2 -- new loop over all records, perhaps?
 				// not sure this accounts for holdings in addition to bibs, though
 
@@ -184,7 +187,7 @@ public class LU_DBLoadInstances {
 				int limit = -1;
 				if ( args.length == 7 ) {
 					limit = Integer.parseInt(args[6]);
-					LU_BuildOLELoadDocs.Log(System.out, "Only creating ingest documents for the first " + limit + " bib records", LOG_INFO);
+					LU_BuildOLELoadDocs.Log(System.out, "Only loading instances for the first " + limit + " bib records", LOG_INFO);
 				}
 				counter = 0;
 				List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
@@ -192,8 +195,15 @@ public class LU_DBLoadInstances {
 				nextrecord = reader.next();
 				ArrayList<Record> assocMFHDRecords = new ArrayList<Record>();
 
+				DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+				LU_BuildOLELoadDocs.Log(System.out, 
+						                "Beginning instance load, time is: " + df.format(Calendar.getInstance().getTime()), 
+						                LOG_INFO);
+
+				tx.begin();
+
 				do {
-					tx.begin();
 
 					assocMFHDRecords.clear();
 					xmlrecord = nextrecord;
@@ -217,17 +227,20 @@ public class LU_DBLoadInstances {
 					instanceBuilder.buildInstanceCollection(xmlrecord, ic, assocMFHDRecords);
 					
 					for ( Instance i : ic.getInstances() ) {
-						em.persist(i);				
+						em.persist(i);		
 					}
-
-					tx.commit();
 
 					counter++;
-					if ( counter % 10 == 0 ) {
+					if ( counter % 1000 == 0 ) {
+						tx.commit();
 						LU_BuildOLELoadDocs.Log(System.out, counter + " instances loaded ...", LOG_INFO);
+						tx.begin();
 					}
 				} while (nextrecord != null && (limit < 0 || counter < limit) );
-				LU_BuildOLELoadDocs.Log("Done creating ingest documents");
+				LU_BuildOLELoadDocs.Log(System.out, 
+		                "Done loading instances, time is: " + df.format(Calendar.getInstance().getTime()), 
+		                LOG_INFO);
+
 				System.exit(0);
 			} catch (IOException e) {
 				LU_BuildOLELoadDocs.Log(System.err, e.getMessage(), LOG_ERROR);

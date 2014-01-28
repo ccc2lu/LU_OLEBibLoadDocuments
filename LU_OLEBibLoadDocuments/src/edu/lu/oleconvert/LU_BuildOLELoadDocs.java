@@ -196,6 +196,9 @@ public class LU_BuildOLELoadDocs {
     	// Then pad the key out to 11 characters with leading zeros -- that's how
     	// it will be in the MarcXML, and how OLE wants it in the database
     	//return StringUtils.leftPad(key, 11, "0");
+    	int startId = 10000000;
+    	int keynum = startId + Integer.parseInt(key);
+    	key = Integer.toString(keynum);
     	return key;
     }
     
