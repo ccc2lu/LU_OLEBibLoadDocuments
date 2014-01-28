@@ -22,23 +22,25 @@ public class CallNumber implements Serializable {
 	 */
 	private static final long serialVersionUID = 3652171135563372983L;
 
-	private String type;
+	//private String type;
 	private String prefix;
 	private String number;
-	private ShelvingScheme shelvingScheme;
+	//private ShelvingScheme shelvingScheme;
 	private ShelvingOrder shelvingOrder;
 	
 	// optional ones, which should be present for the callNumber inside an item, but not the one inside an OLEHoldings
-	private String classificationPart;
-	private String itemPart;
+	//private String classificationPart;
+	//private String itemPart;
 	
 	public CallNumber() {
 		super();
-		type = prefix = number = "";
-		shelvingScheme = new ShelvingScheme();
+		//type = "";
+		prefix = number = "";
+		//shelvingScheme = new ShelvingScheme();
 		shelvingOrder = new ShelvingOrder();
 	}
 	
+	/*
 	@XmlElement(name="classificationPart")
 	public String getClassificationPart() {
 		return classificationPart;
@@ -56,7 +58,7 @@ public class CallNumber implements Serializable {
 	public void setItemPart(String itemPart) {
 		this.itemPart = itemPart;
 	}
-
+	
 	// TODO: I guess we'll need a new class for this one?
 	// There's a table OLE_DS_CALL_NUMBER_TYPE_T, which this
 	// should be related to
@@ -68,7 +70,8 @@ public class CallNumber implements Serializable {
 	public void setType(String type) {
 		this.type = type;
 	}
-
+	*/
+	
 	@Column(name="CALL_NUMBER_PREFIX")
 	@XmlElement(name="prefix", required=true, nillable=true)
 	public String getPrefix() {
@@ -89,15 +92,17 @@ public class CallNumber implements Serializable {
 		this.number = number;
 	}
 
+	/*
 	@XmlElement(name="shelvingScheme")	
 	public ShelvingScheme getShelvingScheme() {
 		return shelvingScheme;
 	}
 
-	public void setShelvingSchema(ShelvingScheme shelvingSchema) {
-		this.shelvingScheme = shelvingSchema;
+	public void setShelvingScheme(ShelvingScheme shelvingScheme) {
+		this.shelvingScheme = shelvingScheme;
 	}
-
+	*/
+	
 	@Embedded
 	@XmlElement(name="shelvingOrder")	
 	public ShelvingOrder getShelvingOrder() {

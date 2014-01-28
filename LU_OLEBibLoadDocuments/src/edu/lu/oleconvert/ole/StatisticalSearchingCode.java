@@ -4,9 +4,13 @@ import java.io.Serializable;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
 import javax.persistence.Table;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
+
+import org.hibernate.annotations.Type;
 
 @Entity
 @Table(name="ole_ds_statistical_searching_t")
@@ -28,6 +32,16 @@ public class StatisticalSearchingCode implements Serializable {
 		name = "";
 	}
 
+	@Id
+	@GeneratedValue
+	@Column(name="STATISTICAL_SEARCHING_ID")
+	public Long getId() {
+		return id;
+	}
+	public void setId(Long id) {
+		this.id = id;
+	}
+	
 	@Column(name="CODE")
 	@XmlElement(name="codeValue", required=true, nillable=true)
 	public String getCode() {

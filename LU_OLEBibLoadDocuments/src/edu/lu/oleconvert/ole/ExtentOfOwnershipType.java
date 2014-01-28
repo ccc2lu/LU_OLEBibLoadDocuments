@@ -18,9 +18,15 @@ public class ExtentOfOwnershipType implements Serializable {
 	private String name;
 
 	public ExtentOfOwnershipType() {
-		
+		super();
 	}
 
+	public ExtentOfOwnershipType(String code, String name) {
+		this();
+		this.setCode(code);
+		this.setName(name);
+	}
+	
 	@Id
 	@GeneratedValue
 	@Column(name="EXT_OWNERSHIP_TYPE_ID")

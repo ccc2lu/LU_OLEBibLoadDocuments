@@ -3,6 +3,7 @@ package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.persistence.Entity;
 import javax.xml.bind.annotation.*;
@@ -16,7 +17,7 @@ public class InstanceCollection implements Serializable {
 	 */
 	private static final long serialVersionUID = 281402036232987261L;
 
-	private ArrayList<Instance> instances;
+	private List<Instance> instances;
 	//private Instance instance;
 	
 	public InstanceCollection() {
@@ -25,11 +26,11 @@ public class InstanceCollection implements Serializable {
 	}
 
 	@XmlElement(name="instance")
-	public ArrayList<Instance> getInstances() {
+	public List<Instance> getInstances() {
 		return instances;
 	}
 
-	public void setInstances(ArrayList<Instance> myInstances) {
+	public void setInstances(List<Instance> myInstances) {
 		this.instances = myInstances;
 	}
 	

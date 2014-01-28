@@ -17,9 +17,15 @@ public class ItemStatus implements Serializable {
 	private String name;
 	
 	public ItemStatus() {
-		
+		super();
 	}
 
+	public ItemStatus(String code, String name) {
+		this();
+		this.setCode(code);
+		this.setName(name);
+	}
+	
 	@Id
 	@GeneratedValue
 	@Column(name="ITEM_STATUS_ID")

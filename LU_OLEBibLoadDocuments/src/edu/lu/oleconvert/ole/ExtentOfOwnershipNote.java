@@ -19,9 +19,8 @@ import javax.xml.bind.annotation.XmlValue;
 @XmlType(name="note")
 public class ExtentOfOwnershipNote implements Serializable {
 
-
 	Long id;
-	ExtentOfOwnership eoo;
+	ExtentOfOwnership extentOfOwnership;
 	String type;
 	String note;
 	
@@ -42,10 +41,10 @@ public class ExtentOfOwnershipNote implements Serializable {
 	@ManyToOne
 	@JoinColumn(name="EXT_OWNERSHIP_ID")
 	public ExtentOfOwnership getExtentOfOwnership() {
-		return this.eoo;
+		return this.extentOfOwnership;
 	}
 	public void setExtentOfOwnership(ExtentOfOwnership ext) {
-		this.eoo = ext;
+		this.extentOfOwnership = ext;
 	}
 	
 	@Column(name="TYPE")

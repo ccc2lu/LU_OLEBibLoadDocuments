@@ -2,10 +2,13 @@ package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
 
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+@Embeddable
 @XmlType(name="identifier")
 public class Identifier implements Serializable {
 
@@ -31,6 +34,7 @@ public class Identifier implements Serializable {
 		this.source = source;
 	}
 
+	@Column(name="VALUE")
 	@XmlElement(name="identifierValue", required=true, nillable=true)
 	public String getIdentifierValue() {
 		return identifierValue;

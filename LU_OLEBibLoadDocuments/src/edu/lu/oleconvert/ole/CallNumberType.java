@@ -17,9 +17,15 @@ public class CallNumberType implements Serializable {
 	private String name;
 
 	public CallNumberType() {
-		
+		super();
 	}
 
+	public CallNumberType(String code, String name) {
+		this();
+		this.setCode(code);
+		this.setName(name);
+	}
+	
 	@Id
 	@GeneratedValue
 	@Column(name="CALL_NUMBER_TYPE_ID")

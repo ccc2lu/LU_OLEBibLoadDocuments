@@ -2,6 +2,7 @@ package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
@@ -16,7 +17,7 @@ public class Extension implements Serializable {
 	private static final long serialVersionUID = 1774511483976910027L;
 
 	private String displayLabel;
-	private ArrayList<String> AnyElements;
+	private List<String> AnyElements;
 	
 	public Extension() {
 		super();
@@ -34,11 +35,11 @@ public class Extension implements Serializable {
 	}
 
 	@XmlElement(name="AnyElement", required=true, nillable=true)
-	public ArrayList<String> getAnyElements() {
+	public List<String> getAnyElements() {
 		return AnyElements;
 	}
 
-	public void setAnyElements(ArrayList<String> anyElements) {
+	public void setAnyElements(List<String> anyElements) {
 		AnyElements = anyElements;
 	}
 	

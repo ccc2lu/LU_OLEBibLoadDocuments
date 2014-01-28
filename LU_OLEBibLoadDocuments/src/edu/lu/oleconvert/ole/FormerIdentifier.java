@@ -3,7 +3,10 @@ package edu.lu.oleconvert.ole;
 import java.io.Serializable;
 
 import javax.persistence.Column;
+import javax.persistence.Embedded;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
@@ -20,6 +23,7 @@ public class FormerIdentifier implements Serializable {
 	 */
 	private static final long serialVersionUID = -5118703088060548533L;
 	
+	private Long id;
 	private Identifier identifier;
 	private String identifierType;
 	private Item item;
@@ -30,7 +34,17 @@ public class FormerIdentifier implements Serializable {
 		this.identifierType = "";
 	}
 
-	@Column(name="value")
+	@Id
+	@GeneratedValue
+	@Column(name="FORMER_IDENTIFIER_ID")
+	public Long getId() {
+		return id;
+	}
+	public void setId(Long id) {
+		this.id = id;
+	}
+	
+	@Embedded
 	@XmlElement(name="identifier")
 	public Identifier getIdentifier() {
 		return identifier;
@@ -40,7 +54,7 @@ public class FormerIdentifier implements Serializable {
 		this.identifier = identifier;
 	}
 
-	@Column(name="type")
+	@Column(name="TYPE")
 	@XmlElement(name="identifierType")
 	public String getIdentifierType() {
 		return identifierType;

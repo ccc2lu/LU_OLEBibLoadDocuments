@@ -30,13 +30,13 @@ public class OLEHoldings implements Serializable {
 	 */
 	private static final long serialVersionUID = 7571390668933186865L;
 
-	private String primary;
+	//private String primary;
 	private String holdingsIdentifier;
 	private ReceiptStatus receiptStatus;
 	//private ArrayList<URI> uri;
 	private List<AccessURI> accessURIs;
 	private List<OLEHoldingsNote> notes;
-	private Location location;
+	private FlatLocation location;
 	private CallNumber callNumber;
 	private CallNumberType callNumberType;
 	private List<ExtentOfOwnership> extentOfOwnership;
@@ -58,6 +58,7 @@ public class OLEHoldings implements Serializable {
 	}
 	
 	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="CALL_NUMBER_TYPE_ID")
 	public CallNumberType getCallNumberType() {
 		return callNumberType;
@@ -76,13 +77,16 @@ public class OLEHoldings implements Serializable {
 		this.instance = i;
 	}
 	
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="oleHoldings", cascade=CascadeType.ALL)
+	// since I annotated the getters, the mappedBy field has to have what appears after "get"
+	// in the getter method's signature
+	//@OneToMany(fetch=FetchType.LAZY, mappedBy="OLEHoldings", cascade=CascadeType.PERSIST)
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="OLEHoldings")
 	@XmlElement(name="extentOfOwnership")
 	public List<ExtentOfOwnership> getExtentOfOwnership() {
 		return extentOfOwnership;
 	}
 
-	public void setExtentOfOwnership(ArrayList<ExtentOfOwnership> extentOfOwnership) {
+	public void setExtentOfOwnership(List<ExtentOfOwnership> extentOfOwnership) {
 		this.extentOfOwnership = extentOfOwnership;
 	}
 
@@ -96,6 +100,7 @@ public class OLEHoldings implements Serializable {
 		this.callNumber = callNumber;
 	}
 	
+	/* Not in the data model, apparently
 	@XmlAttribute(name="primary")
 	public String getPrimary() {
 		return primary;
@@ -103,6 +108,7 @@ public class OLEHoldings implements Serializable {
 	public void setPrimary(String primary) {
 		this.primary = primary;
 	}
+	*/
 	
 	@Id
 	@GeneratedValue
@@ -116,6 +122,7 @@ public class OLEHoldings implements Serializable {
 	}
 	
 	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="RECEIPT_STATUS_ID")
 	@XmlElement(name="receiptStatus")
 	public ReceiptStatus getReceiptStatus() {
@@ -125,7 +132,8 @@ public class OLEHoldings implements Serializable {
 		this.receiptStatus = recpeiptStatus;
 	}
 
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="oleholdings", cascade=CascadeType.ALL)
+	//@OneToMany(fetch=FetchType.LAZY, mappedBy="oleHoldings", cascade=CascadeType.PERSIST)
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="oleHoldings")
 	@XmlElement(name="uri")
 	public List<AccessURI> getAccessURIs() {
 		return accessURIs;
@@ -134,21 +142,22 @@ public class OLEHoldings implements Serializable {
 		this.accessURIs = uris;
 	}
 	
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="oleHoldings", cascade=CascadeType.ALL)
+	//@OneToMany(fetch=FetchType.LAZY, mappedBy="OLEHoldings", cascade=CascadeType.PERSIST)
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="OLEHoldings")
 	@XmlElement(name="note")
 	public List<OLEHoldingsNote> getNotes() {
 		return notes;
 	}
-	public void setNotes(ArrayList<OLEHoldingsNote> notes) {
+	public void setNotes(List<OLEHoldingsNote> notes) {
 		this.notes = notes;
 	}
 
 	@Embedded
-	public Location getLocation() {
+	public FlatLocation getLocation() {
 		return location;
 	}
 
-	public void setLocation(Location location) {
+	public void setLocation(FlatLocation location) {
 		this.location = location;
 	}
 	

@@ -371,7 +371,7 @@ public class LU_BuildInstance {
 		
 		InstanceCollection ic = new InstanceCollection();
 		/* Test to make sure that the XML output looks good */
-		testoutput(ic);
+		//testoutput(ic);
 		//ReadInstance(ic, "/mnt/bigdrive/bibdata/allcallnums.txt", "/mnt/bigdrive/bibdata/allitems.txt");
 		
 		// Then marshal those classes to XML and output them
@@ -521,7 +521,6 @@ public class LU_BuildInstance {
 		
 	    Item item = new Item();		
 
-
 	    // There should only be one subfield "i", as it's the item's barcode and should be unique
 	    // And there should be only 1 item with that item ID, so we can just get the first
 	    // element of each of those lists
@@ -597,20 +596,23 @@ public class LU_BuildInstance {
 	    
 		item.setBarcodeARSL(""); // We don't use this, currently
 		
-		ArrayList<FormerIdentifier> fids = new ArrayList<FormerIdentifier>();
+		List<FormerIdentifier> fids = new ArrayList<FormerIdentifier>();
 		FormerIdentifier fi = new FormerIdentifier();
 		Identifier id = new Identifier();
 		id.setIdentifierValue(itemString.get(0) + "|" + itemString.get(1) + "|" + itemString.get(2));
 		id.setSource("SIRSI_ITEMKEY");
 		fi.setIdentifier(id);
+		fi.setItem(item);
 		fids.add(fi);
 		item.setFormerIdentifiers(fids);
 		
 		ItemType type = new ItemType();
+		String itemtype = subfields.get("$t").get(0);
 		// Commenting out setting the itemType's codeValue, since OLE's bulk ingest
 		// choked on the field
 		//type.setCodeValue(subfields.get("$t").get(0)); // should be only one of these
-		type.setFullValue(subfields.get("$t").get(0));
+		type.setCode(itemtype);
+		type.setName(itemtype);
 		// Don't worry about the typeOrSource of the itemType, not sure what that would be
 		item.setItemType(type);
 		
@@ -619,8 +621,19 @@ public class LU_BuildInstance {
 		
 		// Status could mean any number of things.  From Sirsi, we've got transit status and reserve status
 		// Could also be "current location".  I'm going to assume it's current location here, based on the data I've seen
-		if ( subfields.get("035") != null ) {
-			item.setItemStatus(subfields.get("035").get(0));
+
+		// This has been wrong forever -- there is no subfield "035" of a 999 field, this was probably meant to get
+		// VariableField 035 from the record, but we don't need to do that
+		//String itemstatus = subfields.get("035").get(0);
+		if ( itemString.size() > 0 ) {
+			String itemstatus = itemString.get(28);
+			if ( itemstatus != null ) {
+				item.setItemStatus(new ItemStatus(itemstatus, itemstatus));
+			}
+		} else {
+			LU_BuildOLELoadDocs.Log(System.err, "No itemstring for item " + itemID + ", not assigning status", 
+					LU_BuildOLELoadDocs.LOG_WARN);
+			item.setItemStatus(new ItemStatus("NONE", "NONE"));
 		}
 		// If it were "reserve status", then we'd use this:
 		//item.setItemStatus(itemString.get(28));
@@ -750,7 +763,10 @@ public class LU_BuildInstance {
 		
 		Map<String, List<String>> tmpsubfields;
 		//inst.setInstanceIdentifier(callNumberFields.get(0));
-		inst.setInstanceIdentifier(Integer.toString(instanceNum++));
+		
+		// shouldn't be necessary -- happens in the database now
+		//inst.setInstanceIdentifier(Integer.toString(instanceNum++));
+		
 		//inst.setResourceIdentifier(subfields.get("$a").get(0));
 		inst.setResourceIdentifier(LU_BuildOLELoadDocs.formatCatKey(record.getControlNumber())); // need to set this to what's in 001 of the bib to link them
 		//inst.setResourceIdentifier(LU_BuildOLELoadDocs.formatCatKey(callNumberFields.get(0)));
@@ -790,7 +806,7 @@ public class LU_BuildInstance {
 	    	LU_BuildOLELoadDocs.Log(System.out, "Adding " + commentfields.size() + " comments to instance", LU_BuildOLELoadDocs.LOG_DEBUG);
 	    	for ( String comment : commentfields ) {
 	    		// Keep the delimiter on the preceding element of the split array
-	    		Note note = new Note();
+	    		OLEHoldingsNote note = new OLEHoldingsNote();
 	    		String[] pieces = comment.split("(?<=\\. )");
     			// People put periods in their comments sometimes, and that's the delimiter Sirsi uses between
     			// the comment type and the comment itself, so it blows up the comments array.
@@ -817,6 +833,7 @@ public class LU_BuildInstance {
 	    			LU_BuildOLELoadDocs.Log(System.err, "Unknown type of comment: " + comment, LU_BuildOLELoadDocs.LOG_WARN);
 	    		}
 	    		note.setNote(commentstr);
+	    		note.setOLEHoldings(oh);
 	    		oh.getNotes().add(note);
 	    	}
 	    }
@@ -827,20 +844,22 @@ public class LU_BuildInstance {
 	    	for ( VariableField uriField : uriFields ) {
 	    		tmpsubfields = this.getSubfields(uriField);
 	    		if ( tmpsubfields.get("$u") != null ) {
-		    		URI uri = new URI();
-	    			uri.setUri(tmpsubfields.get("$u").get(0));
+		    		AccessURI uri = new AccessURI();
+		    		uri.setText(tmpsubfields.get("$u").get(0));
 	    			// TODO: what to do with the "z" subfields?  They would provide the coverage information in an e-instance
 	    			// Not sure how to handle them here.
-	    			oh.getUri().add(uri);
+		    		uri.setOleHoldings(oh);
+	    			oh.getAccessURIs().add(uri);
 	    		} 
 	    		if ( tmpsubfields.get("$a") != null ) {
-		    		URI uri = new URI();
-	    			uri.setUri(tmpsubfields.get("$a").get(0));
+		    		AccessURI uri = new AccessURI();
+	    			uri.setText(tmpsubfields.get("$a").get(0));
 	    			// TODO: what to do with the "z" subfields?  They would provide the coverage information in an e-instance
 	    			// Not sure how to handle them here.
-	    			oh.getUri().add(uri);	    				    			
+	    			uri.setOleHoldings(oh);
+	    			oh.getAccessURIs().add(uri);	    				    			
 	    		}
-	    		if ( oh.getUri().size() == 0 ) {
+	    		if ( oh.getAccessURIs().size() == 0 ) {
 	    			LU_BuildOLELoadDocs.Log(System.err, "856 with no $u or $a subfields for record " + record.getControlNumber() + 
 	    						        ", 856 field is" + uriField.toString(), LU_BuildOLELoadDocs.LOG_WARN);	    			
 	    		}
@@ -931,30 +950,34 @@ public class LU_BuildInstance {
 	    	}
 	    	location.setLocLevel(locLevel1);
 	    	*/
-	    	
-		    oh.setLocation(location);
+	    	FlatLocation flatLoc = new FlatLocation();
+	    	flatLoc.setLevel("SHELVING");
+	    	flatLoc.setName(shelving.getName());
+		    oh.setLocation(flatLoc);
 	    }		
 	    
     	LU_BuildOLELoadDocs.Log(System.out, "Adding callnumber info to instance holdings data", LU_BuildOLELoadDocs.LOG_DEBUG);
 	    CallNumber cn = new CallNumber();
 	    // Same as the shelvingscheme for now
-	    cn.setType(subfields.get("$w").get(0));
-	    ShelvingScheme shelvingScheme = new ShelvingScheme();
-	    shelvingScheme.setCodeValue(subfields.get("$w").get(0));
-	    shelvingScheme.setFullValue(subfields.get("$w").get(0));
-	    cn.setShelvingSchema(shelvingScheme);
-	    cn.setClassificationPart(subfields.get("$a").get(0));
-	    cn.setItemPart(subfields.get("$i").get(0));
+	    String cntype = subfields.get("$w").get(0);
+	    
+	    ShelvingOrder shelvingOrder = new ShelvingOrder();
+	    shelvingOrder.setShelvingOrder(subfields.get("$w").get(0));
+	    cn.setShelvingOrder(shelvingOrder);
+	    cn.setPrefix(subfields.get("$a").get(0));
+	    cn.setNumber(subfields.get("$i").get(0));
+
 	    // Not used: callNumberType, callNumberPrefix, itemPart,
 	    // They make reference to MFHD 852 codes i, h, and k
 	    // Those don't appear to be in our data anywhere
 	    // TODO: run that by Doreen, et al ^^^
-	    // Also not used currently: shelving order
+	    // Also not used currently: shelving scheme
+	    oh.setCallNumberType(new CallNumberType(cntype, cntype));
 	    oh.setCallNumber(cn);
 	    
 	    
 	    ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
-		extentOfOwnership.setType("public");
+		extentOfOwnership.setType(new ExtentOfOwnershipType("public", "public"));
 		if ( assocMFHDRec != null ) {
 			VariableField eightsixsix = assocMFHDRec.getVariableField("866");
 			if ( eightsixsix != null ) {
@@ -975,6 +998,7 @@ public class LU_BuildInstance {
 					ExtentOfOwnershipNote n = new ExtentOfOwnershipNote();
 					n.setNote(tmpsubfields.get("$z").get(0));
 					n.setType("public");
+					n.setExtentOfOwnership(extentOfOwnership);
 					extentOfOwnership.getNotes().add(n);
 				}
 			}
@@ -984,11 +1008,11 @@ public class LU_BuildInstance {
 		    // There will need to be separate instances for each MFHD record, probably -- should
 		    // be either 1 or 2 MFHD records, if any, one for electronic version and one for physical
 			String receiptStatus = assocMFHDRec.getVariableField("008").toString().substring(6, 7);
-			oh.setReceiptStatus(receiptStatus);
-
-			
+			oh.setReceiptStatus(new ReceiptStatus(receiptStatus, receiptStatus));
 		} else {
+			// TODO: no holdings record, where does the extent of ownership and receipt status come from?
 		}
+		extentOfOwnership.setOLEHoldings(oh);
 		oh.getExtentOfOwnership().add(extentOfOwnership);
     	LU_BuildOLELoadDocs.Log(System.out, "Done creating holdings data, adding to instance collection", LU_BuildOLELoadDocs.LOG_DEBUG);
 
@@ -996,8 +1020,10 @@ public class LU_BuildInstance {
 		oh.setInstance(inst);
 	}
 	
+	/*
+	 * Not relevant anymore in directdb branch
 	public static void testoutput(InstanceCollection ic) {
-		/* Test to make sure that the XML output looks good */
+		// Test to make sure that the XML output looks good 
 		
 		// Build up instance
 		Instance inst = new Instance();
@@ -1005,12 +1031,12 @@ public class LU_BuildInstance {
 		inst.setResourceIdentifier("3");
 		SourceHoldings sh = new SourceHoldings();
 		sh.setPrimary("false");
-		inst.setSourceHoldings(sh);
+		//inst.setSourceHoldings(sh);
 		
 		// Build up oleHoldings within instance
 		OLEHoldings oh = new OLEHoldings();
 		oh.setHoldingsIdentifier("string");
-		oh.setReceiptStatus("4");
+		oh.setReceiptStatus(new ReceiptStatus("4", "4"));
 		oh.setPrimary("true");
 		URI uri = new URI();
 		uri.setResolvable("string");
@@ -1154,5 +1180,6 @@ public class LU_BuildInstance {
 		ic.getInstances().add(inst);
 		
 	}
+	*/
 	
 }

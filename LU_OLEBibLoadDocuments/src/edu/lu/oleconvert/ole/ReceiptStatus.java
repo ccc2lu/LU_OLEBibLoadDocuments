@@ -17,9 +17,14 @@ public class ReceiptStatus implements Serializable {
 	private String name;
 	
 	public ReceiptStatus() {
-		
+		super();
 	}
-
+	public ReceiptStatus(String code, String name) {
+		this();
+		this.setCode(code);
+		this.setName(name);
+	}
+	
 	@Id
 	@GeneratedValue
 	@Column(name="RECEIPT_STATUS_ID")

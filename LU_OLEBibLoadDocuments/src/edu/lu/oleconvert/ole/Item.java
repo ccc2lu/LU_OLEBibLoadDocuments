@@ -12,6 +12,7 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
@@ -37,8 +38,8 @@ public class Item implements Serializable {
 	private static final long serialVersionUID = -3405820085871602535L;
 	
 	private Instance instance;
-	private String analytic;
-	private String resourceIdentifier;
+	//private String analytic;
+	//private String resourceIdentifier;
 	private Long itemIdentifier;
 	
 	private String purchaseOrderLineItemIdentifier;
@@ -49,11 +50,12 @@ public class Item implements Serializable {
 	private List<StatisticalSearchingCode> statisticalSearchingCodes; 
 	private ItemType itemType;
 	
-	Location location;
+	FlatLocation location;
 	private String copyNumber;
-	private String copyNumberLabel;
-	private String volumeNumber;
-	private String volumeNumberLabel;
+	// Not in the data model anymore in 1.5, apparently
+	//private String copyNumberLabel;
+	//private String volumeNumber;
+	//private String volumeNumberLabel;
 	private List<ItemNote> notes;
 	private String enumeration;
 	private String chronology;
@@ -74,7 +76,7 @@ public class Item implements Serializable {
 	private String checkinNote;
 	private String staffOnlyFlag;
 	private String fastAddFlag;
-	private Extension extension;
+	//private Extension extension;
 	
 	private String claimsReturnedFlag;
 	private String claimsReturnedFlagCreateDate;
@@ -101,15 +103,16 @@ public class Item implements Serializable {
 		this.formerIdentifiers = new ArrayList<FormerIdentifier>();
 		this.itemType = new ItemType();
 		this.callNumber = new CallNumber();
-		this.callNumber.setClassificationPart("");
-		this.callNumber.setItemPart("");
+		//this.callNumber.setClassificationPart("");
+		//this.callNumber.setItemPart("");
 		this.callNumberType = new CallNumberType();
-		this.location = new Location();
+		this.location = new FlatLocation();
 		this.highDensityStorage = new HighDensityStorage();
 		this.temporaryItemType = new TemporaryItemType();
 		//this.extension = new Extension();
 		this.notes = new ArrayList<ItemNote>();
-		copyNumber = copyNumberLabel = volumeNumber = volumeNumberLabel = "";
+		copyNumber = "";
+		//copyNumberLabel = volumeNumber = volumeNumberLabel = "";
 		//fund = donorPublicDisplay = donorNote = "";
 		fund = "";
 		this.itemDonor = new ItemDonor();
@@ -125,29 +128,32 @@ public class Item implements Serializable {
 	public Item(Item i) {
 		super();
 		//this.analytic = i.getAnalytic();
-		this.resourceIdentifier = i.getResourceIdentifier();
+		//this.resourceIdentifier = i.getResourceIdentifier();
 		this.itemIdentifier = i.getItemIdentifier();
 		this.barcodeARSL = i.getBarcodeARSL();
 		this.vendorLineItemIdentifier = i.getVendorLineItemIdentifier();
 		this.purchaseOrderLineItemIdentifier = i.getPurchaseOrderLineItemIdentifier();
-		this.statisticalSearchingCodes = (ArrayList<StatisticalSearchingCode>) i.getStatisticalSearchingCodes().clone();
-		this.formerIdentifiers = (ArrayList<FormerIdentifier>) i.getFormerIdentifiers().clone();
+		//this.statisticalSearchingCodes = (List<StatisticalSearchingCode>) i.getStatisticalSearchingCodes().clone();
+		//this.formerIdentifiers = (List<FormerIdentifier>) i.getFormerIdentifiers().clone();
+		this.statisticalSearchingCodes = i.getStatisticalSearchingCodes();
+		this.formerIdentifiers = i.getFormerIdentifiers();
 		this.itemType = i.getItemType();
 		this.callNumber = i.getCallNumber();
-		this.callNumber.setClassificationPart(i.getCallNumber().getClassificationPart());
-		this.callNumber.setItemPart(i.getCallNumber().getClassificationPart());
+		//this.callNumber.setClassificationPart(i.getCallNumber().getClassificationPart());
+		//this.callNumber.setItemPart(i.getCallNumber().getClassificationPart());
 		this.callNumberType = i.getCallNumberType();
 		this.location = i.getLocation();
 		this.highDensityStorage = i.getHighDensityStorage();
 		this.temporaryItemType = i.getTemporaryItemType();
 		//this.extension = i.getExtension();
-		this.notes = (ArrayList<ItemNote>) i.getNotes().clone();
+		//this.notes = (ArrayList<ItemNote>) i.getNotes().clone();
+		this.notes = i.getNotes();
 		this.enumeration = i.getEnumeration();
 		this.chronology = i.getChronology();
 		copyNumber = i.getCopyNumber(); 
-		copyNumberLabel = i.getCopyNumberLabel(); 
-		volumeNumber = i.getVolumeNumber();
-		volumeNumberLabel = i.getVolumeNumberLabel();
+		//copyNumberLabel = i.getCopyNumberLabel(); 
+		//volumeNumber = i.getVolumeNumber();
+		//volumeNumberLabel = i.getVolumeNumberLabel();
 		fund = i.getFund();
 		//donorPublicDisplay = i.getDonorPublicDisplay();
 		//donorNote = i.getDonorNote();
@@ -173,6 +179,8 @@ public class Item implements Serializable {
 		this.instance = inst;
 	}
 	
+	// Also gone from the data model
+	/*
 	public String getAnalytic() {
 		return analytic;
 	}
@@ -180,6 +188,7 @@ public class Item implements Serializable {
 	public void setAnalytic(String analytic) {
 		this.analytic = analytic;
 	}
+	
 
 	public Extension getExtension() {
 		return extension;
@@ -188,7 +197,8 @@ public class Item implements Serializable {
 	public void setExtension(Extension extension) {
 		this.extension = extension;
 	}
-
+	*/
+	
 	@Column(name="CLMS_RET_FLAG")
 	public String getClaimsReturnedFlag() {
 		return claimsReturnedFlag;
@@ -261,7 +271,7 @@ public class Item implements Serializable {
 		this.itemDmgNote = itemDmgNote;
 	}
 
-	@Column(name="ITEM_MISSING_PICS_FLAG")
+	@Column(name="ITEM_MISING_PICS_FLAG")
 	public String getItemMissingPicsFlag() {
 		return itemMissingPicsFlag;
 	}
@@ -270,7 +280,7 @@ public class Item implements Serializable {
 		this.itemMissingPicsFlag = itemMissingPicsFlag;
 	}
 
-	@Column(name="MISSING_PICS_NOTE")
+	@Column(name="MISING_PICS_NOTE")
 	public String getMissingPicsNote() {
 		return missingPicsNote;
 	}
@@ -279,7 +289,7 @@ public class Item implements Serializable {
 		this.missingPicsNote = missingPicsNote;
 	}
 
-	@Column(name="MISSING_PICS_EFFECTIVE_DATE")
+	@Column(name="MISING_PICS_EFFECTIVE_DATE")
 	public String getMissingPicsEffectDate() {
 		return missingPicsEffectDate;
 	}
@@ -288,7 +298,7 @@ public class Item implements Serializable {
 		this.missingPicsEffectDate = missingPicsEffectDate;
 	}
 
-	@Column(name="MISSING_PICS_COUNT")
+	@Column(name="MISING_PICS_COUNT")
 	public Long getMissingPicsCount() {
 		return missingPicsCount;
 	}
@@ -308,6 +318,7 @@ public class Item implements Serializable {
 	}
 
 	// These next few seem to be gone from the data model now
+	/*
 	@XmlElement(name="copyNumberLabel", required=true, nillable=true)
 	public String getCopyNumberLabel() {
 		return copyNumberLabel;
@@ -335,6 +346,7 @@ public class Item implements Serializable {
 	public void setVolumeNumberLabel(String volumeNumberLabel) {
 		this.volumeNumberLabel = volumeNumberLabel;
 	}
+	*/
 	
 	@OneToMany(fetch=FetchType.LAZY, mappedBy="item")
 	@XmlElement(name="note")
@@ -366,7 +378,8 @@ public class Item implements Serializable {
 		this.chronology = chronology;
 	}
 
-	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
+	@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="HIGH_DENSITY_STORAGE_ID")
 	@XmlElement(name="highDensityStorage")
 	public HighDensityStorage getHighDensityStorage() {
@@ -377,7 +390,8 @@ public class Item implements Serializable {
 		this.highDensityStorage = highDensityStorage;
 	}
 
-	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
+	@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="TEMP_ITEM_TYPE_ID", referencedColumnName="ITEM_TYPE_ID")
 	@XmlElement(name="temporaryItemType")
 //	public TemporaryItemType getTemporaryItemType() {
@@ -460,7 +474,8 @@ public class Item implements Serializable {
 	}
 	*/
 	
-	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
+	@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="ITEM_STATUS_ID")
 	@XmlElement(name="itemStatus", required=true, nillable=true)
 	public ItemStatus getItemStatus() {
@@ -526,11 +541,11 @@ public class Item implements Serializable {
 	
 	@Embedded
 	@XmlElement(name="location")
-	public Location getLocation() {
+	public FlatLocation getLocation() {
 		return location;
 	}
 	
-	public void setLocation(Location location) {
+	public void setLocation(FlatLocation location) {
 		this.location = location;
 	}
 	
@@ -544,7 +559,8 @@ public class Item implements Serializable {
 		this.callNumber = callNumber;
 	}
 
-	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
+	@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="CALL_NUMBER_TYPE_ID")
 	public CallNumberType getCallNumberType() {
 		return callNumberType;
@@ -554,7 +570,8 @@ public class Item implements Serializable {
 		this.callNumberType = callNumberType;
 	}
 	
-	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
+	@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="ITEM_TYPE_ID")
 	@XmlElement(name="itemType")
 	public ItemType getItemType() {
@@ -606,7 +623,8 @@ public class Item implements Serializable {
 		this.barcodeARSL = barcodeARSL;
 	}
 
-	@OneToMany(fetch=FetchType.LAZY, cascade=CascadeType.ALL, mappedBy="item")
+	//@OneToMany(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST, mappedBy="item")
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="item")
 	@XmlElement(name="formerIdentifier")
 	public List<FormerIdentifier> getFormerIdentifiers() {
 		return formerIdentifiers;
@@ -616,7 +634,8 @@ public class Item implements Serializable {
 		this.formerIdentifiers = formerIdentifiers;
 	}
 
-	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	//@OneToMany(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
+	@OneToMany(fetch=FetchType.LAZY)
 	@JoinColumn(name="STATISTICAL_SEARCHING_ID")
 	@XmlElement(name="statisticalSearchingCode")
 	public List<StatisticalSearchingCode> getStatisticalSearchingCodes() {
@@ -638,7 +657,7 @@ public class Item implements Serializable {
 	public void setAnalytic(String analytic) {
 		this.analytic = analytic;
 	}
-	*/
+	
 	
 	@XmlAttribute(name="resourceIdentifier")
 	public String getResourceIdentifier() {
@@ -648,7 +667,8 @@ public class Item implements Serializable {
 	public void setResourceIdentifier(String resourceIdentifier) {
 		this.resourceIdentifier = resourceIdentifier;
 	}
-
+	*/
+	
 	@Id
 	@GeneratedValue
 	@Column(name="ITEM_ID")

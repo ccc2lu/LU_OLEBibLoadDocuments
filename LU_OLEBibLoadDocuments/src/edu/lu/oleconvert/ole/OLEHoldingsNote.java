@@ -46,10 +46,10 @@ public class OLEHoldingsNote implements Serializable {
 	
 	@ManyToOne
 	@JoinColumn(name="HOLDINGS_ID")
-	public OLEHoldings getItem() {
+	public OLEHoldings getOLEHoldings() {
 		return this.oleHoldings;
 	}
-	public void setItem(OLEHoldings oh) {
+	public void setOLEHoldings(OLEHoldings oh) {
 		this.oleHoldings = oh;
 	}
 	

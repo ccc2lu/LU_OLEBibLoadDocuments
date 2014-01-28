@@ -217,13 +217,13 @@ public class LU_DBLoadInstances {
 					instanceBuilder.buildInstanceCollection(xmlrecord, ic, assocMFHDRecords);
 					
 					for ( Instance i : ic.getInstances() ) {
-						em.persist(i);						
+						em.persist(i);				
 					}
 
 					tx.commit();
 
 					counter++;
-					if ( counter % 10000 == 0 ) {
+					if ( counter % 10 == 0 ) {
 						LU_BuildOLELoadDocs.Log(System.out, counter + " instances loaded ...", LOG_INFO);
 					}
 				} while (nextrecord != null && (limit < 0 || counter < limit) );

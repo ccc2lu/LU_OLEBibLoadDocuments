@@ -2,10 +2,13 @@ package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
@@ -24,9 +27,10 @@ public class ExtentOfOwnership implements Serializable {
 	 */
 	private static final long serialVersionUID = 9159363905445454975L;
 
+	private Long id;
 	private String textualHoldings;
 	private ExtentOfOwnershipType type;
-	private ArrayList<ExtentOfOwnershipNote> notes;
+	private List<ExtentOfOwnershipNote> notes;
 	private OLEHoldings oleHoldings;
 	
 	public ExtentOfOwnership() {
@@ -34,6 +38,16 @@ public class ExtentOfOwnership implements Serializable {
 		notes = new ArrayList<ExtentOfOwnershipNote>();
 	}
 
+	@Id
+	@GeneratedValue
+	@Column(name="EXT_OWNERSHIP_ID")
+	public Long getId() {
+		return id;
+	}
+	public void setId(Long id) {
+		this.id = id;
+	}
+	
 	@ManyToOne
 	@JoinColumn(name="HOLDINGS_ID")
 	public OLEHoldings getOLEHoldings() {
@@ -64,9 +78,9 @@ public class ExtentOfOwnership implements Serializable {
 		this.type = type;
 	}
 
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="extentofownership")
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="extentOfOwnership")
 	@XmlElement(name="note")
-	public ArrayList<ExtentOfOwnershipNote> getNotes() {
+	public List<ExtentOfOwnershipNote> getNotes() {
 		return notes;
 	}
 

@@ -9,6 +9,7 @@ import javax.persistence.Column;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
@@ -56,6 +57,7 @@ public class Instance implements Serializable {
 	}
 	
 	@OneToOne(fetch=FetchType.LAZY, mappedBy="instance", cascade=CascadeType.ALL)
+	//@OneToOne(fetch=FetchType.LAZY, mappedBy="instance")
 	@XmlElement(name="oleHoldings")
 	public OLEHoldings getOleHoldings() {
 		return oleHoldings;
@@ -88,7 +90,8 @@ public class Instance implements Serializable {
 	}
 	*/
 	
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="instance", cascade=CascadeType.ALL)
+	//@OneToMany(fetch=FetchType.LAZY, mappedBy="instance", cascade=CascadeType.PERSIST)
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="instance")
 	public List<Item> getItems() {
 		return this.items;
 	}
@@ -97,6 +100,7 @@ public class Instance implements Serializable {
 	}
 	
 	@Id
+	@GeneratedValue
 	@Column(name="INSTANCE_ID")
 	@XmlElement(name="instanceIdentifier")
 	public String getInstanceIdentifier() {
