@@ -1,7 +1,5 @@
 package edu.lu.oleconvert.ole;
 
-import java.io.Serializable;
-
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -9,19 +7,16 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 @Entity
-//@Table(name="ole_ds_call_number_type_m_t")
-@Table(name="ole_ds_call_number_type_t")
-public class CallNumberType implements Serializable {
-
+@Table(name="ole_ds_access_location_t")
+public class AccessLocation {
 	private Long id;
 	private String code;
 	private String name;
-
-	public CallNumberType() {
+	
+	public AccessLocation() {
 		super();
 	}
-
-	public CallNumberType(String code, String name) {
+	public AccessLocation(String code, String name) {
 		this();
 		this.setCode(code);
 		this.setName(name);
@@ -29,7 +24,7 @@ public class CallNumberType implements Serializable {
 	
 	@Id
 	@GeneratedValue
-	@Column(name="CALL_NUMBER_TYPE_ID")
+	@Column(name="ACCESS_LOCATION_ID")
 	public Long getId() {
 		return id;
 	}
@@ -55,6 +50,5 @@ public class CallNumberType implements Serializable {
 	public void setName(String name) {
 		this.name = name;
 	}
-	
 	
 }

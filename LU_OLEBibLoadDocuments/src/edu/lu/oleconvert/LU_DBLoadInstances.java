@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -43,8 +44,10 @@ import org.xml.sax.InputSource;
 import OLEBibLoadDocuments.edu.indiana.libraries.OLEBibLoadDocuments.classes.BuildRequestDocument;
 import edu.indiana.libraries.JPADriver.classes.JPADriver;
 import edu.indiana.libraries.LoadDocstore.jaxb.RequestType;
+import edu.lu.oleconvert.ole.Bib;
 import edu.lu.oleconvert.ole.Instance;
 import edu.lu.oleconvert.ole.InstanceCollection;
+import edu.lu.oleconvert.ole.OLEHoldings;
 
 public class LU_DBLoadInstances {
 
@@ -72,6 +75,7 @@ public class LU_DBLoadInstances {
 		emf = Persistence.createEntityManagerFactory("default");
 		em = emf.createEntityManager();
 		EntityTransaction tx = em.getTransaction();
+		
         BufferedReader inFile = null;
 		Properties loadprops;
 		Properties oracleprops;
@@ -187,26 +191,36 @@ public class LU_DBLoadInstances {
 				int limit = -1;
 				if ( args.length == 7 ) {
 					limit = Integer.parseInt(args[6]);
-					LU_BuildOLELoadDocs.Log(System.out, "Only loading instances for the first " + limit + " bib records", LOG_INFO);
+					LU_BuildOLELoadDocs.Log(System.out, "Only loading records for the first " + limit + " bib records", LOG_INFO);
 				}
 				counter = 0;
 				List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
 				Record xmlrecord, nextrecord;
 				nextrecord = reader.next();
-				ArrayList<Record> assocMFHDRecords = new ArrayList<Record>();
+				List<Record> assocMFHDRecords = new ArrayList<Record>();
 
 				DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 				LU_BuildOLELoadDocs.Log(System.out, 
-						                "Beginning instance load, time is: " + df.format(Calendar.getInstance().getTime()), 
+						                "Beginning load, time is: " + df.format(Calendar.getInstance().getTime()), 
 						                LOG_INFO);
-
+                Bib bib;
+                
 				tx.begin();
 
 				do {
-
+					
 					assocMFHDRecords.clear();
 					xmlrecord = nextrecord;
+					
+					// Build a bib record from the xmlrecord
+					bib = buildBib(xmlrecord);
+					if ( bib != null ) {
+						em.persist(bib);
+					} else {
+						LU_BuildOLELoadDocs.Log(System.err, "Unable to persist bib for record " + xmlrecord.getControlNumber(), LOG_ERROR);						
+					}
+					
 					nextrecord = reader.next();
 					// The associated holdings records for a bib record should always come right after it
 					// So we keep looping and adding them to an ArrayList as we go
@@ -214,6 +228,12 @@ public class LU_DBLoadInstances {
 							holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
 
 						assocMFHDRecords.add(nextrecord);
+						Bib tmpbib = buildBib(nextrecord);
+						if ( tmpbib != null ) {
+							em.persist(tmpbib);
+						} else {
+							LU_BuildOLELoadDocs.Log(System.err, "Unable to persist bib for record " + nextrecord.getControlNumber(), LOG_ERROR);							
+						}						
 						nextrecord = reader.next();
 					}
 
@@ -223,17 +243,34 @@ public class LU_DBLoadInstances {
 					//request=BuildRequestDocument.buildIngestDocument(request,Integer.toString(catalog.getCatalogKey()),BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,xmlrecord,catalog);
 
 					// Build the instance data first, because we might be adding
-					ic = new InstanceCollection();
-					instanceBuilder.buildInstanceCollection(xmlrecord, ic, assocMFHDRecords);
+					instanceBuilder.buildInstanceCollection(xmlrecord, bib, assocMFHDRecords);
 					
+					// now we don't loop over instances, we just let the bib cascade persisting all of its holdings,
+					// which cascades to items, etc.
+					/*
 					for ( Instance i : ic.getInstances() ) {
-						em.persist(i);		
+						i.getOleHoldings().setBib(bib); // TODO: is this always right, or do we want to set the bib for some holdings records to the MFHD rec?  not sure
+						System.err.println("Bib ID: " + i.getOleHoldings().getBib().getId() + ", former ID: " + i.getOleHoldings().getBib().getFormerId());
+						em.persist(i.getOleHoldings());
 					}
+					*/
+					
+					if ( bib != null ) {
+						//for ( OLEHoldings holdings : bib.getHoldings() ) {
+						//	LU_BuildOLELoadDocs.Log(System.err, "ID for holdings " + holdings.getHoldingsIdentifier() + " = " + holdings.getBibId(), LOG_INFO);
+						//}
+						// Now persist bib again after creating holdings/items
+						em.persist(bib);
+					} else {
+						LU_BuildOLELoadDocs.Log(System.err, "Unable to persist bib for record " + xmlrecord.getControlNumber(), LOG_ERROR);						
+					}
+
 
 					counter++;
 					if ( counter % 1000 == 0 ) {
 						tx.commit();
-						LU_BuildOLELoadDocs.Log(System.out, counter + " instances loaded ...", LOG_INFO);
+						em.clear(); // TODO: testing this to see if it fixes memory problems
+						LU_BuildOLELoadDocs.Log(System.out, counter + " records loaded ...", LOG_INFO);
 						tx.begin();
 					}
 				} while (nextrecord != null && (limit < 0 || counter < limit) );
@@ -257,5 +294,85 @@ public class LU_DBLoadInstances {
 			e.printStackTrace(System.err);
 			tx.rollback();
 		}
+	}
+	
+	public static Bib buildBib(Record record) {
+		String catkey = LU_BuildOLELoadDocs.formatCatKey(record.getControlNumber()); // need to set this to what's in 001 of the bib to link them
+		Bib bib = new Bib(catkey);
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+    	//tmpserializer = new XMLSerializer();
+    	//tmpserializer.setOutputFormat(of);
+    	//tmpserializer.setOutputByteStream(out);
+    	//result = new SAXResult(tmpserializer.asContentHandler());
+        //writer = new MarcXmlWriter(result);
+		MarcWriter writer = new MarcXmlWriter(out, "ISO-8859-1");
+        writer.write(record);
+        //out.close();
+        writer.close();
+        String marcXML;
+        
+        
+        // Logic stolen from LU_BuildOLELoadDocs, the addAdditionalInfo method
+        //String catkey = LU_BuildOLELoadDocs.formatCatKey(record.getVariableField("001").toString().split(" ")[1]);
+
+        //System.err.println("Looking for dates for record with catalog key " + catkey);
+        String dateLine = (String) KeyToDate.get(catkey);
+        
+        // dateLine string should be of the form: 
+        // <catalog key in Siris>|<MARC FIELD 008>|<shadowed>|<status>|<date catalog record created>|<date cataloged>|<date modified>|
+        // 1 means shadowed, 0 means unshadowed
+        // status may be any of the following: 0 (NOTEXT), 1 (INTEXT), 4 (UPDTEXT), 6 (LOCKTEXT), 1000 (USERLOCK)
+        // MARC field 008 is "fixed length data elements and always seems to be populated
+        String shadowed, status, dateCataloged, dateModified;
+        if ( dateLine == null ) {
+        	System.err.println("ERROR: No mapping found for key " + catkey);
+        	System.err.println("Filling in additional attributes with empty strings");
+        	dateCataloged = dateModified = shadowed = status = "";
+
+        } else {
+        	String[] dateParts = dateLine.split("\\|");
+        	if ( dateParts.length < 7 ) {
+        		System.err.println("ERROR: Can't get shadowed, status, date cataloged or modified, not enough fields in line: " + dateLine);
+            	System.err.println("Filling in additional attributes with empty strings");
+        		dateCataloged = dateModified = shadowed = status = "";
+        	} else {
+
+        		shadowed = dateParts[2].equals("1") ? "Y" : "N";
+        		status = StatusLookup.get(dateParts[3]);
+        		if ( dateParts[5].equals("0") || dateParts[5].length() == 0 ) {
+        			dateCataloged = "";
+        		} else {
+        			dateCataloged = dateParts[5];
+        		}
+        		if ( dateParts[6].equals("0") || dateParts[6].length() == 0 ) {
+        			dateModified = "";
+        		} else {
+        			dateModified = dateParts[6];
+        		}
+
+        	}
+        }
+        
+		try {
+			marcXML = out.toString("ISO-8859-1");
+	        bib.setContent(marcXML);
+	        // We want to keep the IDs for the Bibs the same
+	        // bib.setId(Long.parseLong(catkey));
+	        if ( !dateCataloged.equals("") ) {
+	        	bib.setDateCreated(dateCataloged);
+	        }
+	        if ( !dateModified.equals("") ) {
+	        	bib.setDateUpdated(dateModified);
+	        }
+	        bib.setCreatedBy("BulkIngest-User");
+	        bib.setStatus(status);
+	        bib.setStaffOnly(shadowed);
+	        bib.setFastAdd("N");
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			bib = null;
+		} // ccc2 -- this is what we already have -- could be we just need
+		return bib;
 	}
 }

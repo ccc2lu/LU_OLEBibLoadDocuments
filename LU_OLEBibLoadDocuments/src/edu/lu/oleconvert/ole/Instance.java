@@ -22,8 +22,8 @@ import javax.xml.bind.annotation.XmlType;
 
 import edu.lu.oleconvert.LU_DBLoadInstances;
 
-@Entity
-@Table(name="ole_ds_instance_t")
+//@Entity
+//@Table(name="ole_ds_instance_t")
 @XmlType(name="instance", propOrder={"instanceIdentifier", "resourceIdentifier", "formerResourceIdentifiers", "oleHoldings", "sourceHoldings", "items"})
 public class Instance implements Serializable {
 
@@ -68,7 +68,7 @@ public class Instance implements Serializable {
 		items = new ArrayList<Item>();
 	}
 	
-	@OneToOne(fetch=FetchType.LAZY, mappedBy="instance", cascade=CascadeType.ALL)
+	//@OneToOne(fetch=FetchType.LAZY, mappedBy="instance", cascade=CascadeType.ALL)
 	//@OneToOne(fetch=FetchType.LAZY, mappedBy="instance")
 	@XmlElement(name="oleHoldings")
 	public OLEHoldings getOleHoldings() {
@@ -102,18 +102,9 @@ public class Instance implements Serializable {
 	}
 	*/
 	
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="itemInstance", cascade=CascadeType.ALL)
-	//@OneToMany(fetch=FetchType.LAZY, mappedBy="instance")
-	public List<Item> getItems() {
-		return this.items;
-	}
-	public void setItems(List<Item> i) {
-		this.items = i;
-	}
-	
-	@Id
-	@GeneratedValue
-	@Column(name="INSTANCE_ID")
+	//@Id
+	//@GeneratedValue
+	//@Column(name="INSTANCE_ID")
 	@XmlElement(name="instanceIdentifier")
 	public Long getInstanceIdentifier() {
 		return instanceIdentifier;
@@ -122,7 +113,7 @@ public class Instance implements Serializable {
 		this.instanceIdentifier = instanceIdentifier;
 	}
 	
-	@Column(name="BIB_ID")
+	//@Column(name="BIB_ID")
 	@XmlElement(name="resourceIdentifier")
 	public String getResourceIdentifier() {
 		return resourceIdentifier;

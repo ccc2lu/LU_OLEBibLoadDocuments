@@ -1,7 +1,10 @@
 package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 import javax.persistence.CascadeType;
@@ -37,7 +40,7 @@ public class Item implements Serializable {
 	 */
 	private static final long serialVersionUID = -3405820085871602535L;
 	
-	private Instance itemInstance;
+	private OLEHoldings itemHoldings;
 	//private String analytic;
 	//private String resourceIdentifier;
 	private Long itemIdentifier;
@@ -47,7 +50,7 @@ public class Item implements Serializable {
 	private AccessInformation accessInformation; 
 	private String barcodeARSL;
 	private List<FormerIdentifier> formerIdentifiers;
-	private List<StatisticalSearchingCode> statisticalSearchingCodes; 
+	private List<ItemStatSearch> statSearches; 
 	private ItemType itemType;
 	
 	FlatLocation location;
@@ -92,6 +95,12 @@ public class Item implements Serializable {
 	private String missingPicsEffectDate;
 	private Long missingPicsCount;
 	
+	private String uniqueIdPrefix;
+	private String createdDate;
+	private String updatedDate;
+	private String createdBy;
+	private String updatedBy;
+	
 	// This default, no-args constructor only puts a value in those fields
 	// that need it initialized so they show up properly in the XML output
 	public Item() {
@@ -99,7 +108,7 @@ public class Item implements Serializable {
 		this.barcodeARSL = "";
 		this.vendorLineItemIdentifier = "";
 		this.purchaseOrderLineItemIdentifier = "";
-		this.statisticalSearchingCodes = new ArrayList<StatisticalSearchingCode>();
+		this.statSearches = new ArrayList<ItemStatSearch>();
 		this.formerIdentifiers = new ArrayList<FormerIdentifier>();
 		this.itemType = new ItemType();
 		this.callNumber = new CallNumber();
@@ -116,12 +125,21 @@ public class Item implements Serializable {
 		//fund = donorPublicDisplay = donorNote = "";
 		fund = "";
 		this.itemDonor = new ItemDonor();
-		price = numberOfPieces;
+		price = numberOfPieces = "";
 		//itemStatus = itemStatusEffectiveDate = "";
 		itemStatusEffectiveDate = "";
 		this.itemStatus = new ItemStatus();
 		checkinNote = staffOnlyFlag = fastAddFlag = "";
-		this.itemInstance = new Instance();
+		this.itemHoldings = new OLEHoldings();
+		itemStatus = new ItemStatus();
+		DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+		String datestr = df.format(Calendar.getInstance().getTime());
+		this.setCreatedDate(datestr);
+		this.setCreatedBy("BulkIngest-User");
+		this.setUpdatedDate(datestr);
+		this.setUpdatedBy("BulkIngest-User");
+		this.setItemStatusEffectiveDate(datestr);
+		
 	}
 	
 	// This copy constructor needs to assign all the fields
@@ -135,7 +153,7 @@ public class Item implements Serializable {
 		this.purchaseOrderLineItemIdentifier = i.getPurchaseOrderLineItemIdentifier();
 		//this.statisticalSearchingCodes = (List<StatisticalSearchingCode>) i.getStatisticalSearchingCodes().clone();
 		//this.formerIdentifiers = (List<FormerIdentifier>) i.getFormerIdentifiers().clone();
-		this.statisticalSearchingCodes = i.getStatisticalSearchingCodes();
+		this.statSearches = i.getStatSearches();
 		this.formerIdentifiers = i.getFormerIdentifiers();
 		this.itemType = i.getItemType();
 		this.callNumber = i.getCallNumber();
@@ -167,16 +185,16 @@ public class Item implements Serializable {
 		fastAddFlag = i.getFastAddFlag();
 		this.accessInformation = i.getAccessInformation();
 		itemStatus = i.getItemStatus();
-		this.itemInstance = i.getItemInstance();
+		this.itemHoldings = i.getItemHoldings();
 	}
 	
 	@ManyToOne
-	@JoinColumn(name="INSTANCE_ID")
-	public Instance getItemInstance() {
-		return this.itemInstance;
+	@JoinColumn(name="HOLDINGS_ID")
+	public OLEHoldings getItemHoldings() {
+		return this.itemHoldings;
 	}
-	public void setItemInstance(Instance inst) { 
-		this.itemInstance = inst;
+	public void setItemHoldings(OLEHoldings holdings) { 
+		this.itemHoldings = holdings;
 	}
 	
 	// Also gone from the data model
@@ -312,7 +330,6 @@ public class Item implements Serializable {
 	public String getCopyNumber() {
 		return copyNumber;
 	}
-
 	public void setCopyNumber(String copyNumber) {
 		this.copyNumber = copyNumber;
 	}
@@ -554,7 +571,6 @@ public class Item implements Serializable {
 	public CallNumber getCallNumber() {
 		return callNumber;
 	}
-
 	public void setCallNumber(CallNumber callNumber) {
 		this.callNumber = callNumber;
 	}
@@ -634,17 +650,16 @@ public class Item implements Serializable {
 		this.formerIdentifiers = formerIdentifiers;
 	}
 
-	@OneToMany(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	@OneToMany(fetch=FetchType.LAZY, cascade=CascadeType.ALL, mappedBy="item")
 	//@OneToMany(fetch=FetchType.LAZY)
-	@JoinColumn(name="STATISTICAL_SEARCHING_ID")
+	//@JoinColumn(name="ITEM_ID")
 	@XmlElement(name="statisticalSearchingCode")
-	public List<StatisticalSearchingCode> getStatisticalSearchingCodes() {
-		return statisticalSearchingCodes;
+	public List<ItemStatSearch> getStatSearches() {
+		return statSearches;
 	}
 
-	public void setStatisticalSearchingCodes(
-			List<StatisticalSearchingCode> statisticalSearchingCodes) {
-		this.statisticalSearchingCodes = statisticalSearchingCodes;
+	public void setStatSearches(List<ItemStatSearch> statSearches) {
+		this.statSearches = statSearches;
 	}
 
 	// seems to be gone from the data model now
@@ -681,4 +696,43 @@ public class Item implements Serializable {
 		this.itemIdentifier = itemIdentifier;
 	}
 
+	@Column(name="UNIQUE_ID_PREFIX")
+	public String getUniqueIdPrefix() {
+		return uniqueIdPrefix;
+	}
+	public void setUniqueIdPrefix(String uniqueIdPrefix) {
+		this.uniqueIdPrefix = uniqueIdPrefix;
+	}
+
+	@Column(name="DATE_ENTERED")
+	public String getCreatedDate() {
+		return createdDate;
+	}
+	public void setCreatedDate(String createdDate) {
+		this.createdDate = createdDate;
+	}
+
+	@Column(name="CREATED_BY")
+	public String getCreatedBy() {
+		return createdBy;
+	}
+	public void setCreatedBy(String createdBy) {
+		this.createdBy = createdBy;
+	}
+
+	@Column(name="DATE_LAST_UPDATED")
+	public String getUpdatedDate() {
+		return updatedDate;
+	}
+	public void setUpdatedDate(String updateDate) {
+		this.updatedDate = updateDate;
+	}
+
+	@Column(name="UPDATED_BY")
+	public String getUpdatedBy() {
+		return updatedBy;
+	}
+	public void setUpdatedBy(String updatedBy) {
+		this.updatedBy = updatedBy;
+	}
 }

@@ -60,6 +60,11 @@ public class LU_BuildInstance {
 	// and the code to generate e-instances will run
 	private boolean eInstanceReady = false;
 	
+	private static final int LOC_INSTITUTION = 1;
+	private static final int LOC_LIBRARY = 2;
+	private static final int LOC_COLLECTION = 3;
+	private static final int LOC_SHELVING = 4;
+
 	Map<String, String> locationCodeToLibraryCode = new HashMap<String, String>();
 	Map<String, String> locationCodeToShelvingString = new HashMap<String, String>();
 	Map<String, String> libraryCodeToName = new HashMap<String, String>();
@@ -418,7 +423,7 @@ public class LU_BuildInstance {
 		return subfields;
 	}
 	
-	public void buildInstanceCollection(Record record, InstanceCollection ic, ArrayList<Record> assocMFHDRecords) {
+	public void buildInstanceCollection(Record record, Bib bib, List<Record> assocMFHDRecords) {
 
 	    String catalogKey = record.getVariableField("001").toString().split(" ")[1];
 		//List<List<String>> callNumberStrings = this.callNumbersByCatalogKey.get(catalogKey);
@@ -473,13 +478,13 @@ public class LU_BuildInstance {
 				
 				// Now loop over the mfhd_itemsholdings and call buildHoldingsData and buildItemsData, like below
 				for ( VariableField field : mfhd_itemsholdings ) {
-					Instance inst = new Instance(LU_BuildOLELoadDocs.formatCatKey(record.getControlNumber()));
+					//Instance inst = new Instance(LU_BuildOLELoadDocs.formatCatKey(record.getControlNumber()));
 
 					subfields = this.getSubfields(field);			
-					this.buildHoldingsData(record, inst, subfields, MFHDrec); // this will be based on the MFHDrec, and will
+					this.buildHoldingsData(record, bib, subfields, MFHDrec); // this will be based on the MFHDrec, and will
 					// be almost identical for each separate instance created here.  Is that necessary?
-					this.buildItemsData(record, inst, subfields);
-					ic.getInstances().add(inst);					
+					//this.buildItemsData(record, bib, subfields);
+					//ic.getInstances().add(inst);					
 				}
 
 			}
@@ -490,10 +495,10 @@ public class LU_BuildInstance {
 				
 				Map<String, List<String>> subfields = this.getSubfields(field);			
 				//List<String> itemnumber = subfields.get("$a"); // I think that's the subfield code, check that
-				this.buildHoldingsData(record, inst, subfields, null); 		
-				this.buildItemsData(record, inst, subfields);
+				this.buildHoldingsData(record, bib, subfields, null); 		
+				//this.buildItemsData(record, bib, subfields);
 
-				ic.getInstances().add(inst);
+				//ic.getInstances().add(inst);
 			}
 		}
 		//ic.setInstance(inst);
@@ -513,11 +518,11 @@ public class LU_BuildInstance {
 	 * $t => item type, $u => acquisition date, $x => item category 1, $z = item category 2
 	 * 
 	 */
-	public void buildItemsData(Record record, Instance inst, Map<String, List<String>> subfields) {
-		if ( inst.getItems() == null ) {
+	public void buildItemsData(Record record, Bib bib, OLEHoldings holdings, Map<String, List<String>> subfields) {
+		if ( holdings.getItems() == null ) {
 			// Constructor for Items class will initialize the ArrayList
 			//inst.setItems(new Items());
-			inst.setItems(new ArrayList<Item>());
+			holdings.setItems(new ArrayList<Item>());
 		}
 		
 	    Item item = new Item();		
@@ -679,8 +684,10 @@ public class LU_BuildInstance {
 					AccessInformation ai = new AccessInformation();
 					ai.setUri(new URI(URLs.get(0)));
 					itemcopy.setAccessInformation(ai);
-					itemcopy.setItemInstance(inst);
-					inst.getItems().add(itemcopy);
+					// itemcopy.setItemInstance(inst);
+					// inst.getItems().add(itemcopy);
+					itemcopy.setItemHoldings(holdings);
+					holdings.getItems().add(itemcopy);
 				}
 			}
 		} else {
@@ -689,12 +696,14 @@ public class LU_BuildInstance {
 			AccessInformation ai = new AccessInformation();
 			ai.setBarcode(itemID);
 			item.setAccessInformation(ai);
-			item.setItemInstance(inst);
-			inst.getItems().add(item);
+			//item.setItemInstance(inst);
+			//inst.getItems().add(item);
+			item.setItemHoldings(holdings);
+			holdings.getItems().add(item);
 		}
 	}
 	
-	public void buildHoldingsData(Record record, Instance inst, Map<String, List<String>> subfields, Record assocMFHDRec) {
+	public void buildHoldingsData(Record record, Bib bib, Map<String, List<String>> subfields, Record assocMFHDRec) {
 		// Use the first callNumber in the list to fill in some info 
 		
 	    // There should only be one subfield "a", as it's the item's call number and should be unique
@@ -771,7 +780,7 @@ public class LU_BuildInstance {
 	
 		
 		//inst.setResourceIdentifier(subfields.get("$a").get(0));
-		inst.setResourceIdentifier(LU_BuildOLELoadDocs.formatCatKey(record.getControlNumber())); // need to set this to what's in 001 of the bib to link them
+		//inst.setResourceIdentifier(LU_BuildOLELoadDocs.formatCatKey(record.getControlNumber())); // need to set this to what's in 001 of the bib to link them
 		//inst.setResourceIdentifier(LU_BuildOLELoadDocs.formatCatKey(callNumberFields.get(0)));
 
 		// Some records may have multiple 035 fields, ex "British Pacific Fleet experience and legacy, 1944-50"
@@ -801,7 +810,8 @@ public class LU_BuildInstance {
 		*/
 		
 		// Build up oleHoldings within instance
-		OLEHoldings oh = new OLEHoldings();
+		OLEHoldings oh = new OLEHoldings(bib);
+
 		List<String> nonpublicNoteType = Arrays.asList(".CIRCNOTE.", ".STAFF.");
 		List<String> publicNoteType = Arrays.asList(".PUBLIC.");
 	    List<String> commentfields = subfields.get("$o"); // TODO: figure out the split and regex, test this
@@ -912,30 +922,33 @@ public class LU_BuildInstance {
 	    		libraryName = libraryCodeToName.get(locationCodeToLibraryCode.get(locStr));	
 	    	}
 	    	shelvingStr = locationCodeToShelvingString.get(locStr);
-	    	Location location = new Location();
-	    	LocationLevel institution = new LocationLevel();
-	    	institution.setLevel("INSTITUTION");
+	    	
+	    	Location institution = new Location();
+	    	institution.setLevelId((long)LOC_INSTITUTION);
+	    	institution.setCode("LEHIGH");
 	    	institution.setName("Lehigh University");
 	    	
-	    	LocationLevel library = new LocationLevel();
-	    	library.setLevel("LIBRARY");
+	    	Location library = new Location();
+	    	library.setLevelId((long)LOC_LIBRARY);
 	    	library.setName(libraryName);
-	    	institution.setSubLocationLevel(library);
+	    	library.setParentLocation(institution);
 	    	
-	    	LocationLevel shelving = new LocationLevel();
-	    	shelving.setLevel("SHELVING");
+	    	Location shelving = new Location();
+	    	shelving.setLevelId((long)LOC_SHELVING);
 	    	shelving.setName(shelvingStr);
 	    	
 	    	if ( collectionCode != null ) {
-	    		LocationLevel collection = new LocationLevel();
-	    		collection.setLevel("COLLECTION");
+	    		Location collection = new Location();
+	    		collection.setLevelId((long)LOC_COLLECTION);
 	    		collection.setName(collectionName);
-	    		library.setSubLocationLevel(collection);
-	    		collection.setSubLocationLevel(shelving);
+	    		collection.setParentLocation(library);
+	    		shelving.setParentLocation(collection);
 	    	} else {
-	    		library.setSubLocationLevel(shelving);
+	    		shelving.setParentLocation(library);
 	    	}
-	    	location.setLocLevel(institution);
+
+    		oh.setLocationLevelStr("SHELVING");
+    		oh.setLocationStr(shelving.getName());
 	    	
 	    	/* old code 
 	    	LocationLevel locLevel1 = new LocationLevel();
@@ -952,11 +965,14 @@ public class LU_BuildInstance {
 	    		locLevel2.setSubLocationLevel(locLevel3);
 	    	}
 	    	location.setLocLevel(locLevel1);
-	    	*/
+	    	
+    		// Also old code ..
 	    	FlatLocation flatLoc = new FlatLocation();
 	    	flatLoc.setLevel("SHELVING");
 	    	flatLoc.setName(shelving.getName());
 		    oh.setLocation(flatLoc);
+		    
+		    */
 	    }		
 	    
     	LU_BuildOLELoadDocs.Log(System.out, "Adding callnumber info to instance holdings data", LU_BuildOLELoadDocs.LOG_DEBUG);
@@ -1019,8 +1035,11 @@ public class LU_BuildInstance {
 		oh.getExtentOfOwnership().add(extentOfOwnership);
     	LU_BuildOLELoadDocs.Log(System.out, "Done creating holdings data, adding to instance collection", LU_BuildOLELoadDocs.LOG_DEBUG);
 
-		inst.setOleHoldings(oh);
-		oh.setInstance(inst);
+    	bib.getHoldings().add(oh);
+    	
+    	this.buildItemsData(record, bib, oh, subfields);
+		//inst.setOleHoldings(oh);
+		//oh.setInstance(inst);
 	}
 	
 	/*

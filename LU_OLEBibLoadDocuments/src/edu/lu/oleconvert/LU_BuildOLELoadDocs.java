@@ -73,7 +73,8 @@ public class LU_BuildOLELoadDocs {
     public static final String OLEML_FORMAT = "oleml";
     public static final String CATEGORY_WORK = "work";
 
-    static final int LOG_DEBUG = 0, LOG_INFO = 1, LOG_WARN = 2, LOG_ERROR = 3; 
+    public static final int LOG_DEBUG = 0, LOG_INFO = 1, LOG_WARN = 2;
+	public static final int LOG_ERROR = 3; 
     private static int currentLogLevel = LOG_INFO;
     private static int defaultLogLevel = LOG_INFO;
 
