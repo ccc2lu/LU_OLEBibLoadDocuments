@@ -344,15 +344,26 @@ public class LU_DBLoadInstances {
 		String catkey = LU_DBLoadInstances.formatCatKey(record.getControlNumber()); // need to set this to what's in 001 of the bib to link them
 		Bib bib = new Bib(catkey);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
-    	//tmpserializer = new XMLSerializer();
+    	OutputFormat of = new OutputFormat("xml", "UTF-8", true);
+    	of.setOmitXMLDeclaration(true);
+    	XMLSerializer tmpserializer = new XMLSerializer(out, of);
     	//tmpserializer.setOutputFormat(of);
     	//tmpserializer.setOutputByteStream(out);
-    	//result = new SAXResult(tmpserializer.asContentHandler());
-        //writer = new MarcXmlWriter(result);
-		MarcWriter writer = new MarcXmlWriter(out, "ISO-8859-1");
-        writer.write(record);
-        //out.close();
-        writer.close();
+    	Result result;
+    	MarcWriter writer;
+		/*
+    	try {
+			result = new SAXResult(tmpserializer.asContentHandler());
+	        writer = new MarcXmlWriter(result);
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			LU_DBLoadInstances.Log(System.err, "Unable to create xml writer with custom output format", LOG_WARN);
+			e1.printStackTrace(System.err);
+			writer = new MarcXmlWriter(out, "ISO-8859-1");
+		}
+		*/
+		writer = new MarcXmlWriter(out, "ISO-8859-1");
+
         String marcXML;
         
         
@@ -368,10 +379,11 @@ public class LU_DBLoadInstances {
         // status may be any of the following: 0 (NOTEXT), 1 (INTEXT), 4 (UPDTEXT), 6 (LOCKTEXT), 1000 (USERLOCK)
         // MARC field 008 is "fixed length data elements and always seems to be populated
         String shadowed, status, dateCataloged, dateModified;
+        status = "Catalogued";
         if ( dateLine == null ) {
-        	System.err.println("ERROR: No mapping found for key " + catkey);
-        	System.err.println("Filling in additional attributes with empty strings");
-        	dateCataloged = dateModified = shadowed = status = "";
+        	Log(System.err, "ERROR: No mapping found for key " + catkey, LOG_ERROR);
+        	Log(System.err, "Filling in additional attributes with empty strings", LOG_ERROR);
+        	dateCataloged = dateModified = shadowed = "";
 
         } else {
         	String[] dateParts = dateLine.split("\\|");
@@ -382,7 +394,9 @@ public class LU_DBLoadInstances {
         	} else {
 
         		shadowed = dateParts[2].equals("1") ? "Y" : "N";
-        		status = StatusLookup.get(dateParts[3]);
+        		// The bib status values set by Sirsi don't seem to mean
+        		// anything to OLE
+        		//status = StatusLookup.get(dateParts[3]); 
         		if ( dateParts[5].equals("0") || dateParts[5].length() == 0 ) {
         			dateCataloged = "";
         		} else {
@@ -398,7 +412,13 @@ public class LU_DBLoadInstances {
         }
         
 		try {
+	        writer.write(record);
+	        //out.flush();
+	        out.close();
+	        writer.close();
 			marcXML = out.toString("ISO-8859-1");
+			String xmldecl = "<\\?xml version=\"1.0\" encoding=\"UTF-8\"\\?>";
+			marcXML = marcXML.replaceFirst(xmldecl, "");
 	        bib.setContent(marcXML);
 	        // We want to keep the IDs for the Bibs the same
 	        // bib.setId(Long.parseLong(catkey));
@@ -409,14 +429,18 @@ public class LU_DBLoadInstances {
 	        	bib.setDateUpdated(dateModified);
 	        }
 	        bib.setCreatedBy("BulkIngest-User");
-	        bib.setStatus(status);
+	        bib.setStatus(status);	        
 	        bib.setStaffOnly(shadowed);
 	        bib.setFastAdd("N");
+	        bib.setUniqueIdPrefix("wbm");
 		} catch (UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			bib = null;
-		} // ccc2 -- this is what we already have -- could be we just need
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return bib;
 	}
 }
