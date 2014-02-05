@@ -10,7 +10,7 @@ import javax.xml.bind.Marshaller;
 import org.apache.xml.serialize.OutputFormat;
 import org.apache.xml.serialize.XMLSerializer;
 
-import OLEBibLoadDocuments.edu.indiana.libraries.OLEBibLoadDocuments.classes.BuildRequestDocument;
+//import OLEBibLoadDocuments.edu.indiana.libraries.OLEBibLoadDocuments.classes.BuildRequestDocument;
 
 import edu.lu.oleconvert.locationingest.IngestLocation;
 import edu.lu.oleconvert.locationingest.LocationGroup;
@@ -60,7 +60,7 @@ public class LU_BuildLocationIngestDoc {
 			//LU_BuildOLELoadDocs.marshallObjext(lg, loc_marshaller, output);
 			System.out.println("Done creating location ingest document");
 		} catch(Exception e) {
-			LU_BuildOLELoadDocs.Log(System.err, "Unable to read in Lehigh locations: " + e.getMessage(), LU_BuildOLELoadDocs.LOG_ERROR);
+			LU_DBLoadInstances.Log(System.err, "Unable to read in Lehigh locations: " + e.getMessage(), LU_DBLoadInstances.LOG_ERROR);
 			e.printStackTrace(System.err);
 		}	
 	}

@@ -21,6 +21,7 @@ import javax.persistence.Table;
 import com.mysql.jdbc.Clob;
 
 import edu.lu.oleconvert.LU_BuildOLELoadDocs;
+import edu.lu.oleconvert.LU_DBLoadInstances;
 
 @Entity
 @Table(name="ole_ds_bib_t")
@@ -127,8 +128,8 @@ public class Bib implements Serializable {
 			// if there's no exception, then it's fine, assign the date created
 			this.dateCreated = dateCreated;
 		} catch(Exception e) {
-			LU_BuildOLELoadDocs.Log(System.err, "Unable to set bib record's created date from date string: " + dateCreated,
-					LU_BuildOLELoadDocs.LOG_ERROR);
+			LU_DBLoadInstances.Log(System.err, "Unable to set bib record's created date from date string: " + dateCreated,
+					LU_DBLoadInstances.LOG_ERROR);
 			this.dateCreated = datestr;
 		}
 	}

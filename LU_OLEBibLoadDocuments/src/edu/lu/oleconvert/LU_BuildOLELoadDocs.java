@@ -516,7 +516,7 @@ public class LU_BuildOLELoadDocs {
         // Date cataloged in the first one, last modified in the last, potentially
         // TODO: there has GOT to be a better way to get the data from 
         // the 001 field in one line than this:
-        String catkey = LU_BuildOLELoadDocs.formatCatKey(record.getVariableField("001").toString().split(" ")[1]);
+        String catkey = LU_DBLoadInstances.formatCatKey(record.getVariableField("001").toString().split(" ")[1]);
         //System.err.println("Looking for dates for record with catalog key " + catkey);
         String dateLine = (String) KeyToDate.get(catkey);
         

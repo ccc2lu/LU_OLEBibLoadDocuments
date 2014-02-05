@@ -6,6 +6,7 @@
 package edu.lu.oleconvert;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -123,65 +124,65 @@ public class LU_BuildInstance {
 		int i = 0;
 		List<List<String>> callNumberStrings;
 		List<List<String>> itemStrings;
-		LU_BuildOLELoadDocs.Log(output, "Printing hash maps ...");
-		LU_BuildOLELoadDocs.Log(output, "");
-		LU_BuildOLELoadDocs.Log(output, "Call numbers by catalog key ...");
+		LU_DBLoadInstances.Log(output, "Printing hash maps ...");
+		LU_DBLoadInstances.Log(output, "");
+		LU_DBLoadInstances.Log(output, "Call numbers by catalog key ...");
 		for ( String catkey : callNumbersByCatalogKey.keySet() ) {
 			callNumberStrings = callNumbersByCatalogKey.get(catkey);
-			LU_BuildOLELoadDocs.Log(output, "Catalog key: " + catkey + ", number of callnumbers: " + callNumberStrings.size());
+			LU_DBLoadInstances.Log(output, "Catalog key: " + catkey + ", number of callnumbers: " + callNumberStrings.size());
 			for ( List<String> callNumberStr : callNumberStrings ) {
-				LU_BuildOLELoadDocs.Log(output, "Call number by catalog key " + catkey + ": " + 
+				LU_DBLoadInstances.Log(output, "Call number by catalog key " + catkey + ": " + 
 			                        	StringUtils.join(callNumberStr.toArray(), ","));
 			}
-			LU_BuildOLELoadDocs.Log(output, "");
+			LU_DBLoadInstances.Log(output, "");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
 		}
 		
 		i = 0;
-		LU_BuildOLELoadDocs.Log(output, "");
-		LU_BuildOLELoadDocs.Log(output, "Call numbers by item number (actual call number) ...");
+		LU_DBLoadInstances.Log(output, "");
+		LU_DBLoadInstances.Log(output, "Call numbers by item number (actual call number) ...");
 		for ( String itemnumber : callNumbersByItemNumber.keySet() ) {
 			callNumberStrings = callNumbersByItemNumber.get(itemnumber);
-			LU_BuildOLELoadDocs.Log(output, "Item number: " + itemnumber + ", number of callnumbers: " + callNumberStrings.size());
+			LU_DBLoadInstances.Log(output, "Item number: " + itemnumber + ", number of callnumbers: " + callNumberStrings.size());
 			for ( List<String> callNumberStr : callNumberStrings ) {
-				LU_BuildOLELoadDocs.Log(output, "Call number by itemnumber " + itemnumber + ": " + 
+				LU_DBLoadInstances.Log(output, "Call number by itemnumber " + itemnumber + ": " + 
 			                        	StringUtils.join(callNumberStr.toArray(), ","));
 			}
-			LU_BuildOLELoadDocs.Log(output, "");
+			LU_DBLoadInstances.Log(output, "");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
 		}
 
 		i = 0;
-		LU_BuildOLELoadDocs.Log(output, "");
-		LU_BuildOLELoadDocs.Log(output, "Items by catalog key ...");
+		LU_DBLoadInstances.Log(output, "");
+		LU_DBLoadInstances.Log(output, "Items by catalog key ...");
 		for ( String catkey : itemsByCatalogKey.keySet() ) {
 			itemStrings = itemsByCatalogKey.get(catkey);
-			LU_BuildOLELoadDocs.Log(output, "Catalog key: " + catkey + ", number of items: " + itemStrings.size());
+			LU_DBLoadInstances.Log(output, "Catalog key: " + catkey + ", number of items: " + itemStrings.size());
 			for ( List<String> itemStr : itemStrings ) {
-				LU_BuildOLELoadDocs.Log(output, "Item by catalog key " + catkey + ": " + 
+				LU_DBLoadInstances.Log(output, "Item by catalog key " + catkey + ": " + 
 			                        	StringUtils.join(itemStr.toArray(), ","));
 			}
-			LU_BuildOLELoadDocs.Log(output, "");
+			LU_DBLoadInstances.Log(output, "");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
 		}
 
 		i = 0;
-		LU_BuildOLELoadDocs.Log(output, "");
-		LU_BuildOLELoadDocs.Log(output, "Items by Item ID ...");
+		LU_DBLoadInstances.Log(output, "");
+		LU_DBLoadInstances.Log(output, "Items by Item ID ...");
 		for ( String itemID : itemsByID.keySet() ) {
 			itemStrings = itemsByID.get(itemID);
-			LU_BuildOLELoadDocs.Log(output, "Item ID: " + itemID + ", number of items: " + itemStrings.size());
+			LU_DBLoadInstances.Log(output, "Item ID: " + itemID + ", number of items: " + itemStrings.size());
 			for ( List<String> itemStr : itemStrings ) {
-				LU_BuildOLELoadDocs.Log(output, "Item by ID " + itemID + ": " + 
+				LU_DBLoadInstances.Log(output, "Item by ID " + itemID + ": " + 
 			                        	StringUtils.join(itemStr.toArray(), ","));
 			}
-			LU_BuildOLELoadDocs.Log(output, "");
+			LU_DBLoadInstances.Log(output, "");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
@@ -213,7 +214,7 @@ public class LU_BuildInstance {
 				}
 			}
 		} catch(Exception e) {
-			LU_BuildOLELoadDocs.Log(System.err, "Unable to read in Lehigh locations: " + e.getMessage(), LU_BuildOLELoadDocs.LOG_ERROR);
+			LU_DBLoadInstances.Log(System.err, "Unable to read in Lehigh locations: " + e.getMessage(), LU_DBLoadInstances.LOG_ERROR);
 			e.printStackTrace(System.err);
 		}
 	}
@@ -238,14 +239,16 @@ public class LU_BuildInstance {
 		BufferedReader callNumbersReader, shelvingKeysReader, itemNumbersReader, analyticsReader, itemsReader;
 
 		try {
+			File callNumbersFile = new File(callNumbersFilename);
         	callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
         	shelvingKeysReader = new BufferedReader(new FileReader(shelvingKeysFilename));
         	itemNumbersReader = new BufferedReader(new FileReader(itemNumbersFilename));
         	analyticsReader = new BufferedReader(new FileReader(analyticsFilename));
         	itemsReader = new BufferedReader(new FileReader(itemsFilename));
-        	LU_BuildOLELoadDocs.Log("Building hashmap of call number records by call number key " + 
+        	LU_DBLoadInstances.Log("Building hashmap of call number records by call number key " + 
         					   		"and by call number (called \"item number\" by Sirsi) ...");
-        	String workingdir = "/mnt/bigdrive/bibdata/sirsidump/20131211";
+        	//String workingdir = "/mnt/bigdrive/bibdata/sirsidump/20131211";
+        	String workingdir = callNumbersFile.getParent();
         	PrintWriter writer = new PrintWriter(workingdir + "/testoutput.txt", "UTF-8");
         	int curr = 0, increment = 100000;
         	while(callNumbersReader.ready() && (limit < 0 || curr < limit)) {
@@ -320,7 +323,7 @@ public class LU_BuildInstance {
         			callnumber = m.replaceAll(replacement);
         		}
         		*/
-        		LU_BuildOLELoadDocs.Log(writer, "Putting call number into hash, key is " + callnumber, LU_BuildOLELoadDocs.LOG_DEBUG);
+        		LU_DBLoadInstances.Log(writer, "Putting call number into hash, key is " + callnumber, LU_DBLoadInstances.LOG_DEBUG);
         		if ( this.callNumbersByItemNumber.get(callnumber) == null) {
         			List<List<String>> callNumberStrs = new ArrayList<List<String>>();
         			callNumberStrs.add(callNumberFields);
@@ -329,10 +332,10 @@ public class LU_BuildInstance {
         			callNumbersByItemNumber.get(callnumber).add(callNumberFields);
         		}
         		if ( ++curr % increment == 0 ) {
-        			LU_BuildOLELoadDocs.Log(System.out, "On call number " + curr, LU_BuildOLELoadDocs.LOG_INFO);
+        			LU_DBLoadInstances.Log(System.out, "On call number " + curr, LU_DBLoadInstances.LOG_INFO);
         		}
         	}
-        	LU_BuildOLELoadDocs.Log("Building hashmap of item records by catalog key and by Item ID ...");
+        	LU_DBLoadInstances.Log("Building hashmap of item records by catalog key and by Item ID ...");
         	curr = 0;
         	while(itemsReader.ready() && (limit < 0 || curr < limit)) {
         		// Only one file to read from this time
@@ -357,13 +360,13 @@ public class LU_BuildInstance {
         			itemsByID.get(itemID).add(itemNumberFields);
         		}
         		if ( ++curr % increment == 0 ) {
-        			LU_BuildOLELoadDocs.Log(System.out, "On item number " + curr, LU_BuildOLELoadDocs.LOG_INFO);
+        			LU_DBLoadInstances.Log(System.out, "On item number " + curr, LU_DBLoadInstances.LOG_INFO);
         		}
         		
         	}
-        	LU_BuildOLELoadDocs.Log("Done building hashmaps");
+        	LU_DBLoadInstances.Log("Done building hashmaps");
 		} catch(Exception e) {
-			LU_BuildOLELoadDocs.Log(System.err, "Unable to read in call numbers and items: " + e.getMessage(), LU_BuildOLELoadDocs.LOG_ERROR);
+			LU_DBLoadInstances.Log(System.err, "Unable to read in call numbers and items: " + e.getMessage(), LU_DBLoadInstances.LOG_ERROR);
 			e.printStackTrace(System.err);
 		}
 	}
@@ -385,7 +388,7 @@ public class LU_BuildInstance {
 			marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
 			marshaller.marshal(ic, System.out);
 		} catch(Exception e) {
-			LU_BuildOLELoadDocs.Log(System.err, "Unable to marshall instance collection: " + e.getMessage(), LU_BuildOLELoadDocs.LOG_ERROR);
+			LU_DBLoadInstances.Log(System.err, "Unable to marshall instance collection: " + e.getMessage(), LU_DBLoadInstances.LOG_ERROR);
 			e.printStackTrace(System.err);
 		}
 	}
@@ -448,8 +451,8 @@ public class LU_BuildInstance {
 					if ( subfields.get("$c") != null && subfields.get("$c").size() > 0 ) {
 						rectype = subfields.get("$c").get(0);
 					} else {
-						LU_BuildOLELoadDocs.Log(System.err, "MFHD Record with 852 field and no $c subfield: " + MFHDrec.toString(), 
-								LU_BuildOLELoadDocs.LOG_WARN);
+						LU_DBLoadInstances.Log(System.err, "MFHD Record with 852 field and no $c subfield: " + MFHDrec.toString(), 
+								LU_DBLoadInstances.LOG_WARN);
 						rectype = "LEHIGH"; // seems like a sensible default, given what's in the data
 					}
 				} else {
@@ -478,7 +481,7 @@ public class LU_BuildInstance {
 				
 				// Now loop over the mfhd_itemsholdings and call buildHoldingsData and buildItemsData, like below
 				for ( VariableField field : mfhd_itemsholdings ) {
-					//Instance inst = new Instance(LU_BuildOLELoadDocs.formatCatKey(record.getControlNumber()));
+					//Instance inst = new Instance(LU_DBLoadInstances.formatCatKey(record.getControlNumber()));
 
 					subfields = this.getSubfields(field);			
 					this.buildHoldingsData(record, bib, subfields, MFHDrec); // this will be based on the MFHDrec, and will
@@ -491,7 +494,7 @@ public class LU_BuildInstance {
 		} else {
 			// No MFHD records, just loop over the 999 fields of the bib record, which represent items
 			for ( VariableField field : itemsholdings ) {
-				Instance inst = new Instance(LU_BuildOLELoadDocs.formatCatKey(record.getControlNumber()));
+				Instance inst = new Instance(LU_DBLoadInstances.formatCatKey(record.getControlNumber()));
 				
 				Map<String, List<String>> subfields = this.getSubfields(field);			
 				//List<String> itemnumber = subfields.get("$a"); // I think that's the subfield code, check that
@@ -537,20 +540,20 @@ public class LU_BuildInstance {
 		if ( (subfields.get("$i").size() != 1) ||
 			 ( itemsByID.get(itemID) != null && 
 			   itemsByID.get(itemID).size() != 1 ) ) {
-			LU_BuildOLELoadDocs.Log(System.err, "Bar code number (item ID) not unique for item: " + subfields.toString(), 
-									LU_BuildOLELoadDocs.LOG_ERROR);			
+			LU_DBLoadInstances.Log(System.err, "Bar code number (item ID) not unique for item: " + subfields.toString(), 
+									LU_DBLoadInstances.LOG_ERROR);			
 		}
-		LU_BuildOLELoadDocs.Log(System.out, "Looking for item !" + itemID + "!", LU_BuildOLELoadDocs.LOG_DEBUG);
-		LU_BuildOLELoadDocs.Log(System.out, "Subfields: ", LU_BuildOLELoadDocs.LOG_DEBUG);
+		LU_DBLoadInstances.Log(System.out, "Looking for item !" + itemID + "!", LU_DBLoadInstances.LOG_DEBUG);
+		LU_DBLoadInstances.Log(System.out, "Subfields: ", LU_DBLoadInstances.LOG_DEBUG);
 		for ( String key : subfields.keySet() ) {
 			List<String> fields = subfields.get(key);
 			for ( String value : fields ) {
-				LU_BuildOLELoadDocs.Log(System.out, "	" + key + ": " + value, LU_BuildOLELoadDocs.LOG_DEBUG);
+				LU_DBLoadInstances.Log(System.out, "	" + key + ": " + value, LU_DBLoadInstances.LOG_DEBUG);
 			}
 		}
 		List<String> itemString = null;
 	    if ( this.itemsByID.get(itemID) == null || itemsByID.get(itemID).size() == 0 ) {
-	    	LU_BuildOLELoadDocs.Log(System.err, "No item in itemsByID map for ID " + itemID + ", record: " + record.toString(), LU_BuildOLELoadDocs.LOG_ERROR);
+	    	LU_DBLoadInstances.Log(System.err, "No item in itemsByID map for ID " + itemID + ", record: " + record.toString(), LU_DBLoadInstances.LOG_ERROR);
 	    	itemString = new ArrayList<String>();
 	    } else {
 	    	itemString = this.itemsByID.get(itemID).get(0);
@@ -558,7 +561,7 @@ public class LU_BuildInstance {
 		// 
 	    
 	    if ( this.itemsByID.get(itemID) == null ) {
-	    	LU_BuildOLELoadDocs.Log(System.err, "No item in itemsByID map for ID " + itemID + ", record: " + record.toString(), LU_BuildOLELoadDocs.LOG_ERROR);
+	    	LU_DBLoadInstances.Log(System.err, "No item in itemsByID map for ID " + itemID + ", record: " + record.toString(), LU_DBLoadInstances.LOG_ERROR);
 	    }
 		// The field order of the itemString is described here:		
 		// The contents of the items file was produced by this command:
@@ -638,8 +641,8 @@ public class LU_BuildInstance {
 				item.setItemStatus(new ItemStatus(itemstatus, itemstatus));
 			}
 		} else {
-			LU_BuildOLELoadDocs.Log(System.err, "No itemstring for item " + itemID + ", not assigning status", 
-					LU_BuildOLELoadDocs.LOG_WARN);
+			LU_DBLoadInstances.Log(System.err, "No itemstring for item " + itemID + ", not assigning status", 
+					LU_DBLoadInstances.LOG_WARN);
 			item.setItemStatus(new ItemStatus("NONE", "NONE"));
 		}
 		// If it were "reserve status", then we'd use this:
@@ -710,16 +713,16 @@ public class LU_BuildInstance {
 	    // And there should be only 1 call number with that "item number" in Sirsi, so we can just get the first
 	    // element of each of those lists
 		String callnumberstr = subfields.get("$a").get(0).trim();
-		LU_BuildOLELoadDocs.Log(System.out, "Building holdings data for item !" + callnumberstr + "!", LU_BuildOLELoadDocs.LOG_DEBUG);
-		LU_BuildOLELoadDocs.Log(System.out, "Subfields: ", LU_BuildOLELoadDocs.LOG_DEBUG);
+		LU_DBLoadInstances.Log(System.out, "Building holdings data for item !" + callnumberstr + "!", LU_DBLoadInstances.LOG_DEBUG);
+		LU_DBLoadInstances.Log(System.out, "Subfields: ", LU_DBLoadInstances.LOG_DEBUG);
 		for ( String key : subfields.keySet() ) {
 			List<String> fields = subfields.get(key);
 			for ( String value : fields ) {
-				LU_BuildOLELoadDocs.Log(System.out, "	" + key + ": " + value, LU_BuildOLELoadDocs.LOG_DEBUG);
+				LU_DBLoadInstances.Log(System.out, "	" + key + ": " + value, LU_DBLoadInstances.LOG_DEBUG);
 			}
 		}
 		if ( assocMFHDRec != null ) {
-			LU_BuildOLELoadDocs.Log(System.out, "Associated MFHD record: " + assocMFHDRec.toString(), LU_BuildOLELoadDocs.LOG_DEBUG);
+			LU_DBLoadInstances.Log(System.out, "Associated MFHD record: " + assocMFHDRec.toString(), LU_DBLoadInstances.LOG_DEBUG);
 		}
 		Pattern p = Pattern.compile("<U\\+([0-9|a-z]+)>");
 		Matcher m;		
@@ -737,8 +740,8 @@ public class LU_BuildInstance {
 
 		List<String> callNumberFields = new ArrayList<String>();
 		if ( callNumbersByItemNumber.get(callnumberstr) == null ) {
-			LU_BuildOLELoadDocs.Log(System.err, "No call number exists for item: " + subfields.toString(),
-					LU_BuildOLELoadDocs.LOG_ERROR);
+			LU_DBLoadInstances.Log(System.err, "No call number exists for item: " + subfields.toString(),
+					LU_DBLoadInstances.LOG_ERROR);
 		} else {
 			callNumberFields = this.callNumbersByItemNumber.get(callnumberstr).get(0);			
 		}
@@ -746,8 +749,8 @@ public class LU_BuildInstance {
 			// TODO: not sure how to handle this -- it comes up a lot
 				(callNumbersByItemNumber.get(callnumberstr) != null && 
 				 callNumbersByItemNumber.get(callnumberstr).size() != 1) ) {
-			LU_BuildOLELoadDocs.Log(System.err, "Call number (item number) not unique for item: " + subfields.toString(),
-									LU_BuildOLELoadDocs.LOG_DEBUG);
+			LU_DBLoadInstances.Log(System.err, "Call number (item number) not unique for item: " + subfields.toString(),
+									LU_DBLoadInstances.LOG_DEBUG);
 			// TODO: print list of callNumbers for this item number
 		}
 
@@ -780,8 +783,8 @@ public class LU_BuildInstance {
 	
 		
 		//inst.setResourceIdentifier(subfields.get("$a").get(0));
-		//inst.setResourceIdentifier(LU_BuildOLELoadDocs.formatCatKey(record.getControlNumber())); // need to set this to what's in 001 of the bib to link them
-		//inst.setResourceIdentifier(LU_BuildOLELoadDocs.formatCatKey(callNumberFields.get(0)));
+		//inst.setResourceIdentifier(LU_DBLoadInstances.formatCatKey(record.getControlNumber())); // need to set this to what's in 001 of the bib to link them
+		//inst.setResourceIdentifier(LU_DBLoadInstances.formatCatKey(callNumberFields.get(0)));
 
 		// Some records may have multiple 035 fields, ex "British Pacific Fleet experience and legacy, 1944-50"
 		/* Taking this out, as it looks like there isn't a former identifier set associated with an instance anymore
@@ -816,7 +819,7 @@ public class LU_BuildInstance {
 		List<String> publicNoteType = Arrays.asList(".PUBLIC.");
 	    List<String> commentfields = subfields.get("$o"); // TODO: figure out the split and regex, test this
 	    if ( commentfields != null && commentfields.size() > 0 ) {
-	    	LU_BuildOLELoadDocs.Log(System.out, "Adding " + commentfields.size() + " comments to instance", LU_BuildOLELoadDocs.LOG_DEBUG);
+	    	LU_DBLoadInstances.Log(System.out, "Adding " + commentfields.size() + " comments to instance", LU_DBLoadInstances.LOG_DEBUG);
 	    	for ( String comment : commentfields ) {
 	    		// Keep the delimiter on the preceding element of the split array
 	    		OLEHoldingsNote note = new OLEHoldingsNote();
@@ -828,9 +831,9 @@ public class LU_BuildInstance {
 	    		String commentstr = StringUtils.join(Arrays.asList(pieces).subList(1, pieces.length));
 	    		/*
 	    		if ( pieces.length != 2 ) {
-	    			LU_BuildOLELoadDocs.Log(System.err, "Badly formatted comment: " + comment, LU_BuildOLELoadDocs.LOG_ERROR);
+	    			LU_DBLoadInstances.Log(System.err, "Badly formatted comment: " + comment, LU_DBLoadInstances.LOG_ERROR);
 	    			for (String piece : pieces ) {
-	    				LU_BuildOLELoadDocs.Log(System.err, "Piece: " + piece, LU_BuildOLELoadDocs.LOG_ERROR);
+	    				LU_DBLoadInstances.Log(System.err, "Piece: " + piece, LU_DBLoadInstances.LOG_ERROR);
 	    				System.out.println("Piece: " + piece);
 	    			}
 	    			
@@ -843,7 +846,7 @@ public class LU_BuildInstance {
 	    		} else if ( publicNoteType.contains(pieces[0].trim())) {
 	    			note.setType("public");
 	    		} else {
-	    			LU_BuildOLELoadDocs.Log(System.err, "Unknown type of comment: " + comment, LU_BuildOLELoadDocs.LOG_WARN);
+	    			LU_DBLoadInstances.Log(System.err, "Unknown type of comment: " + comment, LU_DBLoadInstances.LOG_WARN);
 	    		}
 	    		note.setNote(commentstr);
 	    		note.setOLEHoldings(oh);
@@ -853,7 +856,7 @@ public class LU_BuildInstance {
 	    
 	    ArrayList<VariableField> uriFields = (ArrayList<VariableField>) record.getVariableFields("856");
 	    if ( uriFields != null && uriFields.size() > 0 ){
-	    	LU_BuildOLELoadDocs.Log(System.out, "Adding " + uriFields.size() + " URIs to instance holdings data", LU_BuildOLELoadDocs.LOG_DEBUG);
+	    	LU_DBLoadInstances.Log(System.out, "Adding " + uriFields.size() + " URIs to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
 	    	for ( VariableField uriField : uriFields ) {
 	    		tmpsubfields = this.getSubfields(uriField);
 	    		if ( tmpsubfields.get("$u") != null ) {
@@ -873,8 +876,8 @@ public class LU_BuildInstance {
 	    			oh.getAccessURIs().add(uri);	    				    			
 	    		}
 	    		if ( oh.getAccessURIs().size() == 0 ) {
-	    			LU_BuildOLELoadDocs.Log(System.err, "856 with no $u or $a subfields for record " + record.getControlNumber() + 
-	    						        ", 856 field is" + uriField.toString(), LU_BuildOLELoadDocs.LOG_WARN);	    			
+	    			LU_DBLoadInstances.Log(System.err, "856 with no $u or $a subfields for record " + record.getControlNumber() + 
+	    						        ", 856 field is" + uriField.toString(), LU_DBLoadInstances.LOG_WARN);	    			
 	    		}
 	    	}
 	    	
@@ -885,7 +888,7 @@ public class LU_BuildInstance {
 	    if ( locStr.equals(ELECTRONIC_RESOURCE) ) {
 	    	// No location to fill in ...
 	    } else {
-	    	LU_BuildOLELoadDocs.Log(System.out, "Adding location information to instance holdings data", LU_BuildOLELoadDocs.LOG_DEBUG);
+	    	LU_DBLoadInstances.Log(System.out, "Adding location information to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
 	    	/*
 	    	String[] locPieces = locStr.split("-|_");
 	    	if ( locPieces.length == 3 ) {
@@ -975,7 +978,7 @@ public class LU_BuildInstance {
 		    */
 	    }		
 	    
-    	LU_BuildOLELoadDocs.Log(System.out, "Adding callnumber info to instance holdings data", LU_BuildOLELoadDocs.LOG_DEBUG);
+    	LU_DBLoadInstances.Log(System.out, "Adding callnumber info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
 	    CallNumber cn = new CallNumber();
 	    // Same as the shelvingscheme for now
 	    String cntype = subfields.get("$w").get(0);
@@ -1000,13 +1003,13 @@ public class LU_BuildInstance {
 		if ( assocMFHDRec != null ) {
 			VariableField eightsixsix = assocMFHDRec.getVariableField("866");
 			if ( eightsixsix != null ) {
-		    	LU_BuildOLELoadDocs.Log(System.out, "Adding extent of ownership info to instance holdings data", LU_BuildOLELoadDocs.LOG_DEBUG);				
+		    	LU_DBLoadInstances.Log(System.out, "Adding extent of ownership info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);				
 				tmpsubfields = this.getSubfields(eightsixsix);
-				LU_BuildOLELoadDocs.Log(System.out, "Subfields of 866 for MFHD record: ", LU_BuildOLELoadDocs.LOG_DEBUG);
+				LU_DBLoadInstances.Log(System.out, "Subfields of 866 for MFHD record: ", LU_DBLoadInstances.LOG_DEBUG);
 				for ( String key : tmpsubfields.keySet() ) {
 					List<String> fields = tmpsubfields.get(key);
 					for ( String value : fields ) {
-						LU_BuildOLELoadDocs.Log(System.out, "	" + key + ": " + value, LU_BuildOLELoadDocs.LOG_DEBUG);
+						LU_DBLoadInstances.Log(System.out, "	" + key + ": " + value, LU_DBLoadInstances.LOG_DEBUG);
 					}
 				}			
 				// Should only be one 866 field with one "$a" subfield
@@ -1033,7 +1036,7 @@ public class LU_BuildInstance {
 		}
 		extentOfOwnership.setOLEHoldings(oh);
 		oh.getExtentOfOwnership().add(extentOfOwnership);
-    	LU_BuildOLELoadDocs.Log(System.out, "Done creating holdings data, adding to instance collection", LU_BuildOLELoadDocs.LOG_DEBUG);
+    	LU_DBLoadInstances.Log(System.out, "Done creating holdings data, adding to instance collection", LU_DBLoadInstances.LOG_DEBUG);
 
     	bib.getHoldings().add(oh);
     	

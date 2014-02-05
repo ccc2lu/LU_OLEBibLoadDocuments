@@ -10,7 +10,7 @@
 			<property name="hibernate.connection.driver_class" value="com.mysql.jdbc.Driver"/>
 			<property name="hibernate.connection.username" value="testuser"/>
 			<property name="hibernate.connection.password" value="testuserpw"/>
-            <property name="hibernate.connection.url" value="jdbc:mysql://localhost/oledocstore"/>
+            <property name="hibernate.connection.url" value="jdbc:mysql://localhost/ole"/>
             <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
             <property name="hibernate.c3p0.min_size" value="5"/>
             <property name="hibernate.c3p0.max_size" value="20"/>

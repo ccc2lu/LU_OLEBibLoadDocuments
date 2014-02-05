@@ -12,7 +12,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="/home/ccc2/dev/ole_convert_lib/marc4j-2.6.0.jar"/>
-	<classpathentry kind="lib" path="/home/ccc2/dev/ole_convert_lib/olebibloadfile.jar"/>
 	<classpathentry kind="lib" path="/home/ccc2/dev/ole_convert_lib/xercesImpl.jar" sourcepath="/home/ccc2/.m2/repository/xerces/xercesImpl/2.11.0/xercesImpl-2.11.0-sources.jar"/>
 	<classpathentry kind="lib" path="/home/ccc2/dev/ole_convert_lib/jaxb-impl-2.1.13.jar"/>
 	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
