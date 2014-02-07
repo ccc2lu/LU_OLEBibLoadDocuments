@@ -529,7 +529,9 @@ public class LU_BuildInstance {
 		}
 		
 	    Item item = new Item();		
-
+	    item.setClaimsReturnedFlag("N"); // Apparently there has to be a value here or the docstore
+	    // REST API gives a NullPointerException ...
+	    
 	    // There should only be one subfield "i", as it's the item's barcode and should be unique
 	    // And there should be only 1 item with that item ID, so we can just get the first
 	    // element of each of those lists
@@ -814,7 +816,12 @@ public class LU_BuildInstance {
 		
 		// Build up oleHoldings within instance
 		OLEHoldings oh = new OLEHoldings(bib);
-
+		oh.setStaffOnly(bib.getStaffOnly());
+		//oh.setHoldingsType(holdingsType); // TODO: should we be doing this here?
+		// the way i've been interpreting it, holdings don't have types.  items do.
+		// it's at the item level that we say whether something is electronic or physical
+		// we could create separate holdings for the electronic ones, but aren't currently
+		
 		List<String> nonpublicNoteType = Arrays.asList(".CIRCNOTE.", ".STAFF.");
 		List<String> publicNoteType = Arrays.asList(".PUBLIC.");
 	    List<String> commentfields = subfields.get("$o"); // TODO: figure out the split and regex, test this

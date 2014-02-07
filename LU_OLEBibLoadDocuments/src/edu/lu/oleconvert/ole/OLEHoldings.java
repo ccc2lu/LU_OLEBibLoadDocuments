@@ -79,6 +79,8 @@ public class OLEHoldings implements Serializable {
 	private String statusDate;
 	private String eResourceId;
 	private String sourceHoldingsContent;
+	private String staffOnly;
+	private String holdingsType;
 	
 	public OLEHoldings() {
 		super();
@@ -109,6 +111,14 @@ public class OLEHoldings implements Serializable {
 	public OLEHoldings(Instance i) {
 		this();
 		this.setInstance(i);
+	}
+	
+	@Column(name="STAFF_ONLY")
+	public String getStaffOnly() {
+		return this.staffOnly;
+	}
+	public void setStaffOnly(String staffOnly) {
+		this.staffOnly = staffOnly;
 	}
 	
 	@Column(name="LOCATION")
@@ -468,6 +478,14 @@ public class OLEHoldings implements Serializable {
 	}
 	public void setBibId(Long bibId) {
 		this.bibId = bibId;
+	}
+
+	@Column(name="HOLDINGS_TYPE")
+	public String getHoldingsType() {
+		return holdingsType;
+	}
+	public void setHoldingsType(String holdingsType) {
+		this.holdingsType = holdingsType;
 	}
 
 	/*

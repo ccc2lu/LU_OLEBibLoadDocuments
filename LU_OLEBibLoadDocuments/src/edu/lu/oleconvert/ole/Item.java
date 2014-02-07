@@ -186,6 +186,9 @@ public class Item implements Serializable {
 		this.accessInformation = i.getAccessInformation();
 		itemStatus = i.getItemStatus();
 		this.itemHoldings = i.getItemHoldings();
+		this.claimsReturnedFlag = i.getClaimsReturnedFlag();
+		this.claimsReturnedFlagCreateDate = i.getClaimsReturnedFlagCreateDate();
+		this.claimsReturnedNote = i.getClaimsReturnedNote();
 	}
 	
 	@ManyToOne
