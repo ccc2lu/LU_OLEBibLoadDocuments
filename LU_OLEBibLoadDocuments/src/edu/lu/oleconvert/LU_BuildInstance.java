@@ -23,6 +23,8 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.management.Query;
+import javax.persistence.TypedQuery;
 import javax.xml.*;
 import javax.xml.bind.JAXB;
 import javax.xml.bind.JAXBContext;
@@ -618,15 +620,13 @@ public class LU_BuildInstance {
 		fids.add(fi);
 		item.setFormerIdentifiers(fids);
 		
-		ItemType type = new ItemType();
-		String itemtype = subfields.get("$t").get(0);
-		// Commenting out setting the itemType's codeValue, since OLE's bulk ingest
+		ItemType type;
+		String itemtypestr = subfields.get("$t").get(0);
+		item.setItemType(itemtypestr, itemtypestr);
+		// 	Commenting out setting the itemType's codeValue, since OLE's bulk ingest
 		// choked on the field
 		//type.setCodeValue(subfields.get("$t").get(0)); // should be only one of these
-		type.setCode(itemtype);
-		type.setName(itemtype);
 		// Don't worry about the typeOrSource of the itemType, not sure what that would be
-		item.setItemType(type);
 		
 		// should also only be one of these
 		item.setCopyNumber(subfields.get("$c").get(0));
@@ -640,12 +640,12 @@ public class LU_BuildInstance {
 		if ( itemString.size() > 0 ) {
 			String itemstatus = itemString.get(28);
 			if ( itemstatus != null ) {
-				item.setItemStatus(new ItemStatus(itemstatus, itemstatus));
+				item.setItemStatus(itemstatus, itemstatus);
 			}
 		} else {
 			LU_DBLoadInstances.Log(System.err, "No itemstring for item " + itemID + ", not assigning status", 
 					LU_DBLoadInstances.LOG_WARN);
-			item.setItemStatus(new ItemStatus("NONE", "NONE"));
+			item.setItemStatus("NONE", "NONE");
 		}
 		// If it were "reserve status", then we'd use this:
 		//item.setItemStatus(itemString.get(28));
@@ -665,6 +665,46 @@ public class LU_BuildInstance {
 			item.setPrice(subfields.get("$p").get(0));
 		}	
 		
+		// Items can override the location from the containing OLE Holdings
+	    String locStr = subfields.get("$l").get(0);
+	    if ( locStr.equals(ELECTRONIC_RESOURCE) ) {
+	    	// No location to fill in ...
+	    } else {
+	    	LU_DBLoadInstances.Log(System.out, "Adding location information to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
+	    	/*
+	    	String[] locPieces = locStr.split("-|_");
+	    	if ( locPieces.length == 3 ) {
+	    		libraryName = libraryCodeToName.get(locPieces[0]);
+	    		if ( locPieces[1].equals("SPCOLL") ) {
+	    			shelvingStr = "Special Collections, " + locPieces[2];
+	    		} else if ( locPieces[1].equals("JRNL") ) {
+	    			shelvingStr = "Journal " + locPieces[2];
+	    		} else {
+	    			if ( locPieces[2].equals("O") ) {
+	    				// Not sure what to do with location code L-3ROTND-O or L-4STACK-O yet,
+	    				// so I'm just throwing away the "-O" part and assuming it should have been
+	    				// L-3-ROTNDA and L-4-STACKS
+	    				locPieces[1] = locPieces[1].substring(0, 1);
+	    				locPieces[2] = locPieces[1].substring(1) + "Oversize";
+	    			}
+	    			shelvingStr = floorToName(locPieces[1]) + " " + locPieces[2];
+	    		}
+	    	} else if ( locPieces.length == 2 ) {
+	    		libraryName = libraryCodeToName.get(locPieces[0]);
+	    		shelvingStr = locPieces[1];
+	    	} else if ( locPieces[0].equals("LMCJOURNAL") ){
+	    		libraryName = "LMC";
+	    		shelvingStr = "JOURNAL";
+	    	} else {
+	    		libraryName = locStr;
+	    	}
+			*/
+
+	    	FlatLocation loc = new FlatLocation();
+	    	loc.setLevel("SHELVING");
+	    	loc.setName(getLocationName(locStr));
+		    item.setLocation(loc);
+	    }
 		// TODO: go over these with Doreen
 		// Fields not used:
 		// copyNumberLabel, volumeNumber, volumneNumberLabel, enumeration
@@ -889,9 +929,9 @@ public class LU_BuildInstance {
 	    	}
 	    	
 	    }
+
 		// Items can override the location from the containing OLE Holdings
 	    String locStr = subfields.get("$l").get(0);
-    	String libraryName = "", shelvingStr = "", collectionCode = "", collectionName = "";
 	    if ( locStr.equals(ELECTRONIC_RESOURCE) ) {
 	    	// No location to fill in ...
 	    } else {
@@ -924,41 +964,9 @@ public class LU_BuildInstance {
 	    		libraryName = locStr;
 	    	}
 			*/
-	    	collectionCode = locationCodeToCollectionCode.get(locStr);
-	    	if (collectionCode != null) {
-		    	collectionName = collectionCodeToName.get(collectionCode);
-		    	libraryName = this.libraryCodeToName.get(collectionCodeToLibraryCode.get(collectionCode));
-	    	} else {
-	    		libraryName = libraryCodeToName.get(locationCodeToLibraryCode.get(locStr));	
-	    	}
-	    	shelvingStr = locationCodeToShelvingString.get(locStr);
-	    	
-	    	Location institution = new Location();
-	    	institution.setLevelId((long)LOC_INSTITUTION);
-	    	institution.setCode("LEHIGH");
-	    	institution.setName("Lehigh University");
-	    	
-	    	Location library = new Location();
-	    	library.setLevelId((long)LOC_LIBRARY);
-	    	library.setName(libraryName);
-	    	library.setParentLocation(institution);
-	    	
-	    	Location shelving = new Location();
-	    	shelving.setLevelId((long)LOC_SHELVING);
-	    	shelving.setName(shelvingStr);
-	    	
-	    	if ( collectionCode != null ) {
-	    		Location collection = new Location();
-	    		collection.setLevelId((long)LOC_COLLECTION);
-	    		collection.setName(collectionName);
-	    		collection.setParentLocation(library);
-	    		shelving.setParentLocation(collection);
-	    	} else {
-	    		shelving.setParentLocation(library);
-	    	}
 
-    		oh.setLocationLevelStr("SHELVING");
-    		oh.setLocationStr(shelving.getName());
+		    oh.setLocationStr(getLocationName(locStr));
+		    oh.setLocationLevelStr("SHELVING");
 	    	
 	    	/* old code 
 	    	LocationLevel locLevel1 = new LocationLevel();
@@ -1001,7 +1009,7 @@ public class LU_BuildInstance {
 	    // Those don't appear to be in our data anywhere
 	    // TODO: run that by Doreen, et al ^^^
 	    // Also not used currently: shelving scheme
-	    oh.setCallNumberType(new CallNumberType(cntype, cntype));
+	    oh.setCallNumberType(cntype, cntype);
 	    oh.setCallNumber(cn);
 	    
 	    
@@ -1050,6 +1058,44 @@ public class LU_BuildInstance {
     	this.buildItemsData(record, bib, oh, subfields);
 		//inst.setOleHoldings(oh);
 		//oh.setInstance(inst);
+	}
+	
+	public String getLocationName(String locStr) {
+    	String libraryName = "", shelvingStr = "", collectionCode = "", collectionName = "";
+
+    	collectionCode = locationCodeToCollectionCode.get(locStr);
+    	if (collectionCode != null) {
+	    	collectionName = collectionCodeToName.get(collectionCode);
+	    	libraryName = this.libraryCodeToName.get(collectionCodeToLibraryCode.get(collectionCode));
+    	} else {
+    		libraryName = libraryCodeToName.get(locationCodeToLibraryCode.get(locStr));	
+    	}
+    	shelvingStr = locationCodeToShelvingString.get(locStr);
+    	
+    	Location institution = new Location();
+    	institution.setLevelId((long)LOC_INSTITUTION);
+    	institution.setCode("LEHIGH");
+    	institution.setName("Lehigh University");
+    	
+    	Location library = new Location();
+    	library.setLevelId((long)LOC_LIBRARY);
+    	library.setName(libraryName);
+    	library.setParentLocation(institution);
+    	
+    	Location shelving = new Location();
+    	shelving.setLevelId((long)LOC_SHELVING);
+    	shelving.setName(shelvingStr);
+    	
+    	if ( collectionCode != null ) {
+    		Location collection = new Location();
+    		collection.setLevelId((long)LOC_COLLECTION);
+    		collection.setName(collectionName);
+    		collection.setParentLocation(library);
+    		shelving.setParentLocation(collection);
+    	} else {
+    		shelving.setParentLocation(library);
+    	}
+    	return shelving.getName();
 	}
 	
 	/*

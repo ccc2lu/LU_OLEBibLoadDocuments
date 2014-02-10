@@ -5,7 +5,8 @@
              version="2.0">
 	<persistence-unit name="default" transaction-type="RESOURCE_LOCAL">
 		<provider>org.hibernate.ejb.HibernatePersistence</provider>
-		<class>edu.lu.oleconvert.ole.Instance</class>
+		<shared-cache-mode>ENABLE_SELECTIVE</shared-cache-mode>
+		<!-- <class>edu.lu.oleconvert.ole.Bib</class> -->
 		<properties>
 			<property name="hibernate.connection.driver_class" value="com.mysql.jdbc.Driver"/>
 			<property name="hibernate.connection.username" value="OLE"/>

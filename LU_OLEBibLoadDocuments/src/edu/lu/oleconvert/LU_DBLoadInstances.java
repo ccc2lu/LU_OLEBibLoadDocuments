@@ -311,7 +311,7 @@ public class LU_DBLoadInstances {
 
 
 					counter++;
-					if ( counter % 1000 == 0 || ( limit > 0 && counter >= limit )) {
+					if ( counter % 10 == 0 || ( limit > 0 && counter >= limit )) {
 						tx.commit();
 						em.clear(); // TODO: testing this to see if it fixes memory problems
 						LU_DBLoadInstances.Log(System.out, counter + " records loaded ...", LOG_INFO);

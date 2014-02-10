@@ -20,9 +20,12 @@ import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
+import javax.persistence.TypedQuery;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
+
+import edu.lu.oleconvert.LU_DBLoadInstances;
 
 @Entity
 @Table(name="ole_ds_item_t")
@@ -110,28 +113,30 @@ public class Item implements Serializable {
 		this.purchaseOrderLineItemIdentifier = "";
 		this.statSearches = new ArrayList<ItemStatSearch>();
 		this.formerIdentifiers = new ArrayList<FormerIdentifier>();
-		this.itemType = new ItemType();
-		this.callNumber = new CallNumber();
+		// We don't want to make new instances of these objects or they'll
+		// be persisted with just a bunch of null values
+		//this.itemType = new ItemType();
+		//this.callNumber = new CallNumber();
 		//this.callNumber.setClassificationPart("");
 		//this.callNumber.setItemPart("");
-		this.callNumberType = new CallNumberType();
-		this.location = new FlatLocation();
-		this.highDensityStorage = new HighDensityStorage();
-		this.temporaryItemType = new TemporaryItemType();
+		//this.callNumberType = new CallNumberType();
+		//this.location = new FlatLocation();
+		//this.highDensityStorage = new HighDensityStorage();
+		//this.temporaryItemType = new TemporaryItemType();
 		//this.extension = new Extension();
 		this.notes = new ArrayList<ItemNote>();
 		copyNumber = "";
 		//copyNumberLabel = volumeNumber = volumeNumberLabel = "";
 		//fund = donorPublicDisplay = donorNote = "";
 		fund = "";
-		this.itemDonor = new ItemDonor();
+		//this.itemDonor = new ItemDonor();
 		price = numberOfPieces = "";
 		//itemStatus = itemStatusEffectiveDate = "";
 		itemStatusEffectiveDate = "";
-		this.itemStatus = new ItemStatus();
+		//this.itemStatus = new ItemStatus();
 		checkinNote = staffOnlyFlag = fastAddFlag = "";
-		this.itemHoldings = new OLEHoldings();
-		itemStatus = new ItemStatus();
+		//this.itemHoldings = new OLEHoldings();
+		//itemStatus = new ItemStatus();
 		DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 		String datestr = df.format(Calendar.getInstance().getTime());
 		this.setCreatedDate(datestr);
@@ -501,11 +506,23 @@ public class Item implements Serializable {
 	public ItemStatus getItemStatus() {
 		return itemStatus;
 	}
-
 	public void setItemStatus(ItemStatus itemStatus) {
 		this.itemStatus = itemStatus;
 	}
-
+	public void setItemStatus(String code, String name) {
+		ItemStatus status;
+		TypedQuery<ItemStatus> query = LU_DBLoadInstances.em.createQuery("SELECT s FROM ItemStatus s WHERE s.code='" + code + "'", ItemStatus.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<ItemStatus> results = query.getResultList();
+		if ( results.size() == 0 ) {
+			status = new ItemStatus();
+			status.setCode(code);
+			status.setName(name);
+		} else {
+			status = results.get(0);
+		}		
+		this.setItemStatus(status);
+	}
 	
 	// I'm assuming the database's "EFFECTIVE_DATE" field refers to the item status ...
 	@Column(name="EFFECTIVE_DATE")
@@ -584,10 +601,24 @@ public class Item implements Serializable {
 	public CallNumberType getCallNumberType() {
 		return callNumberType;
 	}
-
 	public void setCallNumberType(CallNumberType callNumberType) {
 		this.callNumberType = callNumberType;
 	}
+	public void setCallNumberType(String code, String name) {
+		CallNumberType type;
+		TypedQuery<CallNumberType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM CallNumberType t WHERE t.code='" + code + "'", CallNumberType.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<CallNumberType> results = query.getResultList();
+		if ( results.size() == 0 ) {
+			type = new CallNumberType();
+			type.setCode(code);
+			type.setName(name);
+		} else {
+			type = results.get(0);
+		}		
+		this.setCallNumberType(type);
+	}
+	
 	
 	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
 	//@ManyToOne(fetch=FetchType.LAZY)
@@ -600,7 +631,23 @@ public class Item implements Serializable {
 	public void setItemType(ItemType itemType) {
 		this.itemType = itemType;
 	}
-
+	public void setItemType(String code, String name) {
+		ItemType type;
+		TypedQuery<ItemType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM ItemType t WHERE t.code='" + code + "'", ItemType.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<ItemType> results = query.getResultList();
+		if ( results.size() == 0 ) {
+			//System.out.println("Creating new item type with code " + code);
+			type = new ItemType();
+			type.setCode(code);
+			type.setName(name);
+		} else {
+			type = results.get(0);
+			//System.out.println("Fetched existing item type with code " + type.getCode());
+		}		
+		this.setItemType(type);
+	}
+	
 	@Column(name="PURCHASE_ORDER_LINE_ITEM_ID")
 	@XmlElement(name="purchaseOrderLineItemIdentifier", required=true, nillable=true)
 	public String getPurchaseOrderLineItemIdentifier() {

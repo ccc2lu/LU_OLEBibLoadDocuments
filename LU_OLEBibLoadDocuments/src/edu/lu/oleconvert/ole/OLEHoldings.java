@@ -21,9 +21,12 @@ import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 import javax.persistence.Transient;
+import javax.persistence.TypedQuery;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
+
+import edu.lu.oleconvert.LU_DBLoadInstances;
 
 @Entity
 @Table(name="ole_ds_holdings_t")
@@ -382,10 +385,24 @@ public class OLEHoldings implements Serializable {
 	public CallNumberType getCallNumberType() {
 		return callNumberType;
 	}
-
 	public void setCallNumberType(CallNumberType callNumberType) {
 		this.callNumberType = callNumberType;
 	}
+	public void setCallNumberType(String code, String name) {
+		CallNumberType type;
+		TypedQuery<CallNumberType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM CallNumberType t WHERE t.code='" + code + "'", CallNumberType.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<CallNumberType> results = query.getResultList();
+		if ( results.size() == 0 ) {
+			type = new CallNumberType();
+			type.setCode(code);
+			type.setName(name);
+		} else {
+			type = results.get(0);
+		}		
+		this.setCallNumberType(type);
+	}
+	
 	
 	//@OneToOne
 	//@JoinColumn(name="INSTANCE_ID")

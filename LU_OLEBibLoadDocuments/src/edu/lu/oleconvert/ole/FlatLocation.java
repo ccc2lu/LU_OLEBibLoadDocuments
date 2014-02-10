@@ -12,6 +12,11 @@ import javax.xml.bind.annotation.XmlType;
 public class FlatLocation implements Serializable {
 
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1560568398796499235L;
+	
 	private String level;
 	private String name;
 	
