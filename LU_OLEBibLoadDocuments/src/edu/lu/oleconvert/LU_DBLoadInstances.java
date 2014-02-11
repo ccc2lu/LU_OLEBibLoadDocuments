@@ -154,9 +154,7 @@ public class LU_DBLoadInstances {
 			 * 1 - Lehigh Data directory
 			 * 2 - map of catalog keys to dates/shadowed values/statuses
 			 * 3 - MarcXML input file of bibs/items data
-			 * 4 - bib ingest document output file
-			 * 5 - instance ingest document output file
-			 * 6 (optional) - number of records to create
+			 * 4 (optional) - number of records to create
 			 */
 			LU_DBLoadInstances.Log("Args: ");
 			for ( int i = 0; i < args.length; i++ ) {
@@ -233,8 +231,8 @@ public class LU_DBLoadInstances {
 				MarcXmlReader reader = new MarcXmlReader(inputsource);
 
 				int limit = -1;
-				if ( args.length == 7 ) {
-					limit = Integer.parseInt(args[6]);
+				if ( args.length == 5 ) {
+					limit = Integer.parseInt(args[4]);
 					LU_DBLoadInstances.Log(System.out, "Only loading records for the first " + limit + " bib records", LOG_INFO);
 				}
 				counter = 0;
