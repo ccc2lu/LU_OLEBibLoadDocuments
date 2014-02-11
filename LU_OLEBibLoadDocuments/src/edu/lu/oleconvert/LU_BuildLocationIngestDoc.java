@@ -5,6 +5,8 @@ import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 
 import org.apache.xml.serialize.OutputFormat;
@@ -23,7 +25,7 @@ public class LU_BuildLocationIngestDoc {
 		BufferedReader locationsReader;
 		BufferedWriter output;
 		XMLSerializer loc_serializer = null;
-		Marshaller loc_marshaller = LU_BuildOLELoadDocs.getMarshaller(LocationGroup.class);
+		Marshaller loc_marshaller = getMarshaller(LocationGroup.class);
 		LocationGroup lg = new LocationGroup();
 		try {
 			locationsReader = new BufferedReader(new FileReader(locationsFilename));
@@ -53,10 +55,10 @@ public class LU_BuildLocationIngestDoc {
             of.setLineWidth(80);
             of.setLineSeparator("\n");
             //of.set
-			loc_serializer = LU_BuildOLELoadDocs.getXMLSerializer(output);
+			loc_serializer = getXMLSerializer(output);
 			loc_serializer.setOutputFormat(of);
 			
-			LU_BuildOLELoadDocs.marshallObjext(lg, loc_marshaller, loc_serializer);
+			marshallObjext(lg, loc_marshaller, loc_serializer);
 			//LU_BuildOLELoadDocs.marshallObjext(lg, loc_marshaller, output);
 			System.out.println("Done creating location ingest document");
 		} catch(Exception e) {
@@ -64,4 +66,88 @@ public class LU_BuildLocationIngestDoc {
 			e.printStackTrace(System.err);
 		}	
 	}
+	
+    protected static XMLSerializer getXMLSerializer(BufferedWriter out) {
+        // configure an OutputFormat to handle CDATA
+        OutputFormat of = new OutputFormat();
+
+        // specify which of your elements you want to be handled as CDATA.
+        // The use of the '^' between the namespaceURI and the localname
+        // seems to be an implementation detail of the xerces code.
+        // When processing xml that doesn't use namespaces, simply omit the
+        // namespace prefix as shown in the third CDataElement below.
+        of.setCDataElements(
+            new String[] { "^content" } ); 
+            		//"ns1^foo",   // <ns1:foo>
+                   //"ns2^bar",   // <ns2:bar>
+                   //"^baz" });   // <baz>
+
+        // set any other options you'd like
+        of.setPreserveSpace(true);
+        of.setIndenting(true);
+        //of.setOmitXMLDeclaration(true);
+        // create the serializer
+        XMLSerializer l_serializer = new XMLSerializer(of);
+        //serializer.setOutputByteStream(out);        
+        l_serializer.setOutputCharStream(out);
+        return l_serializer;
+    }
+
+    private static XMLSerializer serializer = null;
+    
+    protected static void marshallObjext(Object object, Marshaller marshaller, XMLSerializer serializer) {
+    	try {
+    		marshaller.marshal(object, serializer);
+    	} catch (JAXBException e) {
+    		e.printStackTrace();
+    	}
+    }
+    
+    protected static void marshallObjext(Object object, Marshaller marshaller, BufferedWriter out){
+        //StringWriter writer = new StringWriter();
+    	//XMLSerializer serializer = getXMLSerializer(out);
+        try {
+        	if ( serializer == null ) {
+        		serializer = getXMLSerializer(out);
+        	}
+            marshaller.marshal(object,serializer);
+        } catch (JAXBException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+/*
+        try {
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+
+        return writer.toString();
+        */
+    }
+    
+    protected static Marshaller getMarshaller(Class classObject){
+        JAXBContext jc = null;
+        try {
+            jc = JAXBContext.newInstance(classObject);
+        } catch (JAXBException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+        //XMLSerializer serial;
+        Marshaller marshaller = null;
+        try {
+            marshaller = jc.createMarshaller();
+            //marshaller.setProperty("com.sun.xml.internal.bind.namespacePrefixMapper", new NameSpaceMapper());
+            //marshaller.setProperty("com.sun.xml.bind.marshaller.NamespacePrefixMapper", new LU_NamespacePrefixMapper());
+            marshaller.setProperty(Marshaller.JAXB_ENCODING, "ISO-8859-1");
+            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT,true);
+ 
+            marshaller.setProperty("com.sun.xml.bind.marshaller.CharacterEscapeHandler",
+            	    			   new NullCharacterEscapeHandler());
+        } catch (JAXBException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+
+        return marshaller;
+    }
+    
 }
