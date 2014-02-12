@@ -285,7 +285,8 @@ public class LU_DBLoadInstances {
 					//request=BuildRequestDocument.buildIngestDocument(request,Integer.toString(catalog.getCatalogKey()),BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,xmlrecord,catalog);
 
 					// Build the instance data first, because we might be adding
-					instanceBuilder.buildInstanceCollection(xmlrecord, bib, assocMFHDRecords);
+					//instanceBuilder.buildInstanceCollection(xmlrecord, bib, assocMFHDRecords);
+					instanceBuilder.buildBibHoldingsData(xmlrecord, bib, assocMFHDRecords);
 					
 					// now we don't loop over instances, we just let the bib cascade persisting all of its holdings,
 					// which cascades to items, etc.

@@ -1,6 +1,7 @@
 package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
+import java.util.List;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -11,6 +12,9 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
+import javax.persistence.TypedQuery;
+
+import edu.lu.oleconvert.LU_DBLoadInstances;
 
 @Entity
 @Table(name="ole_ds_holdings_access_loc_t")
@@ -51,6 +55,20 @@ public class OLEHoldingsAccessLocation implements Serializable {
 	public void setAccessLocation(AccessLocation accessLocation) {
 		this.accessLocation = accessLocation;
 	}
-	
+	public void setAccessLocation(String code, String name) {
+		AccessLocation loc;
+		TypedQuery<AccessLocation> query = LU_DBLoadInstances.em.createQuery("SELECT l FROM AccessLocation l WHERE l.code='" + code + "'", AccessLocation.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<AccessLocation> results = query.getResultList();
+		if ( results.size() == 0 ) {
+			loc = new AccessLocation();
+			loc.setCode(code);
+			loc.setName(name);
+		} else {
+			loc = results.get(0);
+		}		
+		this.setAccessLocation(loc);
+	}
+
 }
 	

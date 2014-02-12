@@ -468,6 +468,20 @@ public class OLEHoldings implements Serializable {
 	public void setReceiptStatus(ReceiptStatus recpeiptStatus) {
 		this.receiptStatus = recpeiptStatus;
 	}
+	public void setReceiptStatus(String code, String name) {
+		ReceiptStatus r;
+		TypedQuery<ReceiptStatus> query = LU_DBLoadInstances.em.createQuery("SELECT r FROM ReceiptStatus r WHERE r.code='" + code + "'", ReceiptStatus.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<ReceiptStatus> results = query.getResultList();
+		if ( results.size() == 0 ) {
+			r = new ReceiptStatus();
+			r.setCode(code);
+			r.setName(name);
+		} else {
+			r = results.get(0);
+		}		
+		this.setReceiptStatus(r);		
+	}
 
 	@OneToMany(fetch=FetchType.LAZY, mappedBy="oleHoldings", cascade=CascadeType.ALL)
 	//@OneToMany(fetch=FetchType.LAZY, mappedBy="oleHoldings")

@@ -401,10 +401,11 @@ public class LU_BuildInstance {
 		// Take the tag off of there
 		fieldStr = fieldStr.replaceFirst(field.getTag() + "\\s+", "");
 		//System.out.println("After replacement, whole thing is: " + fieldStr);
-		// Split on a $ followed by a lower case letter, since the price subfield will have $ signs in it,
+		// Split on a $ followed by a lower case letter (and once or twice an = sign), 
+		// since the price subfield will have $ signs in it,
 		// and use the LookBehind feature (that's the ?=) to include the delimiter.
 		// We can then make a hashmap out of that keyed by the subfield codes
-		String[] subfieldsarray = fieldStr.split("(?=\\$[a-z])");
+		String[] subfieldsarray = fieldStr.split("(?=\\$[a-z=])");
 		String key = "", value = "";
 		for ( String subfield : subfieldsarray ) {
 			// After substition and split, between the tag and the first subfield, there are 3 spots
@@ -428,13 +429,70 @@ public class LU_BuildInstance {
 		return subfields;
 	}
 	
+	public void buildBibHoldingsData(Record record, Bib bib, List<Record> assocMFHDRecords) {
+	    String catalogKey = record.getVariableField("001").toString().split(" ")[1];
+		//List<List<String>> callNumberStrings = this.callNumbersByCatalogKey.get(catalogKey);
+		//List<List<String>> itemStrings = this.itemsByCatalogKey.get(catalogKey);
+		List<VariableField> itemsholdings = record.getVariableFields("999");
+		List<VariableField> eholdings = new ArrayList<VariableField>();
+		List<VariableField> printholdings = new ArrayList<VariableField>();
+		List<Record> onlineMFHDRecords = new ArrayList<Record>();
+		List<Record> printMFHDRecords = new ArrayList<Record>();
+		//for( List<String> callNumberFields : callNumberStrings ) {
+		Map<String, List<String>> subfields;		
+		
+		for ( VariableField itemholdings : itemsholdings ) {
+			subfields = LU_BuildInstance.getSubfields(itemholdings);
+			List<String> locs = subfields.get("$l");
+			if ( locs == null || locs.size() < 1 ) {
+				LU_DBLoadInstances.Log(System.err, "Item with no l subfield: " + record.getControlNumber() + ", " + itemholdings.toString(), LU_DBLoadInstances.LOG_WARN);
+			} else {
+				if ( locs.get(0).equals(ELECTRONIC_RESOURCE) ) {
+					eholdings.add(itemholdings);
+				} else {
+					printholdings.add(itemholdings);
+				}
+			}
+		}
+		
+		
+		for ( Record MFHDRec : assocMFHDRecords ) {
+			VariableField eightfivetwo = getValidEightFiveTwo(MFHDRec);
+			String rectype = "";
+			if ( eightfivetwo != null ) {
+				subfields = LU_BuildInstance.getSubfields(eightfivetwo);
+				rectype = subfields.get("$c").get(0);
+			} else {
+				rectype = "LEHIGH"; // seems like a sensible default, given what's in the data
+			}
+			if ( rectype.equals(ELECTRONIC_RESOURCE) ) {
+				onlineMFHDRecords.add(MFHDRec);
+			} else {
+				printMFHDRecords.add(MFHDRec);
+			}
+		}					
+		
+		if ( eholdings != null && eholdings.size() > 0 ) { 
+			buildEHoldingsData(record, bib, eholdings, onlineMFHDRecords);
+		}
+		if ( printholdings != null && printholdings.size() > 0 ) {
+			buildPrintHoldingsData(record, bib, printholdings, printMFHDRecords);
+		}
+	}
+	
 	public void buildInstanceCollection(Record record, Bib bib, List<Record> assocMFHDRecords) {
 
 	    String catalogKey = record.getVariableField("001").toString().split(" ")[1];
 		//List<List<String>> callNumberStrings = this.callNumbersByCatalogKey.get(catalogKey);
 		//List<List<String>> itemStrings = this.itemsByCatalogKey.get(catalogKey);
 		List<VariableField> itemsholdings = record.getVariableFields("999");
+		List<VariableField> eholdings = new ArrayList<VariableField>();
+		List<VariableField> printholdings = new ArrayList<VariableField>();
+		List<Record> onlineMFHDRecords = new ArrayList<Record>();
+		List<Record> printMFHDRecords = new ArrayList<Record>();
 		//for( List<String> callNumberFields : callNumberStrings ) {
+		Map<String, List<String>> subfields;		
+		
 		if ( record.getVariableFields("856").size() > 1 && eInstanceReady ) {
 			// multiple 856 fields -- generate e-instances for each one
 			// no code to ingest these yet, so don't bother currently
@@ -446,7 +504,7 @@ public class LU_BuildInstance {
 			for ( Record MFHDrec : assocMFHDRecords ) {
 				// Instance inst = new Instance();
 				VariableField eightfivetwo = MFHDrec.getVariableField("852");
-				Map<String, List<String>> subfields;
+
 				String rectype = "";
 				if ( eightfivetwo != null ) {
 					subfields = this.getSubfields(eightfivetwo);
@@ -498,7 +556,7 @@ public class LU_BuildInstance {
 			for ( VariableField field : itemsholdings ) {
 				Instance inst = new Instance(LU_DBLoadInstances.formatCatKey(record.getControlNumber()));
 				
-				Map<String, List<String>> subfields = this.getSubfields(field);			
+				subfields = this.getSubfields(field);			
 				//List<String> itemnumber = subfields.get("$a"); // I think that's the subfield code, check that
 				this.buildHoldingsData(record, bib, subfields, null); 		
 				//this.buildItemsData(record, bib, subfields);
@@ -507,6 +565,267 @@ public class LU_BuildInstance {
 			}
 		}
 		//ic.setInstance(inst);
+	}
+	
+	public void buildHoldingsNotes(OLEHoldings oh, List<String> commentfields) {
+		List<String> nonpublicNoteType = Arrays.asList(".CIRCNOTE.", ".STAFF.");
+		List<String> publicNoteType = Arrays.asList(".PUBLIC.");
+    	LU_DBLoadInstances.Log(System.out, "Adding " + commentfields.size() + " comments to instance", LU_DBLoadInstances.LOG_DEBUG);
+    	for ( String comment : commentfields ) {
+    		// Keep the delimiter on the preceding element of the split array
+    		OLEHoldingsNote note = new OLEHoldingsNote();
+    		String[] pieces = comment.split("(?<=\\. )");
+			// People put periods in their comments sometimes, and that's the delimiter Sirsi uses between
+			// the comment type and the comment itself, so it blows up the comments array.
+			// *sigh*
+			// So, we just join all the pieces after element 0 together 
+    		String commentstr = StringUtils.join(Arrays.asList(pieces).subList(1, pieces.length));
+    		/*
+    		if ( pieces.length != 2 ) {
+    			LU_DBLoadInstances.Log(System.err, "Badly formatted comment: " + comment, LU_DBLoadInstances.LOG_ERROR);
+    			for (String piece : pieces ) {
+    				LU_DBLoadInstances.Log(System.err, "Piece: " + piece, LU_DBLoadInstances.LOG_ERROR);
+    				System.out.println("Piece: " + piece);
+    			}
+    			
+    		} else {
+    			commentstr = pieces[1];
+    		} 
+    		*/
+    		if ( nonpublicNoteType.contains(pieces[0].trim())) {
+    			note.setType("nonpublic");
+    		} else if ( publicNoteType.contains(pieces[0].trim())) {
+    			note.setType("public");
+    		} else {
+    			LU_DBLoadInstances.Log(System.err, "Unknown type of comment: " + comment, LU_DBLoadInstances.LOG_WARN);
+    		}
+    		note.setNote(commentstr);
+    		note.setOLEHoldings(oh);
+    		oh.getNotes().add(note);
+    	}
+
+	}
+	
+	public void buildCommonHoldingsData(Record rec, Bib bib, VariableField holding, Map<String, List<String>> subfields, Record assocMFHDRec, OLEHoldings oh) {
+		String callnumberstr = subfields.get("$a").get(0).trim();
+		List<String> callNumberFields = new ArrayList<String>();
+		Map<String, List<String>> tmpsubfields;
+
+		if ( callNumbersByItemNumber.get(callnumberstr) == null ) {
+			LU_DBLoadInstances.Log(System.err, "No call number exists for item: " + subfields.toString(),
+					LU_DBLoadInstances.LOG_ERROR);
+		} else {
+			callNumberFields = this.callNumbersByItemNumber.get(callnumberstr).get(0);			
+		}
+		if ( subfields.get("$a").size() != 1 ||
+			// TODO: not sure how to handle this -- it comes up a lot
+				(callNumbersByItemNumber.get(callnumberstr) != null && 
+				 callNumbersByItemNumber.get(callnumberstr).size() != 1) ) {
+			LU_DBLoadInstances.Log(System.err, "Call number (item number) not unique for item: " + subfields.toString(),
+									LU_DBLoadInstances.LOG_DEBUG);
+			// TODO: print list of callNumbers for this item number
+		}
+		oh.setStaffOnly(bib.getStaffOnly());
+	    List<String> commentfields = subfields.get("$o"); // TODO: figure out the split and regex, test this
+	    if ( commentfields != null && commentfields.size() > 0 ) {
+	    	buildHoldingsNotes(oh, commentfields);
+	    }
+	    
+		if ( assocMFHDRec != null ) {
+			VariableField eightsixsix = assocMFHDRec.getVariableField("866");
+			if ( eightsixsix != null ) {
+			    ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
+				extentOfOwnership.setType("public", "public");
+				String ownershipstr = "";
+
+		    	LU_DBLoadInstances.Log(System.out, "Adding extent of ownership info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);				
+				tmpsubfields = this.getSubfields(eightsixsix);
+				LU_DBLoadInstances.Log(System.out, "Subfields of 866 for MFHD record: ", LU_DBLoadInstances.LOG_DEBUG);
+				for ( String key : tmpsubfields.keySet() ) {
+					List<String> fields = tmpsubfields.get(key);
+					for ( String value : fields ) {
+						LU_DBLoadInstances.Log(System.out, "	" + key + ": " + value, LU_DBLoadInstances.LOG_DEBUG);
+					}
+				}			
+				// Should only be one 866 field with one "$a" subfield
+				if ( tmpsubfields.get("$a") != null ) {
+					ownershipstr = tmpsubfields.get("$a").get(0);
+				}
+				if ( tmpsubfields.get("$z") != null ) {
+					ExtentOfOwnershipNote n = new ExtentOfOwnershipNote();
+					n.setNote(tmpsubfields.get("$z").get(0));
+					if ( ownershipstr.length() == 0 ) {
+						ownershipstr = n.getNote();
+					}
+					n.setType("public");
+					n.setExtentOfOwnership(extentOfOwnership);
+					extentOfOwnership.getNotes().add(n);
+				}
+				extentOfOwnership.setTextualHoldings(ownershipstr);
+				extentOfOwnership.setOLEHoldings(oh);
+				oh.getExtentOfOwnership().add(extentOfOwnership);
+			}
+			
+			// TODO: receptStatus comes from the associated holdings record's
+			// 008 field, position 6 (counting from 0 or 1, not sure, probably 1 given context)
+		    // There will need to be separate instances for each MFHD record, probably -- should
+		    // be either 1 or 2 MFHD records, if any, one for electronic version and one for physical
+			String receiptStatus = assocMFHDRec.getVariableField("008").toString().substring(6, 7);
+			oh.setReceiptStatus(receiptStatus, receiptStatus);
+		} else {
+			// TODO: no holdings record, where does the extent of ownership and receipt status come from?
+		}
+		
+	}
+	
+	public void buildEHoldingsData(Record record, Bib bib, List<VariableField> eholdings, List<Record> onlineMFHDRecords) {
+		Record MFHDRec = null;
+		if ( onlineMFHDRecords != null && onlineMFHDRecords.size() > 0 ) {
+			MFHDRec = onlineMFHDRecords.get(0); // there's only ever 1 of these per bib record in our data, 
+												// as evidenced by test2.java's checkHoldingsRecords method
+		}
+		Map<String, List<String>> subfields;
+		Map<String, List<String>> tmpsubfields;
+		List<String> callNumberFields;
+		String callnumberstr;
+		String purlpattern = "^http://purl.*";
+		
+		for ( VariableField eholding : eholdings ) {
+			OLEHoldings oh = new OLEHoldings();
+			oh.setHoldingsType("electronic");
+			subfields = LU_BuildInstance.getSubfields(eholding);
+
+			buildCommonHoldingsData(record, bib, eholding, subfields, MFHDRec, oh);
+		    //eholdings get URIs with extent of ownership, i don't think print holdings do
+			
+			List<VariableField> eightfivesixes = record.getVariableFields("856");
+			for ( VariableField eightfivesix : eightfivesixes ) {
+				tmpsubfields = LU_BuildInstance.getSubfields(eightfivesix);
+				String note = "", uriStr = "";
+	    		if ( tmpsubfields.get("$z") != null ) {
+	    			note = tmpsubfields.get("$z").get(0);
+	    		}
+				if ( tmpsubfields.get("$u") != null ) {
+		    		AccessURI uri = new AccessURI();
+		    		uriStr = tmpsubfields.get("$u").get(0);
+		    		if ( uriStr.matches(purlpattern) ) {
+		    			oh.setLocalPersistentURI(uriStr);
+		    		}
+		    		uri.setUri(uriStr);
+		    		uri.setText(note + ": " + uriStr);
+		    		uri.setOleHoldings(oh);
+	    			oh.getAccessURIs().add(uri);
+	    		} 
+	    		if ( tmpsubfields.get("$a") != null ) {
+		    		AccessURI uri = new AccessURI();
+		    		uriStr = tmpsubfields.get("$a").get(0);
+		    		if ( uriStr.matches(purlpattern) ) {
+		    			oh.setLocalPersistentURI(uriStr);
+		    		}
+		    		uri.setUri(uriStr);
+		    		uri.setText(note + ": " + uriStr);
+		    		uri.setOleHoldings(oh);
+	    			oh.getAccessURIs().add(uri);			    			
+	    		}				
+			}
+			CallNumber cn = new CallNumber();
+			cn.setNumber("Electronic Resource");
+			oh.setCallNumberType("N/A", "N/A");
+			oh.setCallNumber(cn);
+			oh.setBib(bib);
+			oh.setBibId(bib.getId());
+			bib.getHoldings().add(oh);
+		}
+	}
+	
+	public void buildPrintHoldingsData(Record record, Bib bib, List<VariableField> printholdings, List<Record> printMFHDRecords) {
+		// Lots of the same stuff here, but print holdings get items attached to them,
+		// while electronic ones don't
+		Map<String, List<String>> subfields;
+		Map<String, List<String>> tmpsubfields;
+		List<String> callNumberFields;
+		String callnumberstr;
+		List<String> nonpublicNoteType = Arrays.asList(".CIRCNOTE.", ".STAFF.");
+		List<String> publicNoteType = Arrays.asList(".PUBLIC.");
+		Map<Record, List<VariableField>> MFHD_to_printholdings = new HashMap<Record, List<VariableField>>();
+		if ( printMFHDRecords != null && printMFHDRecords.size() > 0 ) {
+			for ( Record MFHDRec : printMFHDRecords ) {
+				// There can be many print MFHDRecords for a Bib, each of which 
+				// will have some or all of the printholdings assigned to it
+
+				// TODO: How to tell which printholdings goes with which printMHFDRec?
+				// Use the 852 $c subfield -- the type should help.  Compare to 
+				// 999 field's $t subfield.  See a12120.
+				// One of the 999's is MICROFORM, has MFORM in a holdings rec's 852 $c
+				
+				// Look in 853's "$a" subfield, compare to "$l" of 999, maybe?  LMC in both for a8032
+				
+				// TODO: what should happen here is a loop over the print holdings, adding to a list for each
+				// MFHDRec, then add that list to the MFHD_to_printholdings map for the MFHDRec
+				// But I have no way of telling which printholdings (999 fields from the Bib record) go with
+				// which MFHDRecords
+				// Lacking a way to map these, I'm just going to associated every printholdings with every print MFHDRec
+				
+				MFHD_to_printholdings.put(MFHDRec, printholdings);
+
+			}
+			for ( Record MFHDRec : MFHD_to_printholdings.keySet() ) {
+				List<VariableField> assocPrintHoldings = MFHD_to_printholdings.get(MFHDRec);
+				for ( VariableField printholding : assocPrintHoldings ) {
+					OLEHoldings oh = new OLEHoldings();
+					oh.setHoldingsType("print");
+					subfields = LU_BuildInstance.getSubfields(printholding);
+					this.buildCommonHoldingsData(record, bib, printholding, subfields, MFHDRec, oh);
+					// print holdings get a location and "access location"
+					String locStr = subfields.get("$l").get(0);
+					oh.setLocationStr(getLocationName(locStr));
+					oh.setLocationLevelStr("SHELVING");
+					
+					oh.setBib(bib);
+					oh.setBibId(bib.getId());
+					bib.getHoldings().add(oh);
+					
+					// print holdings also get an item record, unlike electronic ones
+					this.buildItemsData(record, bib, oh, subfields);
+				}
+			}
+		} else {
+			// No MFHD records, just loop over the printholdings passed in
+			for ( VariableField printholding : printholdings ) {
+				OLEHoldings oh = new OLEHoldings();
+				oh.setHoldingsType("print");
+				subfields = LU_BuildInstance.getSubfields(printholding);
+				this.buildCommonHoldingsData(record, bib, printholding, subfields, null, oh);
+				// print holdings get a location and "access location"
+				String locStr = subfields.get("$l").get(0);
+				oh.setLocationStr(getLocationName(locStr));
+				oh.setLocationLevelStr("SHELVING");
+
+				oh.setBib(bib);
+				oh.setBibId(bib.getId());
+				bib.getHoldings().add(oh);
+				
+				// print holdings also get an item record, unlike electronic ones
+				this.buildItemsData(record, bib, oh, subfields);
+			}
+		}
+	}
+	
+	public static VariableField getValidEightFiveTwo(Record MFHDRec) {
+		VariableField eightfivetwo = null;
+		Map<String, List<String>> subfields;
+		List<VariableField> eightfivetwos = MFHDRec.getVariableFields("852"); // Usually there's only one of these, but
+		// in a few cases there are multiple of them.  We only want the one that has a $c subfield.
+		for ( VariableField curr : eightfivetwos ) {
+			subfields = LU_BuildInstance.getSubfields(curr);
+			if ( subfields.get("$c") != null && subfields.get("$c").size() > 0 ) {
+				return curr;
+			} else {
+				LU_DBLoadInstances.Log(System.err, "MFHD Record with 852 field and no $c subfield: " + MFHDRec.toString(), 
+						LU_DBLoadInstances.LOG_WARN);
+			}
+		}
+		return null;
 	}
 	
 	/*
@@ -1014,7 +1333,7 @@ public class LU_BuildInstance {
 	    
 	    
 	    ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
-		extentOfOwnership.setType(new ExtentOfOwnershipType("public", "public"));
+		extentOfOwnership.setType("public", "public");
 		if ( assocMFHDRec != null ) {
 			VariableField eightsixsix = assocMFHDRec.getVariableField("866");
 			if ( eightsixsix != null ) {

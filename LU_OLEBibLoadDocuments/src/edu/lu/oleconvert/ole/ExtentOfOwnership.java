@@ -15,8 +15,11 @@ import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
+import javax.persistence.TypedQuery;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
+
+import edu.lu.oleconvert.LU_DBLoadInstances;
 
 @Entity
 @Table(name="ole_ds_ext_ownership_t")
@@ -78,8 +81,22 @@ public class ExtentOfOwnership implements Serializable {
 	public void setType(ExtentOfOwnershipType type) {
 		this.type = type;
 	}
-
-	@OneToMany(fetch=FetchType.LAZY, mappedBy="extentOfOwnership")
+	public void setType(String code, String name) {
+		ExtentOfOwnershipType type;
+		TypedQuery<ExtentOfOwnershipType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM ExtentOfOwnershipType t WHERE t.code='" + code + "'", ExtentOfOwnershipType.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<ExtentOfOwnershipType> results = query.getResultList();
+		if ( results.size() == 0 ) {
+			type = new ExtentOfOwnershipType();
+			type.setCode(code);
+			type.setName(name);
+		} else {
+			type = results.get(0);
+		}		
+		this.setType(type);
+	}
+	
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="extentOfOwnership", cascade=CascadeType.ALL)
 	@XmlElement(name="note")
 	public List<ExtentOfOwnershipNote> getNotes() {
 		return notes;

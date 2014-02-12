@@ -17,6 +17,7 @@ public class AccessURI implements Serializable {
 
 	private Long id;
 	private String text;
+	private String uri;
 	private OLEHoldings oleHoldings;
 	
 	public AccessURI() {
@@ -51,6 +52,15 @@ public class AccessURI implements Serializable {
 
 	public void setOleHoldings(OLEHoldings oleHoldings) {
 		this.oleHoldings = oleHoldings;
+	}
+
+	@Column(name="URI")
+	public String getUri() {
+		return uri;
+	}
+
+	public void setUri(String uri) {
+		this.uri = uri;
 	}
 	
 }
