@@ -94,7 +94,8 @@ public class OLEHoldings implements Serializable {
 		oleHoldingsAccessLocations = new ArrayList<OLEHoldingsAccessLocation>();
 		items = new ArrayList<Item>();
 		notes = new ArrayList<OLEHoldingsNote>();
-		callNumberType = new CallNumberType();
+		// constructing this prematurely causes tons of nulls to be inserted into the database
+		//callNumberType = new CallNumberType();
 		instance = null;
 		allowILL = "Y";
 		DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
@@ -145,7 +146,17 @@ public class OLEHoldings implements Serializable {
 		return createdDate;
 	}
 	public void setCreatedDate(String createdDate) {
-		this.createdDate = createdDate;
+		DateFormat df = new SimpleDateFormat("yyyyMMdd");
+		String datestr = df.format(Calendar.getInstance().getTime());
+		try {
+			df.parse(createdDate);
+			// if there's no exception, then it's fine, assign the date created
+			this.createdDate = createdDate;
+		} catch(Exception e) {
+			LU_DBLoadInstances.Log(System.err, "Unable to set holdings record's created date from date string: " + createdDate,
+					LU_DBLoadInstances.LOG_ERROR);
+			this.createdDate = datestr;
+		}				
 	}
 
 	@Column(name="CREATED_BY")
@@ -162,6 +173,17 @@ public class OLEHoldings implements Serializable {
 	}
 	public void setUpdatedDate(String updateDate) {
 		this.updatedDate = updateDate;
+		DateFormat df = new SimpleDateFormat("yyyyMMdd");
+		String datestr = df.format(Calendar.getInstance().getTime());
+		try {
+			df.parse(updateDate);
+			// if there's no exception, then it's fine, assign the date created
+			this.updatedDate = updateDate;
+		} catch(Exception e) {
+			LU_DBLoadInstances.Log(System.err, "Unable to set holdings record's updated date from date string: " + updateDate,
+					LU_DBLoadInstances.LOG_ERROR);
+			this.updatedDate = datestr;
+		}		
 	}
 
 	@Column(name="UPDATED_BY")

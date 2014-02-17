@@ -147,7 +147,17 @@ public class Bib implements Serializable {
 		return dateUpdated;
 	}
 	public void setDateUpdated(String dateUpdated) {
-		this.dateUpdated = dateUpdated;
+		DateFormat df = new SimpleDateFormat("yyyyMMdd");
+		String datestr = df.format(Calendar.getInstance().getTime());
+		try {
+			df.parse(dateUpdated);
+			// if there's no exception, then it's fine, assign the date created
+			this.dateUpdated = dateUpdated;
+		} catch(Exception e) {
+			LU_DBLoadInstances.Log(System.err, "Unable to set bib record's updated date from date string: " + dateUpdated,
+					LU_DBLoadInstances.LOG_ERROR);
+			this.dateUpdated = datestr;
+		}		
 	}
 	
 	@Column(name="STATUS")
@@ -172,7 +182,17 @@ public class Bib implements Serializable {
 	}
 	
 	public void setStatusUpdatedDate(String statusUpdatedDate) {
-		this.statusUpdatedDate = statusUpdatedDate;
+		DateFormat df = new SimpleDateFormat("yyyyMMdd");
+		String datestr = df.format(Calendar.getInstance().getTime());
+		try {
+			df.parse(statusUpdatedDate);
+			// if there's no exception, then it's fine, assign the date created
+			this.statusUpdatedDate = statusUpdatedDate;
+		} catch(Exception e) {
+			LU_DBLoadInstances.Log(System.err, "Unable to set bib record's status updated date from date string: " + statusUpdatedDate,
+					LU_DBLoadInstances.LOG_ERROR);
+			this.statusUpdatedDate = datestr;
+		}		
 	}
 	
 	@Column(name="UNIQUE_ID_PREFIX")

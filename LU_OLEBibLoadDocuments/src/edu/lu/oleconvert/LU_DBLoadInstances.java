@@ -102,16 +102,23 @@ public class LU_DBLoadInstances {
     	// keys in the MARC record's 001 fields.  luconvert.java should be
     	// removing that from the only place it ends up, but just in case, we 
     	// get rid of it here too
+    	String newkey = key;
     	if ( key.substring(0, 1).equals("a") ) {
-    		key = key.substring(1);
+    		newkey = key.substring(1);
     	}
     	// Then pad the key out to 11 characters with leading zeros -- that's how
     	// it will be in the MarcXML, and how OLE wants it in the database
     	//return StringUtils.leftPad(key, 11, "0");
     	int startId = 10000000;
-    	int keynum = startId + Integer.parseInt(key);
-    	key = Integer.toString(keynum);
-    	return key;
+    	int keynum = 0;
+    	try {
+    		keynum = startId + Integer.parseInt(newkey);
+        	newkey = Integer.toString(keynum);
+    	} catch (Exception e) {
+    		Log(System.err, "Unable to format catalog key: " + key);
+    		newkey = key;
+    	}
+    	return newkey;
     }
     
 	public static void main(String args[]) {
