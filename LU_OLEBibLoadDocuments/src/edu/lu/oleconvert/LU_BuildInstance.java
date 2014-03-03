@@ -660,10 +660,32 @@ public class LU_BuildInstance {
 					n.setType("public");
 					n.setExtentOfOwnership(extentOfOwnership);
 					extentOfOwnership.getNotes().add(n);
+					
 				}
 				extentOfOwnership.setTextualHoldings(ownershipstr);
 				extentOfOwnership.setOLEHoldings(oh);
 				oh.getExtentOfOwnership().add(extentOfOwnership);
+				
+				// Not ready yet ...
+				//oh.setCoverage(parseCoverage(ownershipstr));
+				
+				// Here we add the ownership string, and its note if
+				// there is one, to the holdings record's regular notes.
+				// This won't be necessary later, once stuff tied to
+				// ole_ds_ext_ownership_t shows up in the UI somewhere.
+				OLEHoldingsNote n2 = new OLEHoldingsNote();
+				n2.setNote("Extent of ownership: " + ownershipstr);
+				n2.setType("public");
+				n2.setOLEHoldings(oh);
+				oh.getNotes().add(n2);				
+				if ( extentOfOwnership.getNotes().size() > 0 ) {
+					n2 = new OLEHoldingsNote();
+					n2.setNote("Ownership note: " + extentOfOwnership.getNotes().get(0).getNote());
+					n2.setType("public");
+					n2.setOLEHoldings(oh);
+					oh.getNotes().add(n2);
+				}
+				
 			}
 			
 			// TODO: receptStatus comes from the associated holdings record's
@@ -676,6 +698,19 @@ public class LU_BuildInstance {
 			// TODO: no holdings record, where does the extent of ownership and receipt status come from?
 		}
 		
+	}
+	
+	public List<Coverage> parseCoverage(String ownershipstr) {
+		List<Coverage> coverage = new ArrayList<Coverage>();
+		Tokenizer tokenizer = new Tokenizer();
+		tokenizer.setStr(ownershipstr);
+		String token = "";
+		do {
+			token = tokenizer.nextToken();
+			// Now ... do something with the token according to rules of production
+			// that I haven't written yet ...
+		} while(tokenizer.getPos() < tokenizer.getStr().length()); 				
+		return coverage;
 	}
 	
 	public void buildEHoldingsData(Record record, Bib bib, List<VariableField> eholdings, List<Record> onlineMFHDRecords) {
@@ -705,6 +740,8 @@ public class LU_BuildInstance {
 	    		if ( tmpsubfields.get("$z") != null ) {
 	    			note = tmpsubfields.get("$z").get(0);
 	    		}
+	    		// TODO: look in the "$3" subfield for notes, too
+	    		// Often $z and $3 are specified.  Cat them together, I guess.
 				if ( tmpsubfields.get("$u") != null ) {
 		    		AccessURI uri = new AccessURI();
 		    		uriStr = tmpsubfields.get("$u").get(0);
@@ -728,6 +765,15 @@ public class LU_BuildInstance {
 	    			oh.getAccessURIs().add(uri);			    			
 	    		}				
 			}
+			
+			// This also shouldn't be necessary once stuff from
+			// ole_ds_holdings_access_uri_t shows up in the
+			// user interface somewhere
+			if ( oh.getAccessURIs() != null && oh.getAccessURIs().size() > 0 ) {
+				oh.setLink(oh.getAccessURIs().get(0).getUri());
+				oh.setLinkText(oh.getAccessURIs().get(0).getText());
+			}
+			
 			CallNumber cn = new CallNumber();
 			cn.setNumber("Electronic Resource");
 			oh.setCallNumberType("N/A", "N/A");

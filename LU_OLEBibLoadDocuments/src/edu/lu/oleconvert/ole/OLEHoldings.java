@@ -84,6 +84,7 @@ public class OLEHoldings implements Serializable {
 	private String sourceHoldingsContent;
 	private String staffOnly;
 	private String holdingsType;
+	private List<Coverage> coverage;
 	
 	public OLEHoldings() {
 		super();
@@ -94,6 +95,7 @@ public class OLEHoldings implements Serializable {
 		oleHoldingsAccessLocations = new ArrayList<OLEHoldingsAccessLocation>();
 		items = new ArrayList<Item>();
 		notes = new ArrayList<OLEHoldingsNote>();
+		this.coverage = new ArrayList<Coverage>();
 		// constructing this prematurely causes tons of nulls to be inserted into the database
 		//callNumberType = new CallNumberType();
 		instance = null;
@@ -525,6 +527,14 @@ public class OLEHoldings implements Serializable {
 		this.notes = notes;
 	}
 
+	@OneToMany(fetch=FetchType.LAZY, mappedBy="OLEHoldings", cascade=CascadeType.ALL)
+	public List<Coverage> getCoverage() {
+		return this.coverage;
+	}
+	public void setCoverage(List<Coverage> coverage) {
+		this.coverage = coverage;
+	}
+	
 	@Column(name="BIB_ID", nullable=false)
 	public Long getBibId() {
 		return bibId;

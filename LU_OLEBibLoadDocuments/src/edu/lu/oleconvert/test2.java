@@ -2,12 +2,19 @@ package edu.lu.oleconvert;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.StreamTokenizer;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.marc4j.MarcXmlReader;
 import org.marc4j.marc.Record;
 import org.marc4j.marc.VariableField;
@@ -20,7 +27,7 @@ public class test2 {
 	public static void main(String args[]) {
 		//testReplaceXML();
 		//checkHoldingsRecords();
-		testMatcher();
+		testTokenizer();
 	}
 	
 	public static void testReplaceXML() {
@@ -142,6 +149,103 @@ public class test2 {
 			System.out.println(url + " matches pattern");
 		} else {
 			System.out.println(url + " does NOT match pattern");
+		}
+		
+	}
+	
+
+	public static void testTokenizer() {
+		String[] tests = new String[]{"Electronic journal: v.1-17 1972-1989",
+                "1-17 (1972-1989)",
+                "Electronic conference: 2- 1976-",
+                "2,5 (1975-1979)",
+                "3,6,9- (1978,1982,1987-)",
+                "Electronic resource: 1982-",
+                "(1975-1993)",
+                "2 (1978)",
+                "(1979)",
+                "51-65 (1977-1991)",
+                "1-4, 6-18 (1979-1982,1984-1996)",
+                "Electronic journal: v.1- 1936-",
+                "Electronic journal: v.27,no.10-v.33,no.1 2005-2009",
+                "2-9,11-21 (1980-2006)",
+                "3-10,12-18,20-21,23- (1974-1981,1986-1993,1995-1996,1998-)",
+                "Electronic journal: v. 1-12;Ser.2: v. 1-12;Ser.3: v. 1-12;Ser.4:v.1-4; 43- 1849/50-1855;1856-1861;1862-1867;1868-1869; 1996-",
+                };
+		String token = "";
+		Tokenizer tokenizer = new Tokenizer();
+		for ( String test : tests ) {
+
+			System.out.println("String: " + test);
+			System.out.print("Tokens: ");
+			tokenizer.setStr(test);
+			do {
+				token = tokenizer.nextToken();
+				System.out.print(token + "(" + tokenizer.getPos() + ")");
+			} while(tokenizer.getPos() < test.length()); 
+			System.out.println();
+			
+		}
+	}
+	
+	public static void testMatcher2() {
+		Matcher m;
+		// Electronic journal: v.1-17 1972-1989
+		// 1-17 (1972-1989)
+		Pattern p1 = Pattern.compile(".*(\\d+)-(\\d+)\\s+\\(?(\\d+)-(\\d+)\\)?.*");
+		// Electronic conference: 2- 1976-
+		Pattern p2 = Pattern.compile(".*(\\d+)-\\s+(\\d+)-[\\s]*$");
+		
+		Pattern p3 = Pattern.compile("^(\\d+)-(\\d+)\\s+\\((\\d+)-(\\d+)\\)");
+		// 2,5 (1975-1979)
+		// 3,6,9- (1978,1982,1987-)
+		// If this pattern matches, have to loop over the string,
+		// can't match comma separated list and parse them out with a regex.
+		// That's context-free, need a stack ...
+		Pattern p4= Pattern.compile("^(\\d+[,-])+(\\d+)[-]?\\s+\\((\\d+[,-])+(\\d+)[-]?\\)");  
+		// Electronic resource: 1982-
+		// (1975-1993)
+		// This one matches a lot, try it last
+		Pattern p5 = Pattern.compile(".*[\\(]?(\\d+)-(\\d+)?\\)\\s+$");
+		// 2 (1978)
+		// (1979)
+		Pattern p6 = Pattern.compile(".*(\\d+)?\\s+[\\(]?(\\d+)[\\)]?");
+		
+		Pattern patterns[] = { p1, p2, p3, p4, p5, p6 };
+		String[] tests = new String[]{"Electronic journal: v.1-17 1972-1989",
+		                              "1-17 (1972-1989)",
+		                              "Electronic conference: 2- 1976-",
+		                              "2,5 (1975-1979)",
+		                              "3,6,9- (1978,1982,1987-)",
+		                              "Electronic resource: 1982-",
+		                              "(1975-1993)",
+		                              "2 (1978)",
+		                              "(1979)",
+		                              "51-65 (1977-1991)",
+		                              "1-4, 6-18 (1979-1982,1984-1996)",
+		                              "Electronic journal: v.1- 1936-",
+		                              "Electronic journal: v.27,no.10-v.33,no.1 2005-2009",
+		                              "2-9,11-21 (1980-2006)",
+		                              "3-10,12-18,20-21,23- (1974-1981,1986-1993,1995-1996,1998-)",
+		                              "Electronic journal: v. 1-12;Ser.2: v. 1-12;Ser.3: v. 1-12;Ser.4:v.1-4; 43- 1849/50-1855;1856-1861;1862-1867;1868-1869; 1996-",
+		                              };
+		for ( String test : tests ) {
+			
+			for ( int i = 0; i < patterns.length; i++ ) {
+				m = patterns[i].matcher(test);
+				if ( m.find() ) {
+					System.out.println("String \"" + test + "\" matches pattern " + (i+1) + ", groups: ");
+					for ( int j = 0; j <= m.groupCount(); j++ ) {
+						System.out.println((j+1) + ": " + m.group(j));
+					}					
+					break;
+				} else {
+					System.out.println("No match on pattern " + (i+1) + " for string \"" + test + "\"");
+				}
+				System.out.println();
+			}
+			System.out.println();
+
 		}
 	}
 
