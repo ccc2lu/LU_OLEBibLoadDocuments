@@ -142,7 +142,7 @@ public class Bib implements Serializable {
 		this.updatedBy = updatedBy;
 	}
 	
-	@Column(name="DATE_ENTERED")
+	@Column(name="DATE_UPDATED")
 	public String getDateUpdated() {
 		return dateUpdated;
 	}

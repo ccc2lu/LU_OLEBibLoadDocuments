@@ -63,6 +63,7 @@ public class OLEHoldings implements Serializable {
 	private String updatedBy;
 	private String platform;
 	private String accessStatus;
+	private String accessStatusDateUpdated;
 	private String imprint;
 	private List<OLEHoldingsStatSearch> statSearch;
 	private String localPersistentURI;
@@ -70,8 +71,8 @@ public class OLEHoldings implements Serializable {
 	private String adminUserName;
 	private String adminPassword;
 	private String adminUrl;
-	private String link;
-	private String linkText;
+	//private String link;
+	//private String linkText;
 	private String allowILL;
 	private Long authTypeID;
 	private String proxiedResource;
@@ -79,7 +80,6 @@ public class OLEHoldings implements Serializable {
 	private List<OLEHoldingsAccessLocation> oleHoldingsAccessLocations;
 	private String accessUserName;
 	private String accessPassword;
-	private String statusDate;
 	private String eResourceId;
 	private String sourceHoldingsContent;
 	private String staffOnly;
@@ -106,7 +106,8 @@ public class OLEHoldings implements Serializable {
 		this.setCreatedBy("BulkIngest-User");
 		this.setUpdatedDate(datestr);
 		this.setUpdatedBy("BulkIngest-User");
-		this.setStatusDate(datestr);
+		this.setAccessStatus("open"); // TODO: what to put in this field?
+		this.setAccessStatusDateUpdated(datestr);
 	}
 
 	public OLEHoldings(Bib bib) {
@@ -143,7 +144,7 @@ public class OLEHoldings implements Serializable {
 		this.locationLevelStr = locationLevelStr;
 	}
 
-	@Column(name="DATE_ENTERED")
+	@Column(name="DATE_CREATED")
 	public String getCreatedDate() {
 		return createdDate;
 	}
@@ -169,7 +170,7 @@ public class OLEHoldings implements Serializable {
 		this.createdBy = createdBy;
 	}
 
-	@Column(name="DATE_LAST_UPDATED")
+	@Column(name="DATE_UPDATED")
 	public String getUpdatedDate() {
 		return updatedDate;
 	}
@@ -204,7 +205,7 @@ public class OLEHoldings implements Serializable {
 		this.platform = platform;
 	}
 
-	@Column(name="ACC_STATUS")
+	@Column(name="ACCESS_STATUS")
 	public String getAccessStatus() {
 		return accessStatus;
 	}
@@ -212,6 +213,24 @@ public class OLEHoldings implements Serializable {
 		this.accessStatus = accessStatus;
 	}
 
+	@Column(name="ACCESS_STATUS_DATE_UPDATED")
+	public String getAccessStatusDateUpdated() {
+		return accessStatusDateUpdated;
+	}
+	public void setAccessStatusDateUpdated(String dateUpdated) {
+		DateFormat df = new SimpleDateFormat("yyyyMMdd");
+		String datestr = df.format(Calendar.getInstance().getTime());
+		try {
+			df.parse(dateUpdated);
+			// if there's no exception, then it's fine, assign the date created
+			this.accessStatusDateUpdated = dateUpdated;
+		} catch(Exception e) {
+			LU_DBLoadInstances.Log(System.err, "Unable to set holdings record's created date from date string: " + createdDate,
+					LU_DBLoadInstances.LOG_ERROR);
+			this.accessStatusDateUpdated = datestr;
+		}			
+	}
+	
 	@Column(name="IMPRINT")
 	public String getImprint() {
 		return imprint;
@@ -220,7 +239,7 @@ public class OLEHoldings implements Serializable {
 		this.imprint = imprint;
 	}
 
-	@Column(name="LOCAL_PERSISTENT_LINK")
+	@Column(name="LOCAL_PERSISTENT_URI")
 	public String getLocalPersistentURI() {
 		return localPersistentURI;
 	}
@@ -228,7 +247,7 @@ public class OLEHoldings implements Serializable {
 		this.localPersistentURI = localPersistentURI;
 	}
 
-	@Column(name="SUB_STATUS")
+	@Column(name="SUBSCRIPTION_STATUS")
 	public String getSubscriptionStatus() {
 		return subscriptionStatus;
 	}
@@ -236,7 +255,7 @@ public class OLEHoldings implements Serializable {
 		this.subscriptionStatus = subscriptionStatus;
 	}
 
-	@Column(name="ADMIN_USERNM")
+	@Column(name="ADMIN_USERNAME")
 	public String getAdminUserName() {
 		return adminUserName;
 	}
@@ -244,7 +263,7 @@ public class OLEHoldings implements Serializable {
 		this.adminUserName = adminUserName;
 	}
 
-	@Column(name="ADMIN_PWD")
+	@Column(name="ADMIN_PASSWORD")
 	public String getAdminPassword() {
 		return adminPassword;
 	}
@@ -260,6 +279,7 @@ public class OLEHoldings implements Serializable {
 		this.adminUrl = adminUrl;
 	}
 
+	/*
 	@Column(name="LINK")
 	public String getLink() {
 		return link;
@@ -275,8 +295,9 @@ public class OLEHoldings implements Serializable {
 	public void setLinkText(String linkText) {
 		this.linkText = linkText;
 	}
-
-	@Column(name="ILL_ALLOW")
+	*/
+	
+	@Column(name="ALLOW_ILL")
 	public String getAllowILL() {
 		return allowILL;
 	}
@@ -300,7 +321,7 @@ public class OLEHoldings implements Serializable {
 		this.proxiedResource = proxiedResource;
 	}
 
-	@Column(name="NO_SIMULT_USERS")
+	@Column(name="NUMBER_SIMUL_USERS")
 	public String getNumSimultaneousUser() {
 		return numSimultaneousUser;
 	}
@@ -317,7 +338,7 @@ public class OLEHoldings implements Serializable {
 		this.oleHoldingsAccessLocations = holdingsAccessLocations;
 	}
 
-	@Column(name="ACC_USERNM")
+	@Column(name="ACCESS_USERNAME")
 	public String getAccessUserName() {
 		return accessUserName;
 	}
@@ -325,7 +346,7 @@ public class OLEHoldings implements Serializable {
 		this.accessUserName = accessUserName;
 	}
 
-	@Column(name="ACC_PWD")
+	@Column(name="ACCESS_PASSWORD")
 	public String getAccessPassword() {
 		return accessPassword;
 	}
@@ -333,15 +354,7 @@ public class OLEHoldings implements Serializable {
 		this.accessPassword = accessPassword;
 	}
 
-	@Column(name="STATUS_DATE")
-	public String getStatusDate() {
-		return statusDate;
-	}
-	public void setStatusDate(String statusDate) {
-		this.statusDate = statusDate;
-	}
-
-	@Column(name="E_RES_ID")
+	@Column(name="E_RESOURCE_ID")
 	public String geteResourceId() {
 		return eResourceId;
 	}

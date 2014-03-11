@@ -13,6 +13,8 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
+import org.apache.commons.lang3.time.DateUtils;
+
 import edu.lu.oleconvert.LU_DBLoadInstances;
 
 @Entity
@@ -37,6 +39,10 @@ public class Coverage implements Serializable {
 		super();
 	}
 
+	public String toString() {
+		return "start: (" + startDate + ", " + startVolume + ", " + startIssue + "), end: (" + endDate + ", " + endVolume + ", " + endIssue + ")"; 
+	}
+	
 	@Id
 	@GeneratedValue
 	@Column(name="EHOLDINGS_COVERAGE_ID")
@@ -61,10 +67,9 @@ public class Coverage implements Serializable {
 		return startDate;
 	}
 	public void setStartDate(String startDate) {
-		DateFormat df = new SimpleDateFormat("yyyyMMdd");
-		String datestr = df.format(Calendar.getInstance().getTime());
+		String[] acceptedFormats = {"yyyyMMdd", "yyyy"};
 		try {
-			df.parse(startDate);
+			DateUtils.parseDate(startDate, acceptedFormats);
 			// if there's no exception, then it's fine, assign the date created
 			this.startDate = startDate;
 		} catch(Exception e) {
@@ -95,11 +100,9 @@ public class Coverage implements Serializable {
 		return endDate;
 	}
 	public void setEndDate(String endDate) {
-		this.endDate = endDate;
-		DateFormat df = new SimpleDateFormat("yyyyMMdd");
-		String datestr = df.format(Calendar.getInstance().getTime());
+		String[] acceptedFormats = {"yyyyMMdd", "yyyy"};
 		try {
-			df.parse(endDate);
+			DateUtils.parseDate(endDate, acceptedFormats);
 			// if there's no exception, then it's fine, assign the date created
 			this.endDate = endDate;
 		} catch(Exception e) {

@@ -74,11 +74,11 @@ public class Item implements Serializable {
 	//private String donorNote;
 	private CallNumber callNumber;
 	private CallNumberType callNumberType;
-	private String price;
+	private double price;
 	private String numberOfPieces;
 	//private String itemStatus;
 	private ItemStatus itemStatus;
-	private String itemStatusEffectiveDate;
+	private String itemStatusDateUpdated;
 	private String checkinNote;
 	private String staffOnlyFlag;
 	private String fastAddFlag;
@@ -93,10 +93,10 @@ public class Item implements Serializable {
 	private String dueDateTime;
 	private String itemDmgStatus;
 	private String itemDmgNote;
-	private String itemMissingPicsFlag;
-	private String missingPicsNote;
-	private String missingPicsEffectDate;
-	private Long missingPicsCount;
+	private String missingPieces;
+	private String missingPiecesNote;
+	private String missingPiecesEffectDate;
+	private Long missingPiecesCount;
 	
 	private String uniqueIdPrefix;
 	private String createdDate;
@@ -130,9 +130,10 @@ public class Item implements Serializable {
 		//fund = donorPublicDisplay = donorNote = "";
 		fund = "";
 		//this.itemDonor = new ItemDonor();
-		price = numberOfPieces = "";
+		price = 0;
+		numberOfPieces = "";
 		//itemStatus = itemStatusEffectiveDate = "";
-		itemStatusEffectiveDate = "";
+		itemStatusDateUpdated = "";
 		//this.itemStatus = new ItemStatus();
 		checkinNote = staffOnlyFlag = fastAddFlag = "";
 		//this.itemHoldings = new OLEHoldings();
@@ -143,7 +144,7 @@ public class Item implements Serializable {
 		this.setCreatedBy("BulkIngest-User");
 		this.setUpdatedDate(datestr);
 		this.setUpdatedBy("BulkIngest-User");
-		this.setItemStatusEffectiveDate(datestr);
+		this.setItemStatusDateUpdated(datestr);
 		
 	}
 	
@@ -184,7 +185,7 @@ public class Item implements Serializable {
 		price = i.getPrice();
 		numberOfPieces = i.getNumberOfPieces();
 		itemStatus = i.getItemStatus();
-		itemStatusEffectiveDate = i.getItemStatusEffectiveDate();
+		itemStatusDateUpdated = i.getItemStatusDateUpdated();
 		checkinNote = i.getCheckinNote();
 		staffOnlyFlag = i.getStaffOnlyFlag();
 		fastAddFlag = i.getFastAddFlag();
@@ -225,7 +226,7 @@ public class Item implements Serializable {
 	}
 	*/
 	
-	@Column(name="CLMS_RET_FLAG")
+	@Column(name="CLAIMS_RETURNED")
 	public String getClaimsReturnedFlag() {
 		return claimsReturnedFlag;
 	}
@@ -234,7 +235,7 @@ public class Item implements Serializable {
 		this.claimsReturnedFlag = claimsReturnedFlag;
 	}
 
-	@Column(name="CLMS_RET_FLAG_CRE_DATE")
+	@Column(name="CLAIMS_RETURNED_DATE_CREATED")
 	public String getClaimsReturnedFlagCreateDate() {
 		return claimsReturnedFlagCreateDate;
 	}
@@ -243,7 +244,7 @@ public class Item implements Serializable {
 		this.claimsReturnedFlagCreateDate = claimsReturnedFlagCreateDate;
 	}
 
-	@Column(name="CLMS_RET_NOTE")
+	@Column(name="CLAIMS_RETURNED_NOTE")
 	public String getClaimsReturnedNote() {
 		return claimsReturnedNote;
 	}
@@ -279,58 +280,58 @@ public class Item implements Serializable {
 		this.dueDateTime = dueDateTime;
 	}
 
-	@Column(name="ITEM_DMG_STATUS")
-	public String getItemDmgStatus() {
+	@Column(name="ITEM_DAMAGED_STATUS")
+	public String getItemDamagedStatus() {
 		return itemDmgStatus;
 	}
 
-	public void setItemDmgStatus(String itemDmgStatus) {
+	public void setItemDamagedStatus(String itemDmgStatus) {
 		this.itemDmgStatus = itemDmgStatus;
 	}
 
-	@Column(name="ITEM_DMG_NOTE")
-	public String getItemDmgNote() {
+	@Column(name="ITEM_DAMAGED_NOTE")
+	public String getItemDamagedNote() {
 		return itemDmgNote;
 	}
 
-	public void setItemDmgNote(String itemDmgNote) {
+	public void setItemDamagedNote(String itemDmgNote) {
 		this.itemDmgNote = itemDmgNote;
 	}
 
-	@Column(name="ITEM_MISING_PICS_FLAG")
-	public String getItemMissingPicsFlag() {
-		return itemMissingPicsFlag;
+	@Column(name="MISSING_PIECES")
+	public String getMissingPieces() {
+		return missingPieces;
 	}
 
-	public void setItemMissingPicsFlag(String itemMissingPicsFlag) {
-		this.itemMissingPicsFlag = itemMissingPicsFlag;
+	public void setMissingPieces(String itemMissingPicsFlag) {
+		this.missingPieces = itemMissingPicsFlag;
 	}
 
-	@Column(name="MISING_PICS_NOTE")
-	public String getMissingPicsNote() {
-		return missingPicsNote;
+	@Column(name="MISSING_PIECES_NOTE")
+	public String getMissingPiecesNote() {
+		return missingPiecesNote;
 	}
 
-	public void setMissingPicsNote(String missingPicsNote) {
-		this.missingPicsNote = missingPicsNote;
+	public void setMissingPiecesNote(String missingPicsNote) {
+		this.missingPiecesNote = missingPicsNote;
 	}
 
-	@Column(name="MISING_PICS_EFFECTIVE_DATE")
-	public String getMissingPicsEffectDate() {
-		return missingPicsEffectDate;
+	@Column(name="MISSING_PIECES_EFFECTIVE_DATE")
+	public String getMissingPiecesEffectDate() {
+		return missingPiecesEffectDate;
 	}
 
-	public void setMissingPicsEffectDate(String missingPicsEffectDate) {
-		this.missingPicsEffectDate = missingPicsEffectDate;
+	public void setMissingPiecesEffectDate(String missingPicsEffectDate) {
+		this.missingPiecesEffectDate = missingPicsEffectDate;
 	}
 
-	@Column(name="MISING_PICS_COUNT")
-	public Long getMissingPicsCount() {
-		return missingPicsCount;
+	@Column(name="MISSING_PIECES_COUNT")
+	public Long getMissingPiecesCount() {
+		return missingPiecesCount;
 	}
 
-	public void setMissingPicsCount(Long missingPicsCount) {
-		this.missingPicsCount = missingPicsCount;
+	public void setMissingPiecesCount(Long missingPicsCount) {
+		this.missingPiecesCount = missingPicsCount;
 	}
 
 	@Column(name="COPY_NUMBER")
@@ -470,12 +471,12 @@ public class Item implements Serializable {
 	
 	@Column(name="PRICE")
 	@XmlElement(name="price", required=true, nillable=true)
-	public String getPrice() {
+	public double getPrice() {
 		return price;
 	}
 
-	public void setPrice(String price) {
-		this.price = price;
+	public void setPrice(double newprice) {
+		this.price = newprice;
 	}
 
 	@Column(name="NUM_PIECES")
@@ -525,14 +526,14 @@ public class Item implements Serializable {
 	}
 	
 	// I'm assuming the database's "EFFECTIVE_DATE" field refers to the item status ...
-	@Column(name="EFFECTIVE_DATE")
+	@Column(name="ITEM_STATUS_DATE_UPDATED")
 	@XmlElement(name="itemStatusEffectiveDate", required=true, nillable=true)
-	public String getItemStatusEffectiveDate() {
-		return itemStatusEffectiveDate;
+	public String getItemStatusDateUpdated() {
+		return itemStatusDateUpdated;
 	}
 
-	public void setItemStatusEffectiveDate(String itemStatusEffectiveDate) {
-		this.itemStatusEffectiveDate = itemStatusEffectiveDate;
+	public void setItemStatusDateUpdated(String itemStatusDate) {
+		this.itemStatusDateUpdated = itemStatusDate;
 	}
 
 	@Column(name="CHECK_IN_NOTE")
@@ -754,7 +755,7 @@ public class Item implements Serializable {
 		this.uniqueIdPrefix = uniqueIdPrefix;
 	}
 
-	@Column(name="DATE_ENTERED")
+	@Column(name="DATE_CREATED")
 	public String getCreatedDate() {
 		return createdDate;
 	}
@@ -780,7 +781,7 @@ public class Item implements Serializable {
 		this.createdBy = createdBy;
 	}
 
-	@Column(name="DATE_LAST_UPDATED")
+	@Column(name="DATE_UPDATED")
 	public String getUpdatedDate() {
 		return updatedDate;
 	}

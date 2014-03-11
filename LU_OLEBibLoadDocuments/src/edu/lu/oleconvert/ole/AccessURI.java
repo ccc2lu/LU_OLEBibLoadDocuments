@@ -11,7 +11,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 @Entity
-@Table(name="ole_ds_holdings_access_uri_t")
+@Table(name="ole_ds_holdings_uri_t")
 public class AccessURI implements Serializable {
 
 
@@ -26,7 +26,7 @@ public class AccessURI implements Serializable {
 
 	@Id
 	@GeneratedValue
-	@Column(name="ACCESS_URI_ID")
+	@Column(name="HOLDINGS_URI_ID")
 	public Long getId() {
 		return id;
 	}

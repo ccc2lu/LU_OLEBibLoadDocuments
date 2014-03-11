@@ -18,7 +18,7 @@ public class Tokenizer {
 	
 	public Tokenizer(String str) {
 		this();
-		this.str = str;
+		this.setStr(str);
 	}
 	
 	public Tokenizer(String str, int pos) {
@@ -44,8 +44,11 @@ public class Tokenizer {
 		return str;
 	}
 
-	public void setStr(String str) {
-		this.str = str;
+	public void setStr(String newstr) {
+		this.str = newstr;
+		str.replaceFirst("Electronic conference: ", "");
+		str.replaceFirst("Electronic resource: ", "");
+		str.replaceFirst("Electronic journal: ", "");
 		this.pos = 0;
 	}
 
@@ -61,7 +64,8 @@ public class Tokenizer {
 		String tok = "";
 		String ch;
 		boolean stopchar = false;
-		do {
+		//do {
+		while (!stopchar && pos < str.length()) {
 			ch = str.substring(pos, pos+1);
 			pos++;
 			stopchar = breakchars.contains(ch);
@@ -70,7 +74,22 @@ public class Tokenizer {
 			} else {
 				tok += ch;
 			}
-		} while (!stopchar && pos < str.length());
+		}
+		//System.out.println("Token is: " + tok);
 		return tok;			
+	}
+	
+	public static boolean isNumber(String token) {
+		return token.matches("\\d+");
+	}
+	
+	public static int getNumber(String token) {
+		int num = 0;
+		try {
+			num = Integer.parseInt(token);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return num;
 	}
 }

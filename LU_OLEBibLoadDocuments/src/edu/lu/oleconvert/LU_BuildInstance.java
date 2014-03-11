@@ -56,7 +56,7 @@ public class LU_BuildInstance {
 	private TreeMap<String, List<List<String>>> callNumbersByCatalogKey;
 	public TreeMap<String, List<List<String>>> callNumbersByItemNumber;
 	private TreeMap<String, List<List<String>>> itemsByCatalogKey;
-	private TreeMap<String, List<List<String>>> itemsByID;
+	private HashMap<String, List<List<String>>> itemsByID;
 	private static int initSize = 2000000;
 	private final String ELECTRONIC_RESOURCE = "WWW";
 	// Once OLE has a way to ingest e-instance documents, then set this to true
@@ -109,7 +109,7 @@ public class LU_BuildInstance {
 		callNumbersByCatalogKey = new TreeMap<String, List<List<String>>>();
 		itemsByCatalogKey = new TreeMap<String, List<List<String>>>();
 		callNumbersByItemNumber = new TreeMap<String, List<List<String>>>();
-		itemsByID = new TreeMap<String, List<List<String>>>();
+		itemsByID = new HashMap<String, List<List<String>>>();
 	}
 
 	public LU_BuildInstance(String callNumbersFilename, String shelvingKeysFilename,
@@ -253,6 +253,8 @@ public class LU_BuildInstance {
         	String workingdir = callNumbersFile.getParent();
         	PrintWriter writer = new PrintWriter(workingdir + "/testoutput.txt", "UTF-8");
         	int curr = 0, increment = 100000;
+
+        	/* Not used anymore
         	while(callNumbersReader.ready() && (limit < 0 || curr < limit)) {
         		// There should be the same number of lines in all 4 files containing callnum data,
         		// and they should all be sorted the same way to line 1 goes with line 1 goes with line 1, etc.
@@ -308,23 +310,7 @@ public class LU_BuildInstance {
         		}
         		// Now fill in the hashmap keyed by itemnumber, which should be index 13 in the field list
         		String callnumber = callNumberFields.get(13).trim();
-        		// We need to turn this callnumber into a unicode representation of it in ISO-8859-1
-        		// There are characters like U+00be, which shows up as 3/4 (as a single character) in the data from sirsi
-        		// Which then don't match what's in the MarcXML, e. g. 
-        		// Sirsi data: 283|1|016.54122 R519b Supp¾., [no.1]|
-        		// vs
-        		// MarcXML <subfield code="a">016.54122 R519b, Supp&lt;U+00be&gt;., [no.1]</subfield>
-        		// I spent some time trying to figure out how to get marc4j's MarcXMLWriter to not
-        		// do this when outputting the MarcXML, but couldn't figure it out.  This way is easier,
-        		// if inefficient.
-        		/*
-        		m = p.matcher(callnumber);
-        		while ( m.find() ) {
-        			numval = Integer.parseInt("0x" + m.group(1));
-        			replacement = Character.toString((char)numval);
-        			callnumber = m.replaceAll(replacement);
-        		}
-        		*/
+
         		LU_DBLoadInstances.Log(writer, "Putting call number into hash, key is " + callnumber, LU_DBLoadInstances.LOG_DEBUG);
         		if ( this.callNumbersByItemNumber.get(callnumber) == null) {
         			List<List<String>> callNumberStrs = new ArrayList<List<String>>();
@@ -336,15 +322,22 @@ public class LU_BuildInstance {
         		if ( ++curr % increment == 0 ) {
         			LU_DBLoadInstances.Log(System.out, "On call number " + curr, LU_DBLoadInstances.LOG_INFO);
         		}
+        	
         	}
+        	*/
+        	
         	LU_DBLoadInstances.Log("Building hashmap of item records by catalog key and by Item ID ...");
         	curr = 0;
+        	String line = "";
+        	String fields[];
+        	List<String> itemNumberFields;
         	while(itemsReader.ready() && (limit < 0 || curr < limit)) {
         		// Only one file to read from this time
-        		String line = itemsReader.readLine();
-        		String fields[] = line.split("\\|");
-        		List<String> itemNumberFields = Arrays.asList(fields);
+        		line = itemsReader.readLine();
+        		fields = line.split("\\|");
+        		itemNumberFields = Arrays.asList(fields);
         		// Fill in the hash keyed by catalog key, which should be index 2 in the list
+        		/*
         		if ( itemsByCatalogKey.get(itemNumberFields.get(0)) == null ) {
         			List<List<String>> itemStrs = new ArrayList<List<String>>();
         			itemStrs.add(itemNumberFields);
@@ -352,6 +345,8 @@ public class LU_BuildInstance {
         		} else {
         			itemsByCatalogKey.get(itemNumberFields.get(0)).add(itemNumberFields);
         		}
+        		*/
+        		
         		// Now fill in the hash keyed by Item ID, which is index 31
         		String itemID = itemNumberFields.get(31).trim();
         		if ( this.itemsByID.get(itemID) == null ) {
@@ -608,9 +603,10 @@ public class LU_BuildInstance {
 	
 	public void buildCommonHoldingsData(Record rec, Bib bib, VariableField holding, Map<String, List<String>> subfields, Record assocMFHDRec, OLEHoldings oh) {
 		String callnumberstr = subfields.get("$a").get(0).trim();
-		List<String> callNumberFields = new ArrayList<String>();
 		Map<String, List<String>> tmpsubfields;
 
+		/* not used anymore
+		List<String> callNumberFields = new ArrayList<String>();
 		if ( callNumbersByItemNumber.get(callnumberstr) == null ) {
 			LU_DBLoadInstances.Log(System.err, "No call number exists for item: " + subfields.toString(),
 					LU_DBLoadInstances.LOG_ERROR);
@@ -625,6 +621,8 @@ public class LU_BuildInstance {
 									LU_DBLoadInstances.LOG_DEBUG);
 			// TODO: print list of callNumbers for this item number
 		}
+		*/
+		
 		oh.setStaffOnly(bib.getStaffOnly());
 	    List<String> commentfields = subfields.get("$o"); // TODO: figure out the split and regex, test this
 	    if ( commentfields != null && commentfields.size() > 0 ) {
@@ -769,10 +767,12 @@ public class LU_BuildInstance {
 			// This also shouldn't be necessary once stuff from
 			// ole_ds_holdings_access_uri_t shows up in the
 			// user interface somewhere
+			/*
 			if ( oh.getAccessURIs() != null && oh.getAccessURIs().size() > 0 ) {
 				oh.setLink(oh.getAccessURIs().get(0).getUri());
 				oh.setLinkText(oh.getAccessURIs().get(0).getText());
 			}
+			*/
 			
 			CallNumber cn = new CallNumber();
 			cn.setNumber("Electronic Resource");
@@ -1017,7 +1017,7 @@ public class LU_BuildInstance {
 		// Nothing to put here from Sirsi, just going to make it today
 		//DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
 		DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
-		item.setItemStatusEffectiveDate(df.format(Calendar.getInstance().getTime()));
+		item.setItemStatusDateUpdated(df.format(Calendar.getInstance().getTime()));
 		
 		// Use the "shadowed" attribute to set the staffOnlyFlag
 		item.setStaffOnlyFlag(itemString.get(25));
@@ -1027,7 +1027,18 @@ public class LU_BuildInstance {
 			item.setNumberOfPieces(subfields.get("$j").get(0));
 		}
 		if ( subfields.get("$p") != null ) {
-			item.setPrice(subfields.get("$p").get(0));
+			String pricestr = subfields.get("$p").get(0);
+			// it's a numerical field now, so now $ signs
+			pricestr = pricestr.replaceAll("\\$", "");
+			try {
+				double price = Double.parseDouble(pricestr);
+				// if there's no exception, no problem
+				item.setPrice(price);
+			} catch (Exception e) {
+				LU_DBLoadInstances.Log(System.err, "Not setting price from invalid string: " + pricestr,
+						LU_DBLoadInstances.LOG_WARN);
+			}
+			
 		}	
 		
 		// Items can override the location from the containing OLE Holdings
@@ -1145,6 +1156,7 @@ public class LU_BuildInstance {
 		}
 		*/
 
+		/* not used anymore
 		List<String> callNumberFields = new ArrayList<String>();
 		if ( callNumbersByItemNumber.get(callnumberstr) == null ) {
 			LU_DBLoadInstances.Log(System.err, "No call number exists for item: " + subfields.toString(),
@@ -1160,7 +1172,8 @@ public class LU_BuildInstance {
 									LU_DBLoadInstances.LOG_DEBUG);
 			// TODO: print list of callNumbers for this item number
 		}
-
+		*/
+		
 		// The contents of the call numbers file was produced by this command:
 		// selcallnum -iS -oKabchpqryz2 > /ExtDisk/allcallnums.txt
 		// The shelving Key, output by -oA, the "item number", called call number at Lehigh
