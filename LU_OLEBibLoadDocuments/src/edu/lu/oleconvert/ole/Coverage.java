@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -18,7 +19,7 @@ import org.apache.commons.lang3.time.DateUtils;
 import edu.lu.oleconvert.LU_DBLoadInstances;
 
 @Entity
-@Table(name="ole_ds_coverage_t")
+@Table(name="ole_ds_holdings_coverage_t")
 public class Coverage implements Serializable {
 
 	/**
@@ -67,11 +68,12 @@ public class Coverage implements Serializable {
 		return startDate;
 	}
 	public void setStartDate(String startDate) {
-		String[] acceptedFormats = {"yyyyMMdd", "yyyy"};
+		String[] acceptedFormats = {"yyyyMMdd", "yyyy", "yyyy-MM-dd"};
+		DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 		try {
-			DateUtils.parseDate(startDate, acceptedFormats);
+			Date newstart = DateUtils.parseDate(startDate, acceptedFormats);
 			// if there's no exception, then it's fine, assign the date created
-			this.startDate = startDate;
+			this.startDate = df.format(newstart);
 		} catch(Exception e) {
 			LU_DBLoadInstances.Log(System.err, "Unable to set coverage record's start date from date string: " + startDate,
 					LU_DBLoadInstances.LOG_ERROR);
@@ -100,11 +102,12 @@ public class Coverage implements Serializable {
 		return endDate;
 	}
 	public void setEndDate(String endDate) {
-		String[] acceptedFormats = {"yyyyMMdd", "yyyy"};
+		String[] acceptedFormats = {"yyyyMMdd", "yyyy", "yyyy-MM-dd"};
+		DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 		try {
-			DateUtils.parseDate(endDate, acceptedFormats);
+			Date newend = DateUtils.parseDate(endDate, acceptedFormats);
 			// if there's no exception, then it's fine, assign the date created
-			this.endDate = endDate;
+			this.endDate = df.format(newend);
 		} catch(Exception e) {
 			LU_DBLoadInstances.Log(System.err, "Unable to set coverage record's end date from date string: " + endDate,
 					LU_DBLoadInstances.LOG_ERROR);

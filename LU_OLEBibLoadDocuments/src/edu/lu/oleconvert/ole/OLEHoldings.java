@@ -321,7 +321,7 @@ public class OLEHoldings implements Serializable {
 		this.proxiedResource = proxiedResource;
 	}
 
-	@Column(name="NUMBER_SIMUL_USERS")
+	@Column(name="NUMBER_SIMULT_USERS")
 	public String getNumSimultaneousUser() {
 		return numSimultaneousUser;
 	}
@@ -546,6 +546,9 @@ public class OLEHoldings implements Serializable {
 	}
 	public void setCoverage(List<Coverage> coverage) {
 		this.coverage = coverage;
+		for ( Coverage c : this.coverage ) {
+			c.setOLEHoldings(this);
+		}
 	}
 	
 	@Column(name="BIB_ID", nullable=false)

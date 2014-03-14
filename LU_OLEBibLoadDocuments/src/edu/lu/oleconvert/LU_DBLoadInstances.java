@@ -142,7 +142,8 @@ public class LU_DBLoadInstances {
 					dumpdir + "/mod.allcallnumsitemnumbers.txt",
 					dumpdir + "/mod.allcallnumsanalytics.txt",        														
 					dumpdir + "/mod.allitems.txt",
-					lehighDataDir + "/Lehigh Locations.csv");
+					lehighDataDir + "/Lehigh Locations.csv",
+					lehighDataDir + "/sfx_export_portfolios.csv");
 			InstanceCollection ic = new InstanceCollection();
 
 			LU_DBLoadInstances.Log("Starting ...");

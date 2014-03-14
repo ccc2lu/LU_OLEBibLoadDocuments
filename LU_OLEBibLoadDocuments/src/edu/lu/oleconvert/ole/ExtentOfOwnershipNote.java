@@ -15,7 +15,7 @@ import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.XmlValue;
 
 @Entity
-@Table(name="ole_ds_ext_note_t")
+@Table(name="ole_ds_ext_ownership_note_t")
 @XmlType(name="note")
 public class ExtentOfOwnershipNote implements Serializable {
 

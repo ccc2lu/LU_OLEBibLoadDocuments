@@ -14,7 +14,7 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
 @Entity
-@Table(name="ole_ds_former_identifier_t")
+@Table(name="ole_ds_itm_former_identifier_t")
 @XmlType(name="formerResourceIdentifier")
 public class FormerIdentifier implements Serializable {
 

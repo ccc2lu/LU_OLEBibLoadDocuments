@@ -80,73 +80,7 @@ public class test2 {
 		}
 	}
 	
-	// Numbers can be inside single or double quotes
-	public static String parseNumber(Tokenizer tokenizer) {
-		String numstr = "";
-		String token = tokenizer.nextToken();
-		if ( Tokenizer.isNumber(token) ) {
-			numstr = token;
-		} else if ( token.equals("'") || token.equals("\"") ) {
-			token = tokenizer.nextToken();
-			numstr = token;
-			token = tokenizer.nextToken(); // should be closing "'" or "\""
-		}
-		return numstr;
-	}
-	
-	public static void parseDate(Tokenizer tokenizer, Coverage coverage, String startend) {
-		String token = tokenizer.nextToken(); // should be "("
-		token = tokenizer.nextToken(); // should be "'" or "\""
-		token = tokenizer.nextToken();
-		String range  = token;
-		String numstr = "";
-		if ( startend.equals("start") ) {
-			// range should be >= or ==
 
-				token = tokenizer.nextToken(); // should be "'" or "\""
-				token = tokenizer.nextToken(); // should be ","
-				numstr = parseNumber(tokenizer);
-				if ( Tokenizer.isNumber(numstr) ) {
-					coverage.setStartDate(numstr);
-				}
-				token = tokenizer.nextToken(); // should be ","
-				numstr = parseNumber(tokenizer);
-				if ( Tokenizer.isNumber(numstr) ) {
-					coverage.setStartVolume(numstr);
-				}
-				token = tokenizer.nextToken(); // should be ","
-				numstr = parseNumber(tokenizer); // should be start issue, if there is one
-				if ( Tokenizer.isNumber(numstr) ) {
-					coverage.setStartIssue(numstr);
-				}
-				token = tokenizer.nextToken(); // should be ")"
-				if ( range.equals("==") ) {
-					// Then just set the end date/volume/issue equal to the start/volume/issue
-					coverage.setEndDate(coverage.getStartDate());
-					coverage.setEndVolume(coverage.getEndVolume());
-					coverage.setEndIssue(coverage.getStartIssue());
-				} 
-		} else {
-			// range should be <=
-			token = tokenizer.nextToken(); // should be "'" or "\""
-			token = tokenizer.nextToken(); // should be ","
-			numstr = parseNumber(tokenizer);
-			if ( Tokenizer.isNumber(numstr) ) {
-				coverage.setEndDate(numstr);
-			}
-			token = tokenizer.nextToken(); // should be ","
-			numstr = parseNumber(tokenizer);
-			if ( Tokenizer.isNumber(numstr) ) {
-				coverage.setEndVolume(numstr);
-			}
-			token = tokenizer.nextToken(); // should be ","
-			numstr = parseNumber(tokenizer); // should be start issue, if there is one
-			if ( Tokenizer.isNumber(numstr) ) {
-				coverage.setEndIssue(numstr);
-			}
-			token = tokenizer.nextToken(); // should be ")"
-		}
-	}
 
 	public static void testDateAdd() {
 		String datestr = "1992";
@@ -163,104 +97,6 @@ public class test2 {
 			LU_DBLoadInstances.Log(System.err, "Unable to set coverage record's start date from date string: " + datestr,
 					LU_DBLoadInstances.LOG_ERROR);
 		}
-	}
-	
-	public static void parseTimeDiff(Tokenizer tokenizer, Coverage coverage) {
-		String token = tokenizer.nextToken(); // should be "("
-		token = tokenizer.nextToken(); // should be "'" or "\""
-		token = tokenizer.nextToken();
-		String range  = token;
-		String years = "", months = "";
-		Pattern yearmonthpat = Pattern.compile("(\\d+)y(\\d+)m");
-		Pattern yearpat = Pattern.compile("(\\d+)y");
-		Matcher m = yearmonthpat.matcher(range);
-		DateFormat df = new SimpleDateFormat("yyyyMMdd");
-		String[] acceptedFormats = {"yyyyMMdd", "yyyy"};
-
-		if ( coverage.getStartDate() != null ) { // if there's no start date, then a timediff doesn't make sense
-			Date date;
-			try {
-				date = DateUtils.parseDate(coverage.getStartDate(), acceptedFormats);
-				if ( m.matches() ) {
-					years = m.group(0);
-					months = m.group(1);
-					date = DateUtils.addYears(date, Integer.parseInt(years));
-					date = DateUtils.addMonths(date, Integer.parseInt(months));
-				} else {
-					m = yearpat.matcher(range);
-					if ( m.matches() ) {
-						years = m.group(0);
-						date = DateUtils.addYears(date, Integer.parseInt(years));
-					}
-				}
-				coverage.setEndDate(df.format(date));
-			} catch (ParseException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-
-		}
-	}
-
-	public static List<Coverage> buildCoverages(List<Map<String, String>> sfxdata_list) {
-		List<Coverage> coverages = new ArrayList<Coverage>();
-		Coverage coverage;
-		String datestr = "", token = "";
-		Tokenizer tokenizer = new Tokenizer();
-		tokenizer.setBreakchars(Arrays.asList(new String[]{"\"", "'", ",", "(", ")", " "}));
-		for ( Map<String, String> sfxdata : sfxdata_list ) {
-			datestr = sfxdata.get("THRESHOLD_GLOBAL");
-			datestr = datestr.replaceAll("\\$obj->", "");
-			// datestr should now be of the form parseDate('>=','2005','27','10') && parsedDate('<=','2009','33','1')
-			// or parsedDate('>=',1979,1,4)
-			// or parsedDate(">=",2001,48,1) && timediff('>=','1y')
-			// etc.
-			if ( datestr != null && datestr.length() > 0) {
-				System.out.println("Datestr from THRESHOLD_GLOBAL is: " + datestr);
-				tokenizer.setStr(datestr);
-				coverage = new Coverage();
-				token = tokenizer.nextToken();
-				if ( token.equals("parsedDate") ) {
-					parseDate(tokenizer, coverage, "start");
-				}
-				token = tokenizer.nextToken(); // should be a space or end of the line
-				token = tokenizer.nextToken();
-				if ( token.equals("&&") ) {
-					token = tokenizer.nextToken(); // should be a space
-					token = tokenizer.nextToken(); // should be the beginning of a new expression
-					if ( token.equals("parsedDate") ) {
-						parseDate(tokenizer, coverage, "end");
-					} else if ( token.equals("timediff") ) {
-						parseTimeDiff(tokenizer, coverage);
-					}
-				}
-				coverages.add(coverage);
-			}
-			datestr = sfxdata.get("THRESHOLD_ACTIVE");
-			datestr = datestr.replaceAll("\\$obj->", "");
-			if ( datestr != null && datestr.length() > 0 ) {
-				System.out.println("Datestr from THRESHOLD_ACTIVE is: " + datestr);
-				tokenizer.setStr(datestr);
-				coverage = new Coverage();
-				token = tokenizer.nextToken();
-				if ( token.equals("parsedDate") ) {
-					parseDate(tokenizer, coverage, "start");
-				}
-				token = tokenizer.nextToken(); // should be a space or end of the line
-				token = tokenizer.nextToken();
-				if ( token.equals("&&") ) {
-					token = tokenizer.nextToken(); // should be a space
-					token = tokenizer.nextToken(); // should be the beginning of a new expression
-					if ( token.equals("parsedDate") ) {
-						parseDate(tokenizer, coverage, "end");
-					} else if ( token.equals("timediff") ) {
-						parseTimeDiff(tokenizer, coverage);
-					}
-				}
-				coverages.add(coverage);
-			}				
-		}
-		return coverages;
 	}
 	
 	public static void printCoverages(List<Coverage> coverages, PrintStream out) {
@@ -383,31 +219,31 @@ public class test2 {
 							eholdings.add(itemholdings);
 							// Lookup the ISSNs to see if we have them from SFX
 							//System.out.println("Searching for SFX data for catalog record " + xmlrecord.getControlNumber() + " by ISSN ...");
-							sfxdata = findSFXData(catalog_issns, sfxdata_by_issn); 
+							sfxdata = LU_BuildInstance.findSFXData(catalog_issns, sfxdata_by_issn); 
 							if (  sfxdata == null ) {
 								//System.out.println("No SFX data by ISSN for catalog record " + xmlrecord.getControlNumber() + ", trying by eISSN ...");
-								sfxdata = findSFXData(catalog_issns, sfxdata_by_eissn);
+								sfxdata = LU_BuildInstance.findSFXData(catalog_issns, sfxdata_by_eissn);
 								if ( sfxdata == null ) {
 									//System.out.println("No SFX data by eISSN for catalog record " + xmlrecord.getControlNumber() + ", trying by LCCN ...");
-									sfxdata = findSFXData(catalog_lccns, sfxdata_by_lccn);
+									sfxdata = LU_BuildInstance.findSFXData(catalog_lccns, sfxdata_by_lccn);
 									if (  sfxdata == null ) {
 										//System.out.println("No SFX data by LCCN  for catalog record " + xmlrecord.getControlNumber());	
 										no_sfx_data++;
 									} else {
 										System.out.println("SFX data found by LCCN for catalog record " + xmlrecord.getControlNumber());										
-										coverages = buildCoverages(sfxdata);
+										coverages = LU_BuildInstance.buildCoverages(sfxdata);
 										printCoverages(coverages, System.out);
 										has_sfx_data++;
 									}
 								} else {
 									System.out.println("SFX data found by eISSN for catalog record " + xmlrecord.getControlNumber());
-									coverages = buildCoverages(sfxdata);
+									coverages = LU_BuildInstance.buildCoverages(sfxdata);
 									printCoverages(coverages, System.out);
 									has_sfx_data++;
 								}
 							} else {
 								System.out.println("SFX data found by ISSN for catalog record " + xmlrecord.getControlNumber());
-								coverages = buildCoverages(sfxdata);
+								coverages = LU_BuildInstance.buildCoverages(sfxdata);
 								printCoverages(coverages, System.out);
 								has_sfx_data++;
 							}
@@ -553,13 +389,13 @@ public class test2 {
 							eholdings.add(itemholdings);
 							// Lookup the ISSNs to see if we have them from SFX
 							//System.out.println("Searching for SFX data for catalog record " + xmlrecord.getControlNumber() + " by ISSN ...");
-							sfxdata = findSFXData(catalog_issns, sfxdata_by_issn); 
+							sfxdata = LU_BuildInstance.findSFXData(catalog_issns, sfxdata_by_issn); 
 							if (  sfxdata == null ) {
 								//System.out.println("No SFX data by ISSN for catalog record " + xmlrecord.getControlNumber() + ", trying by eISSN ...");
-								sfxdata = findSFXData(catalog_issns, sfxdata_by_eissn);
+								sfxdata = LU_BuildInstance.findSFXData(catalog_issns, sfxdata_by_eissn);
 								if ( sfxdata == null ) {
 									//System.out.println("No SFX data by eISSN for catalog record " + xmlrecord.getControlNumber() + ", trying by LCCN ...");
-									sfxdata = findSFXData(catalog_lccns, sfxdata_by_lccn);
+									sfxdata = LU_BuildInstance.findSFXData(catalog_lccns, sfxdata_by_lccn);
 									if (  sfxdata == null ) {
 										//System.out.println("No SFX data by LCCN  for catalog record " + xmlrecord.getControlNumber());	
 										no_sfx_data++;
@@ -622,26 +458,6 @@ public class test2 {
 		}
 		out.println();
 		out.println();
-	}
-
-	public static List<Map<String, String>> findSFXData(VariableField catalog_data, Map<String, List<Map<String, String>>> sfxdata_map) {
-		List<Map<String, String>> sfxdata = null;
-		if ( catalog_data != null ) {
-			Map<String, List<String>> tmpsubfields = LU_BuildInstance.getSubfields(catalog_data);
-			for ( String key : tmpsubfields.keySet() ) {
-				List<String> values = tmpsubfields.get(key);
-				for ( String value : values ) {
-				//	System.out.println("Searching by value " + value.trim());
-					sfxdata = sfxdata_map.get(value.trim()); 
-					if (  sfxdata != null ) {
-						return sfxdata;
-					} 
-				}
-			}
-		} else {
-			//System.out.println("No catalog data apparently, not actually searching");
-		}
-		return sfxdata;
 	}
 
 	public static void testReplaceXML() {

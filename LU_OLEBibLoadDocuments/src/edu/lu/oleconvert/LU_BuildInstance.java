@@ -11,10 +11,12 @@ import java.io.FileReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +39,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.TransformerFactory;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.time.DateUtils;
 import org.marc4j.marc.Record;
 import org.marc4j.marc.VariableField;
 import org.w3c.dom.Document;
@@ -57,7 +60,13 @@ public class LU_BuildInstance {
 	public TreeMap<String, List<List<String>>> callNumbersByItemNumber;
 	private TreeMap<String, List<List<String>>> itemsByCatalogKey;
 	private HashMap<String, List<List<String>>> itemsByID;
-	private static int initSize = 2000000;
+	private Map<String, List<Map<String, String>>> sfxdata_by_issn;
+	private Map<String, List<Map<String, String>>> sfxdata_by_eissn;
+	private Map<String, List<Map<String, String>>> sfxdata_by_lccn;
+    private Map<String, String> callNumberTypeCodes;
+    private Map<String, String> callNumberTypeNames;
+
+    private static int initSize = 2000000;
 	private final String ELECTRONIC_RESOURCE = "WWW";
 	// Once OLE has a way to ingest e-instance documents, then set this to true
 	// and the code to generate e-instances will run
@@ -110,16 +119,58 @@ public class LU_BuildInstance {
 		itemsByCatalogKey = new TreeMap<String, List<List<String>>>();
 		callNumbersByItemNumber = new TreeMap<String, List<List<String>>>();
 		itemsByID = new HashMap<String, List<List<String>>>();
+		sfxdata_by_issn = new HashMap<String, List<Map<String, String>>>();
+		sfxdata_by_eissn = new HashMap<String, List<Map<String, String>>>();
+		sfxdata_by_lccn = new HashMap<String, List<Map<String, String>>>();
+		callNumberTypeCodes = new HashMap<String, String>();
+		callNumberTypeNames = new HashMap<String, String>();
+		// These values for code/value of callnumber types are taken from
+		// ole-common/ole-utility/src/main/java/org/kuali/ole/utility/callnumber/CallNumberType.java
+		
+	    callNumberTypeCodes.put("DEWEYSAN", "DCC");
+	    callNumberTypeNames.put("DEWEYSAN", "DDC - Dewey Decimal classification");
+	    callNumberTypeCodes.put("DEWPERSAN", "DCC");
+	    callNumberTypeNames.put("DEWPERSAN", "DDC - Dewey Decimal classification");
+	    callNumberTypeCodes.put("ATDEWEY", "DCC");
+	    callNumberTypeNames.put("ATDEWEY", "DDC - Dewey Decimal classification");
+	    callNumberTypeCodes.put("DEWEY", "DCC");
+	    callNumberTypeNames.put("DEWEY", "DDC - Dewey Decimal classification");
+	    callNumberTypeCodes.put("DEWEYPER", "DCC");
+	    callNumberTypeNames.put("DEWEYPER", "DDC - Dewey Decimal classification");
+
+	    callNumberTypeCodes.put("LC", "LCC");
+	    callNumberTypeNames.put("LC", "LCC - Library of Congress classification");
+	    callNumberTypeCodes.put("LCPER", "LCC");
+	    callNumberTypeNames.put("LCPER", "LCC - Library of Congress classification");
+
+	    callNumberTypeCodes.put("NLM", "NLM");
+	    callNumberTypeNames.put("NLM", "NLM - National Library of Medicine Classification");
+
+	    callNumberTypeCodes.put("SUDOC", "SuDoc");
+	    callNumberTypeNames.put("SUDOC", "SuDoc - Superintendent of Documents classification");
+	    
+	    callNumberTypeCodes.put(ELECTRONIC_RESOURCE, "8");
+	    callNumberTypeNames.put(ELECTRONIC_RESOURCE, "8 - Other scheme");
+	    callNumberTypeCodes.put("ALPHANUM", "8");
+	    callNumberTypeNames.put("ALPHANUM", "8 - Other scheme");
+	    callNumberTypeCodes.put("ASIS", "8");
+	    callNumberTypeNames.put("ASIS", "8 - Other scheme");
+	    callNumberTypeCodes.put("ATDEWEYLOC", "8");
+	    callNumberTypeNames.put("ATDEWEYLOC", "8 - Other scheme");
+	    callNumberTypeCodes.put("AUTO", "8");
+	    callNumberTypeNames.put("AUTO", "8 - Other scheme");
+	    
 	}
 
 	public LU_BuildInstance(String callNumbersFilename, String shelvingKeysFilename,
 							String itemNumbersFilename, String analyticsFilename,
-							String itemsFilename, String LocationsFileName) {
+							String itemsFilename, String LocationsFileName,
+							String sfxExportFileName) {
 		this();
 		this.readSirsiFiles(callNumbersFilename, shelvingKeysFilename,
 							itemNumbersFilename, analyticsFilename,
 							itemsFilename);
-		this.readLehighData(LocationsFileName);
+		this.readLehighData(LocationsFileName, sfxExportFileName);
 	}
 	
 	public void printHashMaps(int limit, PrintWriter output) {
@@ -192,31 +243,85 @@ public class LU_BuildInstance {
 		
 	}
 	
-	public void readLehighData(String locationsFilename) {
-		BufferedReader locationsReader;
+	public void readLehighData(String locationsFilename, String sfxExportFileName) {
+		BufferedReader locationsReader, sfx_reader;
+		String line = "";
+		String pieces[] = null, headers[] = null;
+		int curr = 0, limit = -1;
 		try {
 			locationsReader = new BufferedReader(new FileReader(locationsFilename));
 			locationsReader.readLine(); // strip off the line of headers
 			while (locationsReader.ready()) {
-				String line = locationsReader.readLine();
-				String parts[] = line.split(",");
+				line = locationsReader.readLine();
+				pieces = line.split(",");
 				// NB: the LIBRARY and COLLECTION level locations must be listed first
-				if (parts[2].equals("SHELVING")) {
-					this.locationCodeToShelvingString.put(parts[1], parts[0]);
-					if ( libraryCodeToName.get(parts[3]) != null ) {
-						this.locationCodeToLibraryCode.put(parts[1], parts[3]);
-					} else if ( collectionCodeToName.get(parts[3]) != null ) {
-						this.locationCodeToCollectionCode.put(parts[1], parts[3]);
+				if (pieces[2].equals("SHELVING")) {
+					this.locationCodeToShelvingString.put(pieces[1], pieces[0]);
+					if ( libraryCodeToName.get(pieces[3]) != null ) {
+						this.locationCodeToLibraryCode.put(pieces[1], pieces[3]);
+					} else if ( collectionCodeToName.get(pieces[3]) != null ) {
+						this.locationCodeToCollectionCode.put(pieces[1], pieces[3]);
 					}
-				} else if (parts[2].equals("LIBRARY")) {
-					this.libraryCodeToName.put(parts[1], parts[0]);
-				} else if (parts[2].equals("COLLECTION")) {
-					this.collectionCodeToName.put(parts[1], parts[0]);
-					this.collectionCodeToLibraryCode.put(parts[1], parts[3]);
+				} else if (pieces[2].equals("LIBRARY")) {
+					this.libraryCodeToName.put(pieces[1], pieces[0]);
+				} else if (pieces[2].equals("COLLECTION")) {
+					this.collectionCodeToName.put(pieces[1], pieces[0]);
+					this.collectionCodeToLibraryCode.put(pieces[1], pieces[3]);
+				}
+			}
+			
+			sfx_reader = new BufferedReader(new FileReader(sfxExportFileName));
+			line = sfx_reader.readLine();
+			headers = line.split("\t");
+			List<Map<String, String>> tmpList = new ArrayList<Map<String, String>>();
+			Map<String, String> issn_map = null;
+			while(sfx_reader.ready() && (limit < 0 || curr++ < limit)) {
+				line = sfx_reader.readLine();
+				pieces = line.split("\t");
+				if ( pieces.length > 0 ) {
+					issn_map = new HashMap<String, String>();
+					for ( int i = 0; i < pieces.length; i++ ) {
+						issn_map.put(headers[i], pieces[i]);
+					}
+					issn_map.put("line", line);
+					if ( pieces[0].length() > 0 ) {
+						if ( sfxdata_by_issn.get(pieces[0].trim()) != null ) {
+							sfxdata_by_issn.get(pieces[0].trim()).add(issn_map);
+						} else {
+							tmpList = new ArrayList<Map<String, String>>();
+							tmpList.add(issn_map);
+							sfxdata_by_issn.put(pieces[0].trim(), tmpList);
+						}
+					}
+					if ( pieces[1].length() > 0 ) {
+						if ( sfxdata_by_eissn.get(pieces[0].trim()) != null ) {
+							sfxdata_by_eissn.get(pieces[0].trim()).add(issn_map);
+						} else {
+							tmpList = new ArrayList<Map<String, String>>();
+							tmpList.add(issn_map);
+							sfxdata_by_eissn.put(pieces[0].trim(), tmpList);
+						}						
+					}
+					if ( pieces[4].length() > 0 ) {
+						if ( sfxdata_by_lccn.get(pieces[0].trim()) != null ) {
+							sfxdata_by_lccn.get(pieces[0].trim()).add(issn_map);
+						} else {
+							tmpList = new ArrayList<Map<String, String>>();
+							tmpList.add(issn_map);
+							sfxdata_by_lccn.put(pieces[0].trim(), tmpList);
+						}
+					}
+					/*
+					if ( pieces[0].length() == 0 &&
+						 pieces[1].length() == 0 &&
+						 pieces[4].length() == 0 ) {
+						sfx_no_matching_data++;
+					}
+					*/
 				}
 			}
 		} catch(Exception e) {
-			LU_DBLoadInstances.Log(System.err, "Unable to read in Lehigh locations: " + e.getMessage(), LU_DBLoadInstances.LOG_ERROR);
+			LU_DBLoadInstances.Log(System.err, "Unable to read in Lehigh data: " + e.getMessage(), LU_DBLoadInstances.LOG_ERROR);
 			e.printStackTrace(System.err);
 		}
 	}
@@ -720,6 +825,10 @@ public class LU_BuildInstance {
 		Map<String, List<String>> subfields;
 		Map<String, List<String>> tmpsubfields;
 		List<String> callNumberFields;
+		List<Map<String, String>> sfxdata;
+		VariableField catalog_issns = record.getVariableField("022");
+		VariableField catalog_lccns = record.getVariableField("010");
+		
 		String callnumberstr;
 		String purlpattern = "^http://purl.*";
 		
@@ -774,14 +883,234 @@ public class LU_BuildInstance {
 			}
 			*/
 			
+			sfxdata = findSFXData(catalog_issns, sfxdata_by_issn); 
+			if (  sfxdata == null ) {
+				//System.out.println("No SFX data by ISSN for catalog record " + xmlrecord.getControlNumber() + ", trying by eISSN ...");
+				sfxdata = findSFXData(catalog_issns, sfxdata_by_eissn);
+				if ( sfxdata == null ) {
+					//System.out.println("No SFX data by eISSN for catalog record " + xmlrecord.getControlNumber() + ", trying by LCCN ...");
+					sfxdata = findSFXData(catalog_lccns, sfxdata_by_lccn);
+					if (  sfxdata == null ) {
+						LU_DBLoadInstances.Log(System.out, "No SFX data by LCCN  for catalog record " + record.getControlNumber(),
+								               LU_DBLoadInstances.LOG_DEBUG);	
+						//no_sfx_data++;
+					} else {
+						LU_DBLoadInstances.Log(System.out, "SFX data found by LCCN for catalog record " + record.getControlNumber(),
+					               LU_DBLoadInstances.LOG_DEBUG);
+						oh.setCoverage(buildCoverages(sfxdata));
+						//has_sfx_data++;
+					}
+				} else {
+					LU_DBLoadInstances.Log(System.out, "SFX data found by eISSN for catalog record " + record.getControlNumber(),
+				               LU_DBLoadInstances.LOG_DEBUG);
+					oh.setCoverage(buildCoverages(sfxdata));
+					//has_sfx_data++;
+				}
+			} else {
+				LU_DBLoadInstances.Log(System.out, "SFX data found by ISSN for catalog record " + record.getControlNumber(),
+			               LU_DBLoadInstances.LOG_DEBUG);				
+				oh.setCoverage(buildCoverages(sfxdata));
+				//has_sfx_data++;
+			}
+			
 			CallNumber cn = new CallNumber();
 			cn.setNumber("Electronic Resource");
-			oh.setCallNumberType("N/A", "N/A");
+			String cntypecode = callNumberTypeCodes.get(ELECTRONIC_RESOURCE);
+			String cntypename = callNumberTypeNames.get(ELECTRONIC_RESOURCE);
+			oh.setCallNumberType(cntypecode, cntypename);
 			oh.setCallNumber(cn);
 			oh.setBib(bib);
 			oh.setBibId(bib.getId());
 			bib.getHoldings().add(oh);
 		}
+	}
+	
+	public static List<Coverage> buildCoverages(List<Map<String, String>> sfxdata_list) {
+		List<Coverage> coverages = new ArrayList<Coverage>();
+		Coverage coverage;
+		String datestr = "", token = "";
+		Tokenizer tokenizer = new Tokenizer();
+		tokenizer.setBreakchars(Arrays.asList(new String[]{"\"", "'", ",", "(", ")", " "}));
+		for ( Map<String, String> sfxdata : sfxdata_list ) {
+			datestr = sfxdata.get("THRESHOLD_GLOBAL");
+			datestr = datestr.replaceAll("\\$obj->", "");
+			// datestr should now be of the form parseDate('>=','2005','27','10') && parsedDate('<=','2009','33','1')
+			// or parsedDate('>=',1979,1,4)
+			// or parsedDate(">=",2001,48,1) && timediff('>=','1y')
+			// etc.
+			if ( datestr != null && datestr.length() > 0) {
+				LU_DBLoadInstances.Log(System.out, "Datestr from THRESHOLD_GLOBAL is: " + datestr, 
+						           LU_DBLoadInstances.LOG_DEBUG);
+				tokenizer.setStr(datestr);
+				coverage = new Coverage();
+				token = tokenizer.nextToken();
+				if ( token.equals("parsedDate") ) {
+					parseDate(tokenizer, coverage, "start");
+				}
+				token = tokenizer.nextToken(); // should be a space or end of the line
+				token = tokenizer.nextToken();
+				if ( token.equals("&&") ) {
+					token = tokenizer.nextToken(); // should be a space
+					token = tokenizer.nextToken(); // should be the beginning of a new expression
+					if ( token.equals("parsedDate") ) {
+						parseDate(tokenizer, coverage, "end");
+					} else if ( token.equals("timediff") ) {
+						parseTimeDiff(tokenizer, coverage);
+					}
+				}
+				coverages.add(coverage);
+			}
+			datestr = sfxdata.get("THRESHOLD_ACTIVE");
+			datestr = datestr.replaceAll("\\$obj->", "");
+			if ( datestr != null && datestr.length() > 0 ) {
+				LU_DBLoadInstances.Log(System.out, "Datestr from THRESHOLD_ACTIVE is: " + datestr, 
+				           LU_DBLoadInstances.LOG_DEBUG);
+				tokenizer.setStr(datestr);
+				coverage = new Coverage();
+				token = tokenizer.nextToken();
+				if ( token.equals("parsedDate") ) {
+					parseDate(tokenizer, coverage, "start");
+				}
+				token = tokenizer.nextToken(); // should be a space or end of the line
+				token = tokenizer.nextToken();
+				if ( token.equals("&&") ) {
+					token = tokenizer.nextToken(); // should be a space
+					token = tokenizer.nextToken(); // should be the beginning of a new expression
+					if ( token.equals("parsedDate") ) {
+						parseDate(tokenizer, coverage, "end");
+					} else if ( token.equals("timediff") ) {
+						parseTimeDiff(tokenizer, coverage);
+					}
+				}
+				coverages.add(coverage);
+			}				
+		}
+		return coverages;
+	}
+	
+	// Numbers can be inside single or double quotes
+	public static String parseNumber(Tokenizer tokenizer) {
+		String numstr = "";
+		String token = tokenizer.nextToken();
+		if ( Tokenizer.isNumber(token) ) {
+			numstr = token;
+		} else if ( token.equals("'") || token.equals("\"") ) {
+			token = tokenizer.nextToken();
+			numstr = token;
+			token = tokenizer.nextToken(); // should be closing "'" or "\""
+		}
+		return numstr;
+	}
+	
+	public static void parseDate(Tokenizer tokenizer, Coverage coverage, String startend) {
+		String token = tokenizer.nextToken(); // should be "("
+		token = tokenizer.nextToken(); // should be "'" or "\""
+		token = tokenizer.nextToken();
+		String range  = token;
+		String numstr = "";
+		if ( startend.equals("start") ) {
+			// range should be >= or ==
+
+				token = tokenizer.nextToken(); // should be "'" or "\""
+				token = tokenizer.nextToken(); // should be ","
+				numstr = parseNumber(tokenizer);
+				if ( Tokenizer.isNumber(numstr) ) {
+					coverage.setStartDate(numstr);
+				}
+				token = tokenizer.nextToken(); // should be ","
+				numstr = parseNumber(tokenizer);
+				if ( Tokenizer.isNumber(numstr) ) {
+					coverage.setStartVolume(numstr);
+				}
+				token = tokenizer.nextToken(); // should be ","
+				numstr = parseNumber(tokenizer); // should be start issue, if there is one
+				if ( Tokenizer.isNumber(numstr) ) {
+					coverage.setStartIssue(numstr);
+				}
+				token = tokenizer.nextToken(); // should be ")"
+				if ( range.equals("==") ) {
+					// Then just set the end date/volume/issue equal to the start/volume/issue
+					coverage.setEndDate(coverage.getStartDate());
+					coverage.setEndVolume(coverage.getEndVolume());
+					coverage.setEndIssue(coverage.getStartIssue());
+				} 
+		} else {
+			// range should be <=
+			token = tokenizer.nextToken(); // should be "'" or "\""
+			token = tokenizer.nextToken(); // should be ","
+			numstr = parseNumber(tokenizer);
+			if ( Tokenizer.isNumber(numstr) ) {
+				coverage.setEndDate(numstr);
+			}
+			token = tokenizer.nextToken(); // should be ","
+			numstr = parseNumber(tokenizer);
+			if ( Tokenizer.isNumber(numstr) ) {
+				coverage.setEndVolume(numstr);
+			}
+			token = tokenizer.nextToken(); // should be ","
+			numstr = parseNumber(tokenizer); // should be start issue, if there is one
+			if ( Tokenizer.isNumber(numstr) ) {
+				coverage.setEndIssue(numstr);
+			}
+			token = tokenizer.nextToken(); // should be ")"
+		}
+	}
+	
+	public static void parseTimeDiff(Tokenizer tokenizer, Coverage coverage) {
+		String token = tokenizer.nextToken(); // should be "("
+		token = tokenizer.nextToken(); // should be "'" or "\""
+		token = tokenizer.nextToken();
+		String range  = token;
+		String years = "", months = "";
+		Pattern yearmonthpat = Pattern.compile("(\\d+)y(\\d+)m");
+		Pattern yearpat = Pattern.compile("(\\d+)y");
+		Matcher m = yearmonthpat.matcher(range);
+		DateFormat df = new SimpleDateFormat("yyyyMMdd");
+		String[] acceptedFormats = {"yyyyMMdd", "yyyy", "yyyy-MM-dd"};
+
+		if ( coverage.getStartDate() != null ) { // if there's no start date, then a timediff doesn't make sense
+			Date date;
+			try {
+				date = DateUtils.parseDate(coverage.getStartDate(), acceptedFormats);
+				if ( m.matches() ) {
+					years = m.group(0);
+					months = m.group(1);
+					date = DateUtils.addYears(date, Integer.parseInt(years));
+					date = DateUtils.addMonths(date, Integer.parseInt(months));
+				} else {
+					m = yearpat.matcher(range);
+					if ( m.matches() ) {
+						years = m.group(0);
+						date = DateUtils.addYears(date, Integer.parseInt(years));
+					}
+				}
+				coverage.setEndDate(df.format(date));
+			} catch (ParseException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
+	}
+	
+	public static List<Map<String, String>> findSFXData(VariableField catalog_data, Map<String, List<Map<String, String>>> sfxdata_map) {
+		List<Map<String, String>> sfxdata = null;
+		if ( catalog_data != null ) {
+			Map<String, List<String>> tmpsubfields = LU_BuildInstance.getSubfields(catalog_data);
+			for ( String key : tmpsubfields.keySet() ) {
+				List<String> values = tmpsubfields.get(key);
+				for ( String value : values ) {
+				//	System.out.println("Searching by value " + value.trim());
+					sfxdata = sfxdata_map.get(value.trim()); 
+					if (  sfxdata != null ) {
+						return sfxdata;
+					} 
+				}
+			}
+		} else {
+			//System.out.println("No catalog data apparently, not actually searching");
+		}
+		return sfxdata;
 	}
 	
 	public void buildPrintHoldingsData(Record record, Bib bib, List<VariableField> printholdings, List<Record> printMFHDRecords) {
@@ -821,6 +1150,36 @@ public class LU_BuildInstance {
 					OLEHoldings oh = new OLEHoldings();
 					oh.setHoldingsType("print");
 					subfields = LU_BuildInstance.getSubfields(printholding);
+					
+				   	LU_DBLoadInstances.Log(System.out, "Adding callnumber info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
+				    CallNumber cn = new CallNumber();
+				    // Same as the shelvingscheme for now
+				    String cntype = subfields.get("$w").get(0);
+				    
+				    ShelvingOrder shelvingOrder = new ShelvingOrder();
+				    shelvingOrder.setShelvingOrder(subfields.get("$w").get(0));
+				    cn.setShelvingOrder(shelvingOrder);
+				    cn.setPrefix(subfields.get("$a").get(0));
+				    cn.setNumber(subfields.get("$i").get(0));
+
+				    // Not used: callNumberType, callNumberPrefix, itemPart,
+				    // They make reference to MFHD 852 codes i, h, and k
+				    // Those don't appear to be in our data anywhere
+				    // TODO: run that by Doreen, et al ^^^
+				    // Also not used currently: shelving scheme
+					String cntypecode = callNumberTypeCodes.get(cntype);
+					String cntypename = callNumberTypeNames.get(cntype);
+					if ( cntypecode == null || cntypecode.length() == 0) {
+					   	LU_DBLoadInstances.Log(System.out, "Unrecognized cntype: " + cntype + ", unable to set cntypecode", LU_DBLoadInstances.LOG_WARN);
+						cntypecode = "N/A";
+					}
+					if ( cntypename == null || cntypename.length() == 0) {
+						LU_DBLoadInstances.Log(System.out, "Unrecognized cntype: " + cntype + ", unable to set cntypename", LU_DBLoadInstances.LOG_WARN);
+						cntypename = "N/A";
+					}
+					oh.setCallNumberType(cntypecode, cntypename);
+				    oh.setCallNumber(cn);
+				    
 					this.buildCommonHoldingsData(record, bib, printholding, subfields, MFHDRec, oh);
 					// print holdings get a location and "access location"
 					String locStr = subfields.get("$l").get(0);
@@ -841,6 +1200,34 @@ public class LU_BuildInstance {
 				OLEHoldings oh = new OLEHoldings();
 				oh.setHoldingsType("print");
 				subfields = LU_BuildInstance.getSubfields(printholding);
+				
+			   	LU_DBLoadInstances.Log(System.out, "Adding callnumber info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
+			    CallNumber cn = new CallNumber();
+			    // Same as the shelvingscheme for now
+			    String cntype = subfields.get("$w").get(0);
+			    
+			    ShelvingOrder shelvingOrder = new ShelvingOrder();
+			    shelvingOrder.setShelvingOrder(subfields.get("$w").get(0));
+			    cn.setShelvingOrder(shelvingOrder);
+			    cn.setPrefix(subfields.get("$a").get(0));
+			    cn.setNumber(subfields.get("$i").get(0));
+
+			    // Not used: callNumberType, callNumberPrefix, itemPart,
+			    // They make reference to MFHD 852 codes i, h, and k
+			    // Those don't appear to be in our data anywhere
+			    // TODO: run that by Doreen, et al ^^^
+			    // Also not used currently: shelving scheme
+				String cntypecode = callNumberTypeCodes.get(cntype);
+				String cntypename = callNumberTypeNames.get(cntype);
+				if ( cntypecode == null || cntypecode.length() == 0) {
+					cntypecode = "N/A";
+				}
+				if ( cntypename == null || cntypename.length() == 0) {
+					cntypename = "N/A";
+				}
+				oh.setCallNumberType(cntypecode, cntypename);
+			    oh.setCallNumber(cn);
+			    
 				this.buildCommonHoldingsData(record, bib, printholding, subfields, null, oh);
 				// print holdings get a location and "access location"
 				String locStr = subfields.get("$l").get(0);
@@ -1387,7 +1774,15 @@ public class LU_BuildInstance {
 	    // Those don't appear to be in our data anywhere
 	    // TODO: run that by Doreen, et al ^^^
 	    // Also not used currently: shelving scheme
-	    oh.setCallNumberType(cntype, cntype);
+		String cntypecode = callNumberTypeCodes.get(cntype);
+		String cntypename = callNumberTypeNames.get(cntype);
+		if ( cntypecode == null || cntypecode.length() == 0) {
+			cntypecode = "N/A";
+		}
+		if ( cntypename == null || cntypename.length() == 0) {
+			cntypename = "N/A";
+		}
+		oh.setCallNumberType(cntypecode, cntypename);
 	    oh.setCallNumber(cn);
 	    
 	    
