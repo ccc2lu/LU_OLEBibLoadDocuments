@@ -145,7 +145,7 @@ public class Item implements Serializable {
 		this.setUpdatedDate(datestr);
 		this.setUpdatedBy("BulkIngest-User");
 		this.setItemStatusDateUpdated(datestr);
-		
+		this.setUniqueIdPrefix("wio");
 	}
 	
 	// This copy constructor needs to assign all the fields
@@ -195,6 +195,7 @@ public class Item implements Serializable {
 		this.claimsReturnedFlag = i.getClaimsReturnedFlag();
 		this.claimsReturnedFlagCreateDate = i.getClaimsReturnedFlagCreateDate();
 		this.claimsReturnedNote = i.getClaimsReturnedNote();
+		this.uniqueIdPrefix = i.getUniqueIdPrefix();
 	}
 	
 	@ManyToOne
@@ -512,13 +513,12 @@ public class Item implements Serializable {
 	}
 	public void setItemStatus(String code, String name) {
 		ItemStatus status;
-		TypedQuery<ItemStatus> query = LU_DBLoadInstances.em.createQuery("SELECT s FROM ItemStatus s WHERE s.code='" + code + "'", ItemStatus.class);
+		// TypedQuery<ItemStatus> query = LU_DBLoadInstances.em.createQuery("SELECT s FROM ItemStatus s WHERE s.code='" + code + "'", ItemStatus.class);
+		TypedQuery<ItemStatus> query = LU_DBLoadInstances.em.createQuery("SELECT s FROM ItemStatus s WHERE s.deliverStatus.code='" + code + "'", ItemStatus.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<ItemStatus> results = query.getResultList();
 		if ( results.size() == 0 ) {
-			status = new ItemStatus();
-			status.setCode(code);
-			status.setName(name);
+			status = new ItemStatus(code, name);
 		} else {
 			status = results.get(0);
 		}		
@@ -634,14 +634,13 @@ public class Item implements Serializable {
 	}
 	public void setItemType(String code, String name) {
 		ItemType type;
-		TypedQuery<ItemType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM ItemType t WHERE t.code='" + code + "'", ItemType.class);
+		//TypedQuery<ItemType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM ItemType t WHERE t.code='" + code + "'", ItemType.class);
+		TypedQuery<ItemType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM ItemType t WHERE t.deliverType.code='" + code + "'", ItemType.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<ItemType> results = query.getResultList();
 		if ( results.size() == 0 ) {
 			//System.out.println("Creating new item type with code " + code);
-			type = new ItemType();
-			type.setCode(code);
-			type.setName(name);
+			type = new ItemType(code, name);
 		} else {
 			type = results.get(0);
 			//System.out.println("Fetched existing item type with code " + type.getCode());

@@ -58,6 +58,7 @@ public class Bib implements Serializable {
 		this.setUpdatedBy("BulkIngest-User");
 		holdings = new ArrayList<OLEHoldings>();
 		//this.setId((long) 0);
+		this.uniqueIdPrefix = "wbo";
 	}
 	
 	public Bib(String formerId) {

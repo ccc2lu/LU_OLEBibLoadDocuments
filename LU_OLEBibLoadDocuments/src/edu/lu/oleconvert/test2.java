@@ -22,6 +22,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,7 +46,9 @@ public class test2 {
 		//testReadSFXData();
 		//matchHoldingsRecordsWithSFX();
 		//testDateAdd();
-		buildCoverageData();
+		//buildCoverageData();
+		//System.out.println(UUID.randomUUID().toString());
+
 	}
 	
 	public static void testReadSFXData() {

@@ -85,6 +85,7 @@ public class OLEHoldings implements Serializable {
 	private String staffOnly;
 	private String holdingsType;
 	private List<Coverage> coverage;
+	private String uniqueIdPrefix;
 	
 	public OLEHoldings() {
 		super();
@@ -108,6 +109,7 @@ public class OLEHoldings implements Serializable {
 		this.setUpdatedBy("BulkIngest-User");
 		this.setAccessStatus("open"); // TODO: what to put in this field?
 		this.setAccessStatusDateUpdated(datestr);
+		this.uniqueIdPrefix = "who";
 	}
 
 	public OLEHoldings(Bib bib) {
@@ -118,6 +120,14 @@ public class OLEHoldings implements Serializable {
 	public OLEHoldings(Instance i) {
 		this();
 		this.setInstance(i);
+	}
+	
+	@Column(name="UNIQUE_ID_PREFIX")
+	public String getUniqueIdPrefix() {
+		return this.uniqueIdPrefix;
+	}
+	public void setUniqueIdPrefix(String pref) {
+		this.uniqueIdPrefix = pref;
 	}
 	
 	@Column(name="STAFF_ONLY")

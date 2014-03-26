@@ -65,6 +65,8 @@ public class LU_BuildInstance {
 	private Map<String, List<Map<String, String>>> sfxdata_by_lccn;
     private Map<String, String> callNumberTypeCodes;
     private Map<String, String> callNumberTypeNames;
+	private Map<String, String> itemReservedStatusCodeMap;
+	private Map<String, String> itemReservedStatusNameMap;
 
     private static int initSize = 2000000;
 	private final String ELECTRONIC_RESOURCE = "WWW";
@@ -159,7 +161,20 @@ public class LU_BuildInstance {
 	    callNumberTypeNames.put("ATDEWEYLOC", "8 - Other scheme");
 	    callNumberTypeCodes.put("AUTO", "8");
 	    callNumberTypeNames.put("AUTO", "8 - Other scheme");
-	    
+	 
+	    // We only ever use the ON_RESERVE status to mark items
+	    // that are on course reserve as ONHOLD
+	    // If an item isn't on course reserve, we derive its status
+	    // from other fields.  
+	    // "Flagged" I don't know what to do with at all.
+		itemReservedStatusCodeMap = new HashMap<String, String>();
+		itemReservedStatusNameMap = new HashMap<String, String>();
+		//itemStatusCodeMap.put("NOT_ON_RES", "AVAILABLE");
+		//itemStatusNameMap.put("NOT_ON_RES", "Available");
+		itemReservedStatusCodeMap.put("ON_RESERVE", "ONHOLD");
+		itemReservedStatusNameMap.put("ON_RESERVE", "On Hold");
+		//itemStatusCodeMap.put("FLAGGED", "UNAVAILABLE");
+		//itemStatusNameMap.put("FLAGGED", "Unavailable");
 	}
 
 	public LU_BuildInstance(String callNumbersFilename, String shelvingKeysFilename,
@@ -1183,7 +1198,8 @@ public class LU_BuildInstance {
 					this.buildCommonHoldingsData(record, bib, printholding, subfields, MFHDRec, oh);
 					// print holdings get a location and "access location"
 					String locStr = subfields.get("$l").get(0);
-					oh.setLocationStr(getLocationName(locStr));
+					//oh.setLocationStr(getLocationName(locStr));
+					oh.setLocationStr(locStr);
 					oh.setLocationLevelStr("SHELVING");
 					
 					oh.setBib(bib);
@@ -1282,7 +1298,8 @@ public class LU_BuildInstance {
 			holdings.setItems(new ArrayList<Item>());
 		}
 		
-	    Item item = new Item();		
+	    Item item = new Item();
+	    item.setUniqueIdPrefix("wio");
 	    item.setClaimsReturnedFlag("N"); // Apparently there has to be a value here or the docstore
 	    // REST API gives a NullPointerException ...
 	    
@@ -1389,16 +1406,37 @@ public class LU_BuildInstance {
 		// This has been wrong forever -- there is no subfield "035" of a 999 field, this was probably meant to get
 		// VariableField 035 from the record, but we don't need to do that
 		//String itemstatus = subfields.get("035").get(0);
+
+		String item_status_code = "";
+		String item_status_name = "";
 		if ( itemString.size() > 0 ) {
-			String itemstatus = itemString.get(28);
-			if ( itemstatus != null ) {
-				item.setItemStatus(itemstatus, itemstatus);
+			String item_res_status = itemString.get(28);
+			String num_charges = itemString.get(5);
+			if ( item_res_status != null && itemReservedStatusCodeMap.get(item_res_status) != null ) {
+				item_status_code = itemReservedStatusCodeMap.get(item_res_status);
+				item_status_name = itemReservedStatusNameMap.get(item_res_status);
+			} else if ( num_charges != null ) {
+				if ( num_charges.equals("0") ) {
+					item_status_code = "AVAILABLE";
+					item_status_name = "Available";
+				} else {
+					item_status_code = "LOANED";
+					item_status_name = "Loaned";
+				}
+			} else {
+				LU_DBLoadInstances.Log(System.err, "Neither item reserved status or number of charges set: " + itemString + ", not assigning status", 
+						LU_DBLoadInstances.LOG_WARN);
+				item_status_code = "UNAVAILABLE";
+				item_status_name = "Unavailable";
 			}
 		} else {
 			LU_DBLoadInstances.Log(System.err, "No itemstring for item " + itemID + ", not assigning status", 
 					LU_DBLoadInstances.LOG_WARN);
-			item.setItemStatus("NONE", "NONE");
+			item_status_code = "UNAVAILABLE";
+			item_status_name = "Unavailable";
 		}
+		item.setItemStatus(item_status_code, item_status_name);
+
 		// If it were "reserve status", then we'd use this:
 		//item.setItemStatus(itemString.get(28));
 		// Nothing to put here from Sirsi, just going to make it today
@@ -1465,7 +1503,8 @@ public class LU_BuildInstance {
 
 	    	FlatLocation loc = new FlatLocation();
 	    	loc.setLevel("SHELVING");
-	    	loc.setName(getLocationName(locStr));
+	    	//loc.setName(getLocationName(locStr));
+	    	loc.setName(locStr);
 		    item.setLocation(loc);
 	    }
 		// TODO: go over these with Doreen
