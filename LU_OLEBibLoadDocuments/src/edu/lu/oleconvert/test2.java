@@ -12,6 +12,7 @@ import java.io.PrintWriter;
 import java.io.Reader;
 import java.io.StreamTokenizer;
 import java.io.StringReader;
+import java.net.URISyntaxException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -48,7 +49,13 @@ public class test2 {
 		//testDateAdd();
 		//buildCoverageData();
 		//System.out.println(UUID.randomUUID().toString());
-
+		String uriStr = "jkey=sigcsim & url2=http://portal.acm.org/toc.cfm?id=J915 & code=1";
+		uriStr = "url2=http://portal.acm.org/browse_dl.cfm?linked=1%26part=series%26idx=SERIES307%26coll=portal & code=1";
+		uriStr = uriStr.substring(uriStr.indexOf("http:"));
+		if ( uriStr.indexOf(" & ") > 0 ) {
+			uriStr = uriStr.substring(0, uriStr.indexOf(" & "));
+		}
+		System.out.println("Uri: " + uriStr);
 	}
 	
 	public static void testReadSFXData() {

@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.net.URISyntaxException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -846,57 +847,41 @@ public class LU_BuildInstance {
 		
 		String callnumberstr;
 		String purlpattern = "^http://purl.*";
-		
-		for ( VariableField eholding : eholdings ) {
+		List<OLEHoldings> holdings = new ArrayList<OLEHoldings>();
+		List<VariableField> eightfivesixes = record.getVariableFields("856");
+		for ( VariableField eightfivesix : eightfivesixes ) {
 			OLEHoldings oh = new OLEHoldings();
 			oh.setHoldingsType("electronic");
-			subfields = LU_BuildInstance.getSubfields(eholding);
-
-			buildCommonHoldingsData(record, bib, eholding, subfields, MFHDRec, oh);
-		    //eholdings get URIs with extent of ownership, i don't think print holdings do
-			
-			List<VariableField> eightfivesixes = record.getVariableFields("856");
-			for ( VariableField eightfivesix : eightfivesixes ) {
-				tmpsubfields = LU_BuildInstance.getSubfields(eightfivesix);
-				String note = "", uriStr = "";
-	    		if ( tmpsubfields.get("$z") != null ) {
-	    			note = tmpsubfields.get("$z").get(0);
+			tmpsubfields = LU_BuildInstance.getSubfields(eightfivesix);
+			String note = "", uriStr = "";
+    		if ( tmpsubfields.get("$z") != null ) {
+    			note = tmpsubfields.get("$z").get(0);
+    		}
+    		// TODO: look in the "$3" subfield for notes, too
+    		// Often $z and $3 are specified.  Cat them together, I guess.
+			if ( tmpsubfields.get("$u") != null ) {
+	    		AccessURI uri = new AccessURI();
+	    		uriStr = tmpsubfields.get("$u").get(0).trim();
+	    		if ( uriStr.matches(purlpattern) ) {
+	    			oh.setLocalPersistentURI(uriStr);
 	    		}
-	    		// TODO: look in the "$3" subfield for notes, too
-	    		// Often $z and $3 are specified.  Cat them together, I guess.
-				if ( tmpsubfields.get("$u") != null ) {
-		    		AccessURI uri = new AccessURI();
-		    		uriStr = tmpsubfields.get("$u").get(0);
-		    		if ( uriStr.matches(purlpattern) ) {
-		    			oh.setLocalPersistentURI(uriStr);
-		    		}
-		    		uri.setUri(uriStr);
-		    		uri.setText(note + ": " + uriStr);
-		    		uri.setOleHoldings(oh);
-	    			oh.getAccessURIs().add(uri);
-	    		} 
-	    		if ( tmpsubfields.get("$a") != null ) {
-		    		AccessURI uri = new AccessURI();
-		    		uriStr = tmpsubfields.get("$a").get(0);
-		    		if ( uriStr.matches(purlpattern) ) {
-		    			oh.setLocalPersistentURI(uriStr);
-		    		}
-		    		uri.setUri(uriStr);
-		    		uri.setText(note + ": " + uriStr);
-		    		uri.setOleHoldings(oh);
-	    			oh.getAccessURIs().add(uri);			    			
-	    		}				
-			}
-			
-			// This also shouldn't be necessary once stuff from
-			// ole_ds_holdings_access_uri_t shows up in the
-			// user interface somewhere
-			/*
-			if ( oh.getAccessURIs() != null && oh.getAccessURIs().size() > 0 ) {
-				oh.setLink(oh.getAccessURIs().get(0).getUri());
-				oh.setLinkText(oh.getAccessURIs().get(0).getText());
-			}
-			*/
+	    		uri.setUri(uriStr);
+	    		uri.setText(note + ": " + uriStr);
+	    		uri.setOleHoldings(oh);
+    			oh.getAccessURIs().add(uri);
+    		} else if ( tmpsubfields.get("$a") != null ) {
+	    		AccessURI uri = new AccessURI();
+	    		uriStr = tmpsubfields.get("$a").get(0).trim();
+	    		if ( uriStr.matches(purlpattern) ) {
+	    			oh.setLocalPersistentURI(uriStr);
+	    		}
+	    		uri.setUri(uriStr);
+	    		uri.setText(note + ": " + uriStr);
+	    		uri.setOleHoldings(oh);
+    			oh.getAccessURIs().add(uri);			    			
+    		}
+    		
+			// Now there should only be 1 URI per holdings record
 			
 			sfxdata = findSFXData(catalog_issns, sfxdata_by_issn); 
 			if (  sfxdata == null ) {
@@ -912,24 +897,45 @@ public class LU_BuildInstance {
 					} else {
 						LU_DBLoadInstances.Log(System.out, "SFX data found by LCCN for catalog record " + record.getControlNumber(),
 					               LU_DBLoadInstances.LOG_DEBUG);
-						oh.setCoverage(buildCoverages(sfxdata));
+						oh.setCoverage(buildCoverages(sfxdata, oh));
 						//has_sfx_data++;
 					}
 				} else {
 					LU_DBLoadInstances.Log(System.out, "SFX data found by eISSN for catalog record " + record.getControlNumber(),
 				               LU_DBLoadInstances.LOG_DEBUG);
-					oh.setCoverage(buildCoverages(sfxdata));
+					oh.setCoverage(buildCoverages(sfxdata, oh));
 					//has_sfx_data++;
 				}
 			} else {
 				LU_DBLoadInstances.Log(System.out, "SFX data found by ISSN for catalog record " + record.getControlNumber(),
 			               LU_DBLoadInstances.LOG_DEBUG);				
-				oh.setCoverage(buildCoverages(sfxdata));
+				oh.setCoverage(buildCoverages(sfxdata, oh));
 				//has_sfx_data++;
 			}
 			
+			
+			// This also shouldn't be necessary once stuff from
+			// ole_ds_holdings_access_uri_t shows up in the
+			// user interface somewhere
+			/*
+			if ( oh.getAccessURIs() != null && oh.getAccessURIs().size() > 0 ) {
+				oh.setLink(oh.getAccessURIs().get(0).getUri());
+				oh.setLinkText(oh.getAccessURIs().get(0).getText());
+			}
+			*/
+			
+			String domainstr = "";
+			try {
+				domainstr = this.getDomain(oh.getAccessURIs().get(0).getUri());
+			} catch (Exception e) {
+				LU_DBLoadInstances.Log(System.err, "Unable to get a URI from record's 856: " + record.toString(),
+			               LU_DBLoadInstances.LOG_WARN);
+				domainstr = "N/A";
+			}
+			
 			CallNumber cn = new CallNumber();
-			cn.setNumber("Electronic Resource");
+			cn.setNumber("E-Resource: " + domainstr);
+			
 			String cntypecode = callNumberTypeCodes.get(ELECTRONIC_RESOURCE);
 			String cntypename = callNumberTypeNames.get(ELECTRONIC_RESOURCE);
 			oh.setCallNumberType(cntypecode, cntypename);
@@ -937,16 +943,71 @@ public class LU_BuildInstance {
 			oh.setBib(bib);
 			oh.setBibId(bib.getId());
 			bib.getHoldings().add(oh);
+			holdings.add(oh);
+			
+		}
+		
+		for ( OLEHoldings oh : holdings ) {
+			for ( VariableField eholding : eholdings ) {
+				subfields = LU_BuildInstance.getSubfields(eholding);
+				buildCommonHoldingsData(record, bib, eholding, subfields, MFHDRec, oh);
+			}
 		}
 	}
 	
-	public static List<Coverage> buildCoverages(List<Map<String, String>> sfxdata_list) {
+	public static String getDomain(String uriStr) {
+		String domainstr = "";
+		try {
+			java.net.URI uri = new java.net.URI(uriStr);
+			domainstr = uri.getHost();
+		} catch (URISyntaxException e) {
+			// TODO Auto-generated catch block
+			LU_DBLoadInstances.Log(System.err, "Unable to parse domain from URI: " + uriStr,
+		               LU_DBLoadInstances.LOG_INFO);
+			//e.printStackTrace();
+			domainstr = "";
+		}
+		return domainstr;
+	}
+	
+	public static List<Coverage> buildCoverages(List<Map<String, String>> sfxdata_list, OLEHoldings oh) {
 		List<Coverage> coverages = new ArrayList<Coverage>();
 		Coverage coverage;
 		String datestr = "", token = "";
 		Tokenizer tokenizer = new Tokenizer();
 		tokenizer.setBreakchars(Arrays.asList(new String[]{"\"", "'", ",", "(", ")", " "}));
+
+		
+		String uriStr = oh.getAccessURIs().get(0).getUri();
+		String holdings_uri_domain = getDomain(uriStr);
+		String sfx_uri_domain = "";
+		// Now look in the list to see if any of the elements have a URL with domain that matches
+		// If so, add them to the new list to use for determining coverage
+		// If not, just use the original list
+		List<Map<String, String>> sfxdata_list_mod = new ArrayList<Map<String, String>>();
 		for ( Map<String, String> sfxdata : sfxdata_list ) {
+			uriStr = sfxdata.get("PARSE_PARAM");
+			if ( uriStr != null && uriStr.length() > 0 && uriStr.indexOf("http:") > 0) {
+				uriStr = uriStr.substring(uriStr.indexOf("http:"));
+				if ( uriStr.indexOf(" & ") > 0 ) {
+					uriStr = uriStr.substring(0, uriStr.indexOf(" & "));
+				}
+				uriStr = uriStr.trim();
+				sfx_uri_domain = getDomain(uriStr);
+				if ( sfx_uri_domain.equals(holdings_uri_domain) ) {
+					sfxdata_list_mod.add(sfxdata);
+					LU_DBLoadInstances.Log(System.out, "URI found in SFX data: " + uriStr, 
+					           LU_DBLoadInstances.LOG_INFO);
+				}
+			}
+		}
+		// No URIs matched from the SFX data passed in, just use the whole list for coverage
+		if ( sfxdata_list_mod.size() == 0 ) {
+			sfxdata_list_mod = sfxdata_list;
+			LU_DBLoadInstances.Log(System.out, "No match for URI found in SFX data: " + oh.getAccessURIs().get(0).getUri(), 
+			           LU_DBLoadInstances.LOG_INFO);
+		}
+		for ( Map<String, String> sfxdata : sfxdata_list_mod ) {
 			datestr = sfxdata.get("THRESHOLD_GLOBAL");
 			datestr = datestr.replaceAll("\\$obj->", "");
 			// datestr should now be of the form parseDate('>=','2005','27','10') && parsedDate('<=','2009','33','1')
@@ -1174,8 +1235,10 @@ public class LU_BuildInstance {
 				    ShelvingOrder shelvingOrder = new ShelvingOrder();
 				    shelvingOrder.setShelvingOrder(subfields.get("$w").get(0));
 				    cn.setShelvingOrder(shelvingOrder);
-				    cn.setPrefix(subfields.get("$a").get(0));
-				    cn.setNumber(subfields.get("$i").get(0));
+				    //cn.setPrefix(subfields.get("$a").get(0));
+				    //cn.setNumber(subfields.get("$i").get(0));
+				    cn.setPrefix("");
+				    cn.setNumber(subfields.get("$a").get(0));
 
 				    // Not used: callNumberType, callNumberPrefix, itemPart,
 				    // They make reference to MFHD 852 codes i, h, and k
@@ -1225,8 +1288,8 @@ public class LU_BuildInstance {
 			    ShelvingOrder shelvingOrder = new ShelvingOrder();
 			    shelvingOrder.setShelvingOrder(subfields.get("$w").get(0));
 			    cn.setShelvingOrder(shelvingOrder);
-			    cn.setPrefix(subfields.get("$a").get(0));
-			    cn.setNumber(subfields.get("$i").get(0));
+			    cn.setPrefix("");
+			    cn.setNumber(subfields.get("$a").get(0));
 
 			    // Not used: callNumberType, callNumberPrefix, itemPart,
 			    // They make reference to MFHD 852 codes i, h, and k
@@ -1805,8 +1868,8 @@ public class LU_BuildInstance {
 	    ShelvingOrder shelvingOrder = new ShelvingOrder();
 	    shelvingOrder.setShelvingOrder(subfields.get("$w").get(0));
 	    cn.setShelvingOrder(shelvingOrder);
-	    cn.setPrefix(subfields.get("$a").get(0));
-	    cn.setNumber(subfields.get("$i").get(0));
+	    cn.setPrefix("");
+	    cn.setNumber(subfields.get("$a").get(0));
 
 	    // Not used: callNumberType, callNumberPrefix, itemPart,
 	    // They make reference to MFHD 852 codes i, h, and k

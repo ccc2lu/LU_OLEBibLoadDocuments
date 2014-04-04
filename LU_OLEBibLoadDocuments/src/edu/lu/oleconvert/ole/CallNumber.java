@@ -89,6 +89,14 @@ public class CallNumber implements Serializable {
 	}
 
 	public void setNumber(String number) {
+		/* I couldn't figure out what code was still setting the wrong call number, so I put this here to find it
+		StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+		System.err.println("Setting call number to " + number);
+		for ( StackTraceElement s : stack ) {
+			System.err.print(s.toString() + ", ");
+		}
+		System.err.println();
+		*/
 		this.number = number;
 	}
 

@@ -122,7 +122,7 @@ public class LU_DBLoadInstances {
     }
     
 	public static void main(String args[]) {
-		emf = Persistence.createEntityManagerFactory("default");
+		emf = Persistence.createEntityManagerFactory("ole");
 		em = emf.createEntityManager();
 		EntityTransaction tx = em.getTransaction();
 		
@@ -233,7 +233,8 @@ public class LU_DBLoadInstances {
 
 				Reader input = new FileReader(dumpdir + "/" + args[3]);
 				InputSource inputsource = new InputSource(input);
-				inputsource.setEncoding("ISO-8859-1");
+				//inputsource.setEncoding("ISO-8859-1");
+				inputsource.setEncoding("UTF-8");
 				//MarcReader reader = new MarcStreamReader(input, "ISO-8859-1");
 				//MarcXmlReader reader = new MarcXmlReader(new FileInputStream(dumpdir + "/" + args[2]), "UTF-8");
 				MarcXmlReader reader = new MarcXmlReader(inputsource);
