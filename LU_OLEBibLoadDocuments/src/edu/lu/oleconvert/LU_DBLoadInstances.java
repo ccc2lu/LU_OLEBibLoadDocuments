@@ -105,10 +105,11 @@ public class LU_DBLoadInstances {
     	String newkey = key;
     	if ( key.substring(0, 1).equals("a") ) {
     		newkey = key.substring(1);
-    	}
+    	} 
     	// Then pad the key out to 11 characters with leading zeros -- that's how
     	// it will be in the MarcXML, and how OLE wants it in the database
     	//return StringUtils.leftPad(key, 11, "0");
+    	/*
     	int startId = 10000000;
     	int keynum = 0;
     	try {
@@ -118,6 +119,7 @@ public class LU_DBLoadInstances {
     		Log(System.err, "Unable to format catalog key: " + key);
     		newkey = key;
     	}
+    	*/
     	return newkey;
     }
     
