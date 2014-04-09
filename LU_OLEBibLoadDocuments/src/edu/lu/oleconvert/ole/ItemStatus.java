@@ -57,7 +57,7 @@ public class ItemStatus implements Serializable {
 	}
 	public void setDeliverStatus(String code, String name) {
 		Deliver_ItemStatus status;
-		TypedQuery<Deliver_ItemStatus> query = LU_DBLoadInstances.em.createQuery("SELECT s FROM Deliver_ItemStatus s WHERE s.code='" + code + "'", Deliver_ItemStatus.class);
+		TypedQuery<Deliver_ItemStatus> query = LU_DBLoadInstances.ole_em.createQuery("SELECT s FROM Deliver_ItemStatus s WHERE s.code='" + code + "'", Deliver_ItemStatus.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<Deliver_ItemStatus> results = query.getResultList();
 		if ( results.size() == 0 ) {

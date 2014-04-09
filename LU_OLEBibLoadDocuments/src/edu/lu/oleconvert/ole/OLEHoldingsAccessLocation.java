@@ -57,7 +57,7 @@ public class OLEHoldingsAccessLocation implements Serializable {
 	}
 	public void setAccessLocation(String code, String name) {
 		AccessLocation loc;
-		TypedQuery<AccessLocation> query = LU_DBLoadInstances.em.createQuery("SELECT l FROM AccessLocation l WHERE l.code='" + code + "'", AccessLocation.class);
+		TypedQuery<AccessLocation> query = LU_DBLoadInstances.ole_em.createQuery("SELECT l FROM AccessLocation l WHERE l.code='" + code + "'", AccessLocation.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<AccessLocation> results = query.getResultList();
 		if ( results.size() == 0 ) {

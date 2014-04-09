@@ -437,7 +437,7 @@ public class OLEHoldings implements Serializable {
 	}
 	public void setCallNumberType(String code, String name) {
 		CallNumberType type;
-		TypedQuery<CallNumberType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM CallNumberType t WHERE t.code='" + code + "'", CallNumberType.class);
+		TypedQuery<CallNumberType> query = LU_DBLoadInstances.ole_em.createQuery("SELECT t FROM CallNumberType t WHERE t.code='" + code + "'", CallNumberType.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<CallNumberType> results = query.getResultList();
 		if ( results.size() == 0 ) {
@@ -517,7 +517,7 @@ public class OLEHoldings implements Serializable {
 	}
 	public void setReceiptStatus(String code, String name) {
 		ReceiptStatus r;
-		TypedQuery<ReceiptStatus> query = LU_DBLoadInstances.em.createQuery("SELECT r FROM ReceiptStatus r WHERE r.code='" + code + "'", ReceiptStatus.class);
+		TypedQuery<ReceiptStatus> query = LU_DBLoadInstances.ole_em.createQuery("SELECT r FROM ReceiptStatus r WHERE r.code='" + code + "'", ReceiptStatus.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<ReceiptStatus> results = query.getResultList();
 		if ( results.size() == 0 ) {

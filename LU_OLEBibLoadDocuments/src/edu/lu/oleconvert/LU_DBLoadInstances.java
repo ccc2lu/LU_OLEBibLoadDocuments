@@ -51,9 +51,11 @@ import edu.lu.oleconvert.ole.OLEHoldings;
 
 public class LU_DBLoadInstances {
 
-	public static EntityManagerFactory emf;
-	public static EntityManager em;
-
+	public static EntityManagerFactory ole_emf;
+	public static EntityManager ole_em;
+	public static EntityManagerFactory migration_emf;
+	public static EntityManager migration_em;
+	
     static String[] booleanValues = {"false","true"};
     static HashMap<String, String> KeyToDate = new HashMap<String, String>();
     // Silly, dirty trick to initialize a map inline using an anonymous block
@@ -124,9 +126,12 @@ public class LU_DBLoadInstances {
     }
     
 	public static void main(String args[]) {
-		emf = Persistence.createEntityManagerFactory("ole");
-		em = emf.createEntityManager();
-		EntityTransaction tx = em.getTransaction();
+		ole_emf = Persistence.createEntityManagerFactory("ole");
+		ole_em = ole_emf.createEntityManager();
+		EntityTransaction ole_tx = ole_em.getTransaction();
+		
+		migration_emf = Persistence.createEntityManagerFactory("olemigration");
+		migration_em = migration_emf.createEntityManager();
 		
         BufferedReader inFile = null;
 		Properties loadprops;
@@ -259,7 +264,7 @@ public class LU_DBLoadInstances {
 						                LOG_INFO);
                 Bib bib;
                 
-				tx.begin();
+				ole_tx.begin();
 
 				do {
 					
@@ -269,7 +274,7 @@ public class LU_DBLoadInstances {
 					// Build a bib record from the xmlrecord
 					bib = buildBib(xmlrecord);
 					if ( bib != null ) {
-						em.persist(bib);
+						ole_em.persist(bib);
 					} else {
 						LU_DBLoadInstances.Log(System.err, "Unable to persist bib for record " + xmlrecord.getControlNumber(), LOG_ERROR);						
 					}
@@ -283,7 +288,7 @@ public class LU_DBLoadInstances {
 						assocMFHDRecords.add(nextrecord);
 						Bib tmpbib = buildBib(nextrecord);
 						if ( tmpbib != null ) {
-							em.persist(tmpbib);
+							ole_em.persist(tmpbib);
 						} else {
 							LU_DBLoadInstances.Log(System.err, "Unable to persist bib for record " + nextrecord.getControlNumber(), LOG_ERROR);							
 						}						
@@ -298,6 +303,11 @@ public class LU_DBLoadInstances {
 					// Build the instance data first, because we might be adding
 					//instanceBuilder.buildInstanceCollection(xmlrecord, bib, assocMFHDRecords);
 					instanceBuilder.buildBibHoldingsData(xmlrecord, bib, assocMFHDRecords);
+					
+					// this method will check if the former ID of the bib record matches one
+					// in the serials table of the olemigration database, then if it does it
+					// will fill in ole serials receiving tables
+					//instanceBuilder.buildSerialsData(xmlrecord, bib, assocMFHDRecords);
 					
 					// now we don't loop over instances, we just let the bib cascade persisting all of its holdings,
 					// which cascades to items, etc.
@@ -314,7 +324,7 @@ public class LU_DBLoadInstances {
 						//	LU_DBLoadInstances.Log(System.err, "ID for holdings " + holdings.getHoldingsIdentifier() + " = " + holdings.getBibId(), LOG_INFO);
 						//}
 						// Now persist bib again after creating holdings/items
-						em.persist(bib);
+						ole_em.persist(bib);
 					} else {
 						LU_DBLoadInstances.Log(System.err, "Unable to persist bib for record " + xmlrecord.getControlNumber(), LOG_ERROR);						
 					}
@@ -322,10 +332,10 @@ public class LU_DBLoadInstances {
 
 					counter++;
 					if ( counter % 10 == 0 || ( limit > 0 && counter >= limit )) {
-						tx.commit();
-						em.clear(); // TODO: testing this to see if it fixes memory problems
+						ole_tx.commit();
+						ole_em.clear(); // TODO: testing this to see if it fixes memory problems
 						LU_DBLoadInstances.Log(System.out, counter + " records loaded ...", LOG_INFO);
-						tx.begin();
+						ole_tx.begin();
 					}
 				} while (nextrecord != null && (limit < 0 || counter < limit) );
 				LU_DBLoadInstances.Log(System.out, 
@@ -346,7 +356,7 @@ public class LU_DBLoadInstances {
 		} catch (Exception e) {
 			System.err.println("Something went wrong: " + e.toString());
 			e.printStackTrace(System.err);
-			tx.rollback();
+			ole_tx.rollback();
 		}
 	}
 	

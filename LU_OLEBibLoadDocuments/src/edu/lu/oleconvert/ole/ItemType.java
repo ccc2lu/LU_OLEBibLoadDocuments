@@ -67,7 +67,7 @@ public class ItemType implements Serializable {
 	}
 	public void setDeliverType(String code, String name) {
 		Deliver_ItemType type;
-		TypedQuery<Deliver_ItemType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM Deliver_ItemType t WHERE t.code='" + code + "'", Deliver_ItemType.class);
+		TypedQuery<Deliver_ItemType> query = LU_DBLoadInstances.ole_em.createQuery("SELECT t FROM Deliver_ItemType t WHERE t.code='" + code + "'", Deliver_ItemType.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<Deliver_ItemType> results = query.getResultList();
 		if ( results.size() == 0 ) {

@@ -514,7 +514,7 @@ public class Item implements Serializable {
 	public void setItemStatus(String code, String name) {
 		ItemStatus status;
 		// TypedQuery<ItemStatus> query = LU_DBLoadInstances.em.createQuery("SELECT s FROM ItemStatus s WHERE s.code='" + code + "'", ItemStatus.class);
-		TypedQuery<ItemStatus> query = LU_DBLoadInstances.em.createQuery("SELECT s FROM ItemStatus s WHERE s.deliverStatus.code='" + code + "'", ItemStatus.class);
+		TypedQuery<ItemStatus> query = LU_DBLoadInstances.ole_em.createQuery("SELECT s FROM ItemStatus s WHERE s.deliverStatus.code='" + code + "'", ItemStatus.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<ItemStatus> results = query.getResultList();
 		if ( results.size() == 0 ) {
@@ -607,7 +607,7 @@ public class Item implements Serializable {
 	}
 	public void setCallNumberType(String code, String name) {
 		CallNumberType type;
-		TypedQuery<CallNumberType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM CallNumberType t WHERE t.code='" + code + "'", CallNumberType.class);
+		TypedQuery<CallNumberType> query = LU_DBLoadInstances.ole_em.createQuery("SELECT t FROM CallNumberType t WHERE t.code='" + code + "'", CallNumberType.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<CallNumberType> results = query.getResultList();
 		if ( results.size() == 0 ) {
@@ -635,7 +635,7 @@ public class Item implements Serializable {
 	public void setItemType(String code, String name) {
 		ItemType type;
 		//TypedQuery<ItemType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM ItemType t WHERE t.code='" + code + "'", ItemType.class);
-		TypedQuery<ItemType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM ItemType t WHERE t.deliverType.code='" + code + "'", ItemType.class);
+		TypedQuery<ItemType> query = LU_DBLoadInstances.ole_em.createQuery("SELECT t FROM ItemType t WHERE t.deliverType.code='" + code + "'", ItemType.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<ItemType> results = query.getResultList();
 		if ( results.size() == 0 ) {

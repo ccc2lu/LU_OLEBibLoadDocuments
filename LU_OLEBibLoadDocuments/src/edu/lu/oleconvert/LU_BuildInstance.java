@@ -39,6 +39,8 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.TransformerFactory;
 
+import migration.Serial;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.marc4j.marc.Record;
@@ -130,15 +132,15 @@ public class LU_BuildInstance {
 		// These values for code/value of callnumber types are taken from
 		// ole-common/ole-utility/src/main/java/org/kuali/ole/utility/callnumber/CallNumberType.java
 		
-	    callNumberTypeCodes.put("DEWEYSAN", "DCC");
+	    callNumberTypeCodes.put("DEWEYSAN", "DDC");
 	    callNumberTypeNames.put("DEWEYSAN", "DDC - Dewey Decimal classification");
-	    callNumberTypeCodes.put("DEWPERSAN", "DCC");
+	    callNumberTypeCodes.put("DEWPERSAN", "DDC");
 	    callNumberTypeNames.put("DEWPERSAN", "DDC - Dewey Decimal classification");
-	    callNumberTypeCodes.put("ATDEWEY", "DCC");
+	    callNumberTypeCodes.put("ATDEWEY", "DDC");
 	    callNumberTypeNames.put("ATDEWEY", "DDC - Dewey Decimal classification");
-	    callNumberTypeCodes.put("DEWEY", "DCC");
+	    callNumberTypeCodes.put("DEWEY", "DDC");
 	    callNumberTypeNames.put("DEWEY", "DDC - Dewey Decimal classification");
-	    callNumberTypeCodes.put("DEWEYPER", "DCC");
+	    callNumberTypeCodes.put("DEWEYPER", "DDC");
 	    callNumberTypeNames.put("DEWEYPER", "DDC - Dewey Decimal classification");
 
 	    callNumberTypeCodes.put("LC", "LCC");
@@ -149,19 +151,22 @@ public class LU_BuildInstance {
 	    callNumberTypeCodes.put("NLM", "NLM");
 	    callNumberTypeNames.put("NLM", "NLM - National Library of Medicine Classification");
 
-	    callNumberTypeCodes.put("SUDOC", "SuDoc");
+	    callNumberTypeCodes.put("SUDOC", "SUDOC");
 	    callNumberTypeNames.put("SUDOC", "SuDoc - Superintendent of Documents classification");
 	    
-	    callNumberTypeCodes.put(ELECTRONIC_RESOURCE, "8");
-	    callNumberTypeNames.put(ELECTRONIC_RESOURCE, "8 - Other scheme");
-	    callNumberTypeCodes.put("ALPHANUM", "8");
-	    callNumberTypeNames.put("ALPHANUM", "8 - Other scheme");
-	    callNumberTypeCodes.put("ASIS", "8");
-	    callNumberTypeNames.put("ASIS", "8 - Other scheme");
-	    callNumberTypeCodes.put("ATDEWEYLOC", "8");
-	    callNumberTypeNames.put("ATDEWEYLOC", "8 - Other scheme");
-	    callNumberTypeCodes.put("AUTO", "8");
-	    callNumberTypeNames.put("AUTO", "8 - Other scheme");
+	    callNumberTypeCodes.put("SCN", "SCN");
+	    callNumberTypeNames.put("SCN", "Shelving Control Number");
+	    
+	    callNumberTypeCodes.put(ELECTRONIC_RESOURCE, "OTHER");
+	    callNumberTypeNames.put(ELECTRONIC_RESOURCE, "Other scheme");
+	    callNumberTypeCodes.put("ALPHANUM", "OTHER");
+	    callNumberTypeNames.put("ALPHANUM", "Other scheme");
+	    callNumberTypeCodes.put("ASIS", "OTHER");
+	    callNumberTypeNames.put("ASIS", "Other scheme");
+	    callNumberTypeCodes.put("ATDEWEYLOC", "OTHER");
+	    callNumberTypeNames.put("ATDEWEYLOC", "Other scheme");
+	    callNumberTypeCodes.put("AUTO", "OTHER");
+	    callNumberTypeNames.put("AUTO", "Other scheme");
 	 
 	    // We only ever use the ON_RESERVE status to mark items
 	    // that are on course reserve as ONHOLD
@@ -543,6 +548,31 @@ public class LU_BuildInstance {
 			}
 		}
 		return subfields;
+	}
+	
+	public void buildSerialsData(Record record, Bib bib, List<Record> assocMFHDRecords) {
+		String bibFormerId = bib.getFormerId();
+		TypedQuery<Serial> query = LU_DBLoadInstances.migration_em.createQuery("SELECT s FROM Serial s where s.bibid='" + bibFormerId + "'", Serial.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<Serial> results = query.getResultList();
+		for ( Serial s : results ) {
+			System.out.println("Creating serials receiving control record in OLE for serial with migration ID " + s.getId() + " and Sirsi bib ID " + s.getBibid());
+			for ( OLEHoldings oh : bib.getHoldings() ) {
+				SerialsReceiving sr = new SerialsReceiving();
+				sr.setBibId(bib.getUniqueIdPrefix() + "-" + bib.getId());				
+				sr.setInstanceId(oh.getUniqueIdPrefix() + "-" + oh.getHoldingsIdentifier());
+				
+				SerialsReceivingRecType srtype = new SerialsReceivingRecType();
+				srtype.setSerialsReceivingRec(sr);
+			
+				LU_DBLoadInstances.ole_em.persist(sr);
+			// Need to transform that bib id from Sirsi into an OLE bib id
+			// docstore SOLR search, maybe?
+			// Probably better to look in olemigration database while filling in bib records
+			// to see if former id of bib matches bib id of any serials
+			// Then fill in serial information ...
+			}
+		}
 	}
 	
 	public void buildBibHoldingsData(Record record, Bib bib, List<Record> assocMFHDRecords) {
@@ -1232,9 +1262,13 @@ public class LU_BuildInstance {
 				    // Same as the shelvingscheme for now
 				    String cntype = subfields.get("$w").get(0);
 				    
-				    ShelvingOrder shelvingOrder = new ShelvingOrder();
-				    shelvingOrder.setShelvingOrder(subfields.get("$w").get(0));
-				    cn.setShelvingOrder(shelvingOrder);
+				    // Going to try leaving this blank to see if OLE generates it
+				    // It should be a "normalized" version of the call number, with
+				    // spaces and other stuff removed
+				    //ShelvingOrder shelvingOrder = new ShelvingOrder();
+				    //shelvingOrder.setShelvingOrder(subfields.get("$w").get(0));
+				    //cn.setShelvingOrder(shelvingOrder);
+				    
 				    //cn.setPrefix(subfields.get("$a").get(0));
 				    //cn.setNumber(subfields.get("$i").get(0));
 				    cn.setPrefix("");
@@ -1285,9 +1319,13 @@ public class LU_BuildInstance {
 			    // Same as the shelvingscheme for now
 			    String cntype = subfields.get("$w").get(0);
 			    
-			    ShelvingOrder shelvingOrder = new ShelvingOrder();
-			    shelvingOrder.setShelvingOrder(subfields.get("$w").get(0));
-			    cn.setShelvingOrder(shelvingOrder);
+			    // Going to try leaving this blank to see if OLE generates it
+			    // It should be a "normalized" version of the call number, with
+			    // spaces and other stuff removed
+			    //ShelvingOrder shelvingOrder = new ShelvingOrder();
+			    //shelvingOrder.setShelvingOrder(subfields.get("$w").get(0));
+			    //cn.setShelvingOrder(shelvingOrder);
+			    
 			    cn.setPrefix("");
 			    cn.setNumber(subfields.get("$a").get(0));
 
@@ -1365,6 +1403,9 @@ public class LU_BuildInstance {
 	    item.setUniqueIdPrefix("wio");
 	    item.setClaimsReturnedFlag("N"); // Apparently there has to be a value here or the docstore
 	    // REST API gives a NullPointerException ...
+	    
+	    item.setCallNumber(holdings.getCallNumber());
+	    item.setCallNumberType(holdings.getCallNumberType());
 	    
 	    // There should only be one subfield "i", as it's the item's barcode and should be unique
 	    // And there should be only 1 item with that item ID, so we can just get the first
