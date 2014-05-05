@@ -28,7 +28,7 @@ public class SerialNote implements Serializable {
 	private String note;
 
 	@ManyToOne
-	@JoinColumn(name="serial_id", referencedColumnName="id")
+	@JoinColumn(name="serials_id", referencedColumnName="id")
 	private Serial serial;
 	
 	public SerialNote() {

@@ -271,6 +271,8 @@ public class LU_DBLoadInstances {
 					assocMFHDRecords.clear();
 					xmlrecord = nextrecord;
 					
+					LU_BuildInstance.fixISBN(xmlrecord);
+					
 					// Build a bib record from the xmlrecord
 					bib = buildBib(xmlrecord);
 					if ( bib != null ) {
@@ -307,7 +309,7 @@ public class LU_DBLoadInstances {
 					// this method will check if the former ID of the bib record matches one
 					// in the serials table of the olemigration database, then if it does it
 					// will fill in ole serials receiving tables
-					//instanceBuilder.buildSerialsData(xmlrecord, bib, assocMFHDRecords);
+					instanceBuilder.buildSerialsData(xmlrecord, bib, assocMFHDRecords);
 					
 					// now we don't loop over instances, we just let the bib cascade persisting all of its holdings,
 					// which cascades to items, etc.

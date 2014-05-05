@@ -26,7 +26,7 @@ public class SerialName implements Serializable {
 	private String name;
 	
 	@ManyToOne
-	@JoinColumn(name="serial_id", referencedColumnName="id")
+	@JoinColumn(name="serials_id", referencedColumnName="id")
 	private Serial serial;
 	
 	public String getName() {

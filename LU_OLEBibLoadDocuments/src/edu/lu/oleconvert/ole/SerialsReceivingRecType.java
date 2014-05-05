@@ -1,6 +1,7 @@
 package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -23,6 +24,8 @@ public class SerialsReceivingRecType implements Serializable {
 
 	public SerialsReceivingRecType() {
 		super();
+		this.versionNbr = 1; 
+		this.setObjId(UUID.randomUUID().toString());
 	}
 	
 	@Id
@@ -30,20 +33,167 @@ public class SerialsReceivingRecType implements Serializable {
 	@Column(name="SER_RCV_REC_TYP_ID")
 	private String id;
 	
-	/*
-	"SER_RCV_REC_TYP_ID","SER_RCV_REC_ID","RCV_REC_TYP","ACTN_DATE","ACTN_INTRVL","CHRON_CAPTN_LVL1","CHRON_CAPTN_LVL2","CHRON_CAPTN_LVL3","CHRON_CAPTN_LVL4","ENUM_CAPTN_LVL1","ENUM_CAPTN_LVL2","ENUM_CAPTN_LVL3","ENUM_CAPTN_LVL4","ENUM_CAPTN_LVL5","ENUM_CAPTN_LVL6","OBJ_ID","VER_NBR"
-	"1","140891","Main","","30","","","","","","","","","","","4ad1f7f4-b5c9-4acc-b408-4f1821c8d292","1"
-	"10","487066","Main","","15","","","","","","","","","","","6499c659-4d16-459b-904b-c8ed639e8a13","1"
-	"100","554905","Main","","90","","","","","","","","","","","a690ef46-c8f2-45d6-a0d0-a3804cf941ec","1"
-	*/
-	
 	@OneToOne
 	@JoinColumn(name="SER_RCV_REC_ID")
-	private SerialsReceiving serialsReceivingRec;
+	private SerialsReceiving serialsReceiving;
 	
+	public int getVersionNbr() {
+		return versionNbr;
+	}
+
+	public void setVersionNbr(int versionNbr) {
+		this.versionNbr = versionNbr;
+	}
+
+	public String getObjId() {
+		return objId;
+	}
+
+	public void setObjId(String objId) {
+		this.objId = objId;
+	}
+
+	public String getEnumCaptionLvl1() {
+		return enumCaptionLvl1;
+	}
+
+	public void setEnumCaptionLvl1(String enumCaptionLvl1) {
+		this.enumCaptionLvl1 = enumCaptionLvl1;
+	}
+
+	public String getEnumCaptionLvl2() {
+		return enumCaptionLvl2;
+	}
+
+	public void setEnumCaptionLvl2(String enumCaptionLvl2) {
+		this.enumCaptionLvl2 = enumCaptionLvl2;
+	}
+
+	public String getEnumCaptionLvl3() {
+		return enumCaptionLvl3;
+	}
+
+	public void setEnumCaptionLvl3(String enumCaptionLvl3) {
+		this.enumCaptionLvl3 = enumCaptionLvl3;
+	}
+
+	public String getEnumCaptionLvl4() {
+		return enumCaptionLvl4;
+	}
+
+	public void setEnumCaptionLvl4(String enumCaptionLvl4) {
+		this.enumCaptionLvl4 = enumCaptionLvl4;
+	}
+
+	public String getEnumCaptionLvl5() {
+		return enumCaptionLvl5;
+	}
+
+	public void setEnumCaptionLvl5(String enumCaptionLvl5) {
+		this.enumCaptionLvl5 = enumCaptionLvl5;
+	}
+
+	public String getEnumCaptionLvl6() {
+		return enumCaptionLvl6;
+	}
+
+	public void setEnumCaptionLvl6(String enumCaptionLvl6) {
+		this.enumCaptionLvl6 = enumCaptionLvl6;
+	}
+
+	public String getChronCaptionLvl1() {
+		return chronCaptionLvl1;
+	}
+
+	public void setChronCaptionLvl1(String chronCaptionLvl1) {
+		this.chronCaptionLvl1 = chronCaptionLvl1;
+	}
+
+	public String getChronCaptionLvl2() {
+		return chronCaptionLvl2;
+	}
+
+	public void setChronCaptionLvl2(String chronCaptionLvl2) {
+		this.chronCaptionLvl2 = chronCaptionLvl2;
+	}
+
+	public String getChronCaptionLvl3() {
+		return chronCaptionLvl3;
+	}
+
+	public void setChronCaptionLvl3(String chronCaptionLvl3) {
+		this.chronCaptionLvl3 = chronCaptionLvl3;
+	}
+
+	public String getChronCaptionLvl4() {
+		return chronCaptionLvl4;
+	}
+
+	public void setChronCaptionLvl4(String chronCaptionLvl4) {
+		this.chronCaptionLvl4 = chronCaptionLvl4;
+	}
+
+	public String getActionDate() {
+		return actionDate;
+	}
+
+	public void setActionDate(String actionDate) {
+		this.actionDate = actionDate;
+	}
+
+	public String getActionInterval() {
+		return actionInterval;
+	}
+
+	public void setActionInterval(String actionInterval) {
+		this.actionInterval = actionInterval;
+	}
+
 	@Column(name="RCV_REC_TYP")
 	private String recType;
 
+	// All 1 in Chicago data
+	@Column(name="VER_NBR")
+	private int versionNbr;
+	
+	// Set to a UUID in Chicago data
+	@Column(name="OBJ_ID")
+	private String objId;
+	
+	// NULL in Chicago's CSV data, note in mapping file saying:
+	// from enum_pattern_level.label use serial# and ord={0..5}
+	@Column(name="ENUM_CAPTN_LVL1")
+	private String enumCaptionLvl1;
+	@Column(name="ENUM_CAPTN_LVL2")
+	private String enumCaptionLvl2;
+	@Column(name="ENUM_CAPTN_LVL3")
+	private String enumCaptionLvl3;
+	@Column(name="ENUM_CAPTN_LVL4")
+	private String enumCaptionLvl4;
+	@Column(name="ENUM_CAPTN_LVL5")
+	private String enumCaptionLvl5;
+	@Column(name="ENUM_CAPTN_LVL6")
+	private String enumCaptionLvl6;
+	
+	// All NULL in Chicago data, with a note saying: 
+	// "use fm_ole_sercaptions to get chron_pattern from olga, then Julie Stauffer will provide mapping to OLE patterns"
+	@Column(name="CHRON_CAPTN_LVL1")
+	private String chronCaptionLvl1;
+	@Column(name="CHRON_CAPTN_LVL2")
+	private String chronCaptionLvl2;
+	@Column(name="CHRON_CAPTN_LVL3")
+	private String chronCaptionLvl3;
+	@Column(name="CHRON_CAPTN_LVL4")
+	private String chronCaptionLvl4;
+	
+	// NULL in Chicago data
+	@Column(name="ACTN_DATE")
+	private String actionDate;
+	
+	// Set to "first claim delay" in Chicago data
+	@Column(name="ACTN_INTRVL")
+	private String actionInterval;
+	
 	public String getId() {
 		return id;
 	}
@@ -52,12 +202,12 @@ public class SerialsReceivingRecType implements Serializable {
 		this.id = id;
 	}
 
-	public SerialsReceiving getSerialsReceivingRec() {
-		return serialsReceivingRec;
+	public SerialsReceiving getSerialsReceiving() {
+		return serialsReceiving;
 	}
 
-	public void setSerialsReceivingRec(SerialsReceiving serialsReceivingRec) {
-		this.serialsReceivingRec = serialsReceivingRec;
+	public void setSerialsReceiving(SerialsReceiving serialsReceivingRec) {
+		this.serialsReceiving = serialsReceivingRec;
 	}
 
 	public String getRecType() {

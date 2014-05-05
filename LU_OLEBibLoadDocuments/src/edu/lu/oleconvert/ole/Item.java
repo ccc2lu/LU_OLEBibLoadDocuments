@@ -54,7 +54,9 @@ public class Item implements Serializable {
 	private String barcodeARSL;
 	private List<FormerIdentifier> formerIdentifiers;
 	private List<ItemStatSearch> statSearches; 
-	private ItemType itemType;
+	// ole_ds_item_type_t removed from the database, apparently
+	//private ItemType itemType;
+	private Deliver_ItemType itemType;
 	
 	FlatLocation location;
 	private String copyNumber;
@@ -67,17 +69,20 @@ public class Item implements Serializable {
 	private String chronology;
 	private HighDensityStorage highDensityStorage;
 	//private TemporaryItemType temporaryItemType;
-	private ItemType temporaryItemType;
+	private Deliver_ItemType temporaryItemType;
 	private String fund;
 	private ItemDonor itemDonor;
 	//private String donorPublicDisplay;
 	//private String donorNote;
 	private CallNumber callNumber;
 	private CallNumberType callNumberType;
+	
 	private double price;
 	private String numberOfPieces;
 	//private String itemStatus;
-	private ItemStatus itemStatus;
+	// ole_ds_item_status_t is gone, only using deliver version now, apparently
+	//private ItemStatus itemStatus;
+	private Deliver_ItemStatus itemStatus;
 	private String itemStatusDateUpdated;
 	private String checkinNote;
 	private String staffOnlyFlag;
@@ -190,7 +195,6 @@ public class Item implements Serializable {
 		staffOnlyFlag = i.getStaffOnlyFlag();
 		fastAddFlag = i.getFastAddFlag();
 		this.accessInformation = i.getAccessInformation();
-		itemStatus = i.getItemStatus();
 		this.itemHoldings = i.getItemHoldings();
 		this.claimsReturnedFlag = i.getClaimsReturnedFlag();
 		this.claimsReturnedFlagCreateDate = i.getClaimsReturnedFlagCreateDate();
@@ -418,19 +422,32 @@ public class Item implements Serializable {
 	}
 
 	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
-	//@ManyToOne(fetch=FetchType.LAZY)
-	@JoinColumn(name="TEMP_ITEM_TYPE_ID", referencedColumnName="ITEM_TYPE_ID")
-	@XmlElement(name="temporaryItemType")
-//	public TemporaryItemType getTemporaryItemType() {
-	public ItemType getTemporaryItemType() {
+	@JoinColumn(name="TEMP_ITEM_TYPE_ID", referencedColumnName="ITM_TYP_CD_ID")
+	public Deliver_ItemType getTemporaryItemType() {
 		return temporaryItemType;
 	}
 
 	//public void setTemporaryItemType(TemporaryItemType temporaryItemType) {
-	public void setTemporaryItemType(ItemType temporaryItemType) {
+	public void setTemporaryItemType(Deliver_ItemType temporaryItemType) {
 		this.temporaryItemType = temporaryItemType;
 	}
 
+	public void setTemporaryItemType(String code, String name) {
+		Deliver_ItemType type;
+		//TypedQuery<ItemType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM ItemType t WHERE t.code='" + code + "'", ItemType.class);
+		TypedQuery<Deliver_ItemType> query = LU_DBLoadInstances.ole_em.createQuery("SELECT t FROM Deliver_ItemType t WHERE t.code='" + code + "'", Deliver_ItemType.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<Deliver_ItemType> results = query.getResultList();
+		if ( results.size() == 0 ) {
+			//System.out.println("Creating new item type with code " + code);
+			type = new Deliver_ItemType(code, name);
+		} else {
+			type = results.get(0);
+			//System.out.println("Fetched existing item type with code " + type.getCode());
+		}		
+		this.setTemporaryItemType(type);
+	}
+	
 	@Column(name="FUND")
 	@XmlElement(name="fund", required=true, nillable=true)
 	public String getFund() {
@@ -500,9 +517,9 @@ public class Item implements Serializable {
 		this.itemStatus = itemStatus;
 	}
 	*/
-	
+
+	/*
 	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
-	//@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="ITEM_STATUS_ID")
 	@XmlElement(name="itemStatus", required=true, nillable=true)
 	public ItemStatus getItemStatus() {
@@ -519,6 +536,29 @@ public class Item implements Serializable {
 		List<ItemStatus> results = query.getResultList();
 		if ( results.size() == 0 ) {
 			status = new ItemStatus(code, name);
+		} else {
+			status = results.get(0);
+		}		
+		this.setItemStatus(status);
+	}
+	*/
+	
+	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	@JoinColumn(name="ITEM_STATUS_ID", referencedColumnName="ITEM_AVAIL_STAT_ID")
+	public Deliver_ItemStatus getItemStatus() {
+		return itemStatus;
+	}
+	public void setItemStatus(Deliver_ItemStatus itemStatus) {
+		this.itemStatus = itemStatus;
+	}
+	public void setItemStatus(String code, String name) {
+		Deliver_ItemStatus status;
+		// TypedQuery<ItemStatus> query = LU_DBLoadInstances.em.createQuery("SELECT s FROM ItemStatus s WHERE s.code='" + code + "'", ItemStatus.class);
+		TypedQuery<Deliver_ItemStatus> query = LU_DBLoadInstances.ole_em.createQuery("SELECT s FROM Deliver_ItemStatus s WHERE s.code='" + code + "'", Deliver_ItemStatus.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<Deliver_ItemStatus> results = query.getResultList();
+		if ( results.size() == 0 ) {
+			status = new Deliver_ItemStatus(code, name);
 		} else {
 			status = results.get(0);
 		}		
@@ -597,8 +637,7 @@ public class Item implements Serializable {
 	}
 
 	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
-	//@ManyToOne(fetch=FetchType.LAZY)
-	@JoinColumn(name="CALL_NUMBER_TYPE_ID")
+	@JoinColumn(name="CALL_NUMBER_TYPE_ID", referencedColumnName="SHVLG_SCHM_ID")
 	public CallNumberType getCallNumberType() {
 		return callNumberType;
 	}
@@ -619,10 +658,9 @@ public class Item implements Serializable {
 		}		
 		this.setCallNumberType(type);
 	}
-	
-	
+
+	/*
 	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
-	//@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="ITEM_TYPE_ID")
 	@XmlElement(name="itemType")
 	public ItemType getItemType() {
@@ -647,6 +685,33 @@ public class Item implements Serializable {
 		}		
 		this.setItemType(type);
 	}
+	*/
+	
+	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	@JoinColumn(name="ITEM_TYPE_ID", referencedColumnName="ITM_TYP_CD_ID")
+	public Deliver_ItemType getItemType() {
+		return itemType;
+	}
+
+	public void setItemType(Deliver_ItemType itemType) {
+		this.itemType = itemType;
+	}
+	public void setItemType(String code, String name) {
+		Deliver_ItemType type;
+		//TypedQuery<ItemType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM ItemType t WHERE t.code='" + code + "'", ItemType.class);
+		TypedQuery<Deliver_ItemType> query = LU_DBLoadInstances.ole_em.createQuery("SELECT t FROM Deliver_ItemType t WHERE t.code='" + code + "'", Deliver_ItemType.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<Deliver_ItemType> results = query.getResultList();
+		if ( results.size() == 0 ) {
+			//System.out.println("Creating new item type with code " + code);
+			type = new Deliver_ItemType(code, name);
+		} else {
+			type = results.get(0);
+			//System.out.println("Fetched existing item type with code " + type.getCode());
+		}		
+		this.setItemType(type);
+	}
+	
 	
 	@Column(name="PURCHASE_ORDER_LINE_ITEM_ID")
 	@XmlElement(name="purchaseOrderLineItemIdentifier", required=true, nillable=true)

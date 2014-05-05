@@ -30,8 +30,11 @@ import java.util.regex.Pattern;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.time.DateUtils;
 import org.marc4j.MarcXmlReader;
+import org.marc4j.marc.DataField;
+import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Record;
 import org.marc4j.marc.VariableField;
+import org.marc4j.marc.impl.ControlFieldImpl;
 import org.xml.sax.InputSource;
 
 import edu.lu.oleconvert.ole.Bib;
@@ -49,6 +52,7 @@ public class test2 {
 		//testDateAdd();
 		//buildCoverageData();
 		//System.out.println(UUID.randomUUID().toString());
+		/*
 		String uriStr = "jkey=sigcsim & url2=http://portal.acm.org/toc.cfm?id=J915 & code=1";
 		uriStr = "url2=http://portal.acm.org/browse_dl.cfm?linked=1%26part=series%26idx=SERIES307%26coll=portal & code=1";
 		uriStr = uriStr.substring(uriStr.indexOf("http:"));
@@ -56,6 +60,14 @@ public class test2 {
 			uriStr = uriStr.substring(0, uriStr.indexOf(" & "));
 		}
 		System.out.println("Uri: " + uriStr);
+		*/
+		
+		/*String testisbn = "192512951";
+		System.out.println("New isbn: " + LU_BuildInstance.formatISBNString(testisbn));
+		testisbn = "224613962";
+		System.out.println("New isbn: " + LU_BuildInstance.formatISBNString(testisbn));
+		*/		
+		fixISBNs();
 	}
 	
 	public static void testReadSFXData() {
@@ -475,6 +487,119 @@ public class test2 {
 		String xmldecl = "<\\?xml version=\"1.0\" encoding=\"UTF-8\"\\?>";
 		marcXML = marcXML.replaceFirst(xmldecl, "");
 		System.out.println("XML is now: " + marcXML);		
+	}
+	
+	public static void fixISBN(Record record) {
+	    MarcFactory factory = MarcFactory.newInstance();
+		List<VariableField> isbns = record.getVariableFields("020");
+		Map<String, List<String>> subfields;		
+		System.out.println("Before modification, record is: " + record.toString());
+		for ( VariableField isbnentry :isbns ) {
+			subfields = LU_BuildInstance.getSubfields(isbnentry);
+			// if there are multiple "$a" subfields, break them out to create multiple 020s
+			// with a single "$a" subfield, and all other fields identical
+			if ( subfields.get("$a") != null && subfields.get("$a").size() > 1 ) {
+				System.out.println("Multiple a subfields, removing the isbn record and creating multiple 020s instead");
+				record.removeVariableField(isbnentry);
+				for ( String subfieldaval : subfields.get("$a") ) {
+					//ControlFieldImpl newisbn = new ControlFieldImpl();
+					DataField newisbn = factory.newDataField("020", ' ', ' ');
+
+					// Add just the one "$a" subfield
+					newisbn.addSubfield(factory.newSubfield('a', subfieldaval));
+					// Then add all the other values of all the other subfields 
+					// of isbnentry to newisbn
+					for ( String subfield : subfields.keySet() ) {
+						List<String> fieldvals = subfields.get(subfield);
+						if ( !subfield.equals("$a") ) {
+							for ( String fieldval : fieldvals ) {
+								newisbn.addSubfield(factory.newSubfield(subfield.charAt(1), fieldval));
+							}
+						}
+					}
+					System.out.println("Adding new isbn: " + newisbn.toString());
+					record.addVariableField(newisbn);
+					System.out.println("Record is now: " + record.toString());
+				}					
+			} else {
+				System.out.println("Zero or one subfields in record's ISBN, not modifying it");
+			}
+		}
+
+		// Now there should only be 1 "$a" subfield per 020, but we want to
+		// make sure they're all valid.  Add a "check digit" to the 9 character
+		// ones.  Surround instances of "pbk.", "." etc with parentheses.
+		isbns = record.getVariableFields("020");
+		for ( VariableField isbnentry : isbns ) {
+			subfields = LU_BuildInstance.getSubfields(isbnentry);
+			if ( subfields.get("$a") != null && subfields.get("$a").size() > 0 ) { 
+				String isbnstr = subfields.get("$a").get(0);
+				System.out.println("Formatting ISBN string " + isbnstr);
+				String newisbnstr = LU_BuildInstance.formatISBNString(isbnstr);
+				System.out.println("New ISBN string: " + newisbnstr);
+				if ( !newisbnstr.equals(isbnstr) ) {
+					record.removeVariableField(isbnentry);
+					DataField newisbn = factory.newDataField("020", ' ', ' ');
+					newisbn.addSubfield(factory.newSubfield('a', newisbnstr));
+					for ( String subfield : subfields.keySet() ) {
+						List<String> fieldvals = subfields.get(subfield);
+						if ( !subfield.equals("$a") ) {
+							for ( String fieldval : fieldvals ) {
+								newisbn.addSubfield(factory.newSubfield(subfield.charAt(1), fieldval));
+							}
+						}
+					}					
+					record.addVariableField(newisbn);
+				}
+				System.out.println("After formatting ISBN strings, record is now: " + record.toString());
+			} else {
+				System.out.println("No $a subfields to format in record's ISBN: " + record.toString());
+			}
+		}
+				
+	}
+	
+	public static void fixISBNs() {
+		String filename = "/mnt/bigdrive/bibdata/sirsidump/20140327/mod.catalog.marcxml";
+	    // create a factory instance
+		Reader input;
+		try {
+			input = new FileReader(filename);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			input = null;
+		}
+		InputSource inputsource = new InputSource(input);
+		inputsource.setEncoding("UTF-8");
+		//MarcReader reader = new MarcStreamReader(input, "ISO-8859-1");
+		//MarcXmlReader reader = new MarcXmlReader(new FileInputStream(dumpdir + "/" + args[2]), "UTF-8");
+		MarcXmlReader reader = new MarcXmlReader(inputsource);
+		List<String> rectypes = new ArrayList<String>();
+		int counter = 0, limit = 50000;
+		List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
+		Record xmlrecord, nextrecord;
+		nextrecord = reader.next();
+		List<Record> assocMFHDRecords = new ArrayList<Record>();
+		do {
+			
+			assocMFHDRecords.clear();
+			xmlrecord = nextrecord;
+			
+			LU_BuildInstance.fixISBN(xmlrecord);
+			nextrecord = reader.next();
+			// The associated holdings records for a bib record should always come right after it
+			// So we keep looping and adding them to an ArrayList as we go
+			while ( nextrecord != null && 
+					holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
+
+				assocMFHDRecords.add(nextrecord);
+				nextrecord = reader.next();
+			}
+
+		} while(nextrecord != null && (limit < 0 || counter < limit) );
+		System.out.println("Done processing records");
+		
 	}
 	
 	public static void checkHoldingsRecords() {

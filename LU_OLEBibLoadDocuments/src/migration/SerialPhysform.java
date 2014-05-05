@@ -28,7 +28,7 @@ public class SerialPhysform implements Serializable {
 	private String physform;
 	
 	@ManyToOne
-	@JoinColumn(name="serial_id", referencedColumnName="id")
+	@JoinColumn(name="serials_id", referencedColumnName="id")
 	private Serial serial;
 	
 	public SerialPhysform() {

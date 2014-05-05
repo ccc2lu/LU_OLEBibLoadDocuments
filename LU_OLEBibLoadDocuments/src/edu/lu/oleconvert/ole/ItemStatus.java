@@ -16,14 +16,14 @@ import javax.persistence.TypedQuery;
 
 import edu.lu.oleconvert.LU_DBLoadInstances;
 
-@Entity
-@Table(name="ole_ds_item_status_t")
+//@Entity
+//@Table(name="ole_ds_item_status_t")
 public class ItemStatus implements Serializable {
 
 	private Long id;
 	//private String code;
 	private String name;
-	private Deliver_ItemStatus deliverStatus;
+	//private Deliver_ItemStatus deliverStatus;
 	
 	public ItemStatus() {
 		super();
@@ -33,7 +33,7 @@ public class ItemStatus implements Serializable {
 		this();
 //		this.setCode(code);
 		this.setName(name);
-		this.setDeliverStatus(code,  name);
+		//this.setDeliverStatus(code,  name);
 	}
 	
 	@Id
@@ -47,6 +47,7 @@ public class ItemStatus implements Serializable {
 		this.id = id;
 	}
 
+	/*
 	@OneToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
 	@JoinColumn(name="CODE", referencedColumnName="ITEM_AVAIL_STAT_CD")
 	public Deliver_ItemStatus getDeliverStatus() {
@@ -69,6 +70,7 @@ public class ItemStatus implements Serializable {
 		}		
 		this.setDeliverStatus(status);		
 	}
+	*/
 	
 	/*
 	@Column(name="CODE")

@@ -49,6 +49,7 @@ public class OLEHoldings implements Serializable {
 	private String locationStr;
 	private String locationLevelStr;
 	private CallNumber callNumber;
+	// ole_ds_call_number_type_t removed from the docstore database apparently
 	private CallNumberType callNumberType;
 	private List<ExtentOfOwnership> extentOfOwnership;
 	private Instance instance;
@@ -427,8 +428,7 @@ public class OLEHoldings implements Serializable {
 	}
 	
 	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
-	//@ManyToOne(fetch=FetchType.LAZY)
-	@JoinColumn(name="CALL_NUMBER_TYPE_ID")
+	@JoinColumn(name="CALL_NUMBER_TYPE_ID", referencedColumnName="SHVLG_SCHM_ID")
 	public CallNumberType getCallNumberType() {
 		return callNumberType;
 	}
@@ -449,7 +449,6 @@ public class OLEHoldings implements Serializable {
 		}		
 		this.setCallNumberType(type);
 	}
-	
 	
 	//@OneToOne
 	//@JoinColumn(name="INSTANCE_ID")

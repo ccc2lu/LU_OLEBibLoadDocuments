@@ -26,6 +26,8 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javassist.bytecode.Descriptor.Iterator;
+
 import javax.management.Query;
 import javax.persistence.TypedQuery;
 import javax.xml.*;
@@ -39,10 +41,16 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.TransformerFactory;
 
+import migration.Issue;
 import migration.Serial;
+import migration.SerialName;
+import migration.SerialNote;
+import migration.SerialPhysform;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
+import org.marc4j.marc.DataField;
+import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Record;
 import org.marc4j.marc.VariableField;
 import org.w3c.dom.Document;
@@ -76,6 +84,8 @@ public class LU_BuildInstance {
 	// Once OLE has a way to ingest e-instance documents, then set this to true
 	// and the code to generate e-instances will run
 	private boolean eInstanceReady = false;
+	private final String nonpublicStr = "nonPublic";
+	private final String publicStr = "public";
 	
 	private static final int LOC_INSTITUTION = 1;
 	private static final int LOC_LIBRARY = 2;
@@ -149,24 +159,24 @@ public class LU_BuildInstance {
 	    callNumberTypeNames.put("LCPER", "LCC - Library of Congress classification");
 
 	    callNumberTypeCodes.put("NLM", "NLM");
-	    callNumberTypeNames.put("NLM", "NLM - National Library of Medicine Classification");
+	    callNumberTypeNames.put("NLM", "National Library of Medicine Classification (NLM)");
 
 	    callNumberTypeCodes.put("SUDOC", "SUDOC");
-	    callNumberTypeNames.put("SUDOC", "SuDoc - Superintendent of Documents classification");
+	    callNumberTypeNames.put("SUDOC", "Superintendent of Documents classification (SUDOC)");
 	    
 	    callNumberTypeCodes.put("SCN", "SCN");
-	    callNumberTypeNames.put("SCN", "Shelving Control Number");
+	    callNumberTypeNames.put("SCN", "Shelving Control Number (SCN)");
 	    
 	    callNumberTypeCodes.put(ELECTRONIC_RESOURCE, "OTHER");
-	    callNumberTypeNames.put(ELECTRONIC_RESOURCE, "Other scheme");
+	    callNumberTypeNames.put(ELECTRONIC_RESOURCE, "Other schema");
 	    callNumberTypeCodes.put("ALPHANUM", "OTHER");
-	    callNumberTypeNames.put("ALPHANUM", "Other scheme");
+	    callNumberTypeNames.put("ALPHANUM", "Other schema");
 	    callNumberTypeCodes.put("ASIS", "OTHER");
-	    callNumberTypeNames.put("ASIS", "Other scheme");
+	    callNumberTypeNames.put("ASIS", "Other schema");
 	    callNumberTypeCodes.put("ATDEWEYLOC", "OTHER");
-	    callNumberTypeNames.put("ATDEWEYLOC", "Other scheme");
+	    callNumberTypeNames.put("ATDEWEYLOC", "Other schema");
 	    callNumberTypeCodes.put("AUTO", "OTHER");
-	    callNumberTypeNames.put("AUTO", "Other scheme");
+	    callNumberTypeNames.put("AUTO", "Other schema");
 	 
 	    // We only ever use the ON_RESERVE status to mark items
 	    // that are on course reserve as ONHOLD
@@ -262,6 +272,123 @@ public class LU_BuildInstance {
 				break;
 		}		
 		
+	}
+	
+	public static String computeISBN10CheckDigit(String isbn) {
+		int digit = 0;
+		for ( int i = 0; i < 9; i++ ) {
+			digit += Integer.parseInt(isbn.substring(i, i+1)) * (i+1);
+		}
+		digit = digit % 11;
+		if ( digit == 10 ) {
+			return "X";
+		} else {
+			return Integer.toString(digit);
+		}
+	}
+	
+	public static String formatISBNString(String isbn) {
+		String newisbn = isbn;
+		Matcher m;
+		// If it's a 9-digit ISBN, add a check digit and a note explaining
+		// that's what we did, in case it proves to be wrong later
+		// Examples: "192112953", "224613960"
+		Pattern p = Pattern.compile("^(\\d{9})\\s+[A-Za-z\\.\\:]*$");
+		Pattern p2 = Pattern.compile("^(\\d{9})$");
+		Matcher m2 = p2.matcher(newisbn);
+		m = p.matcher(newisbn);
+		if ( m.find() || m2.find() ) {
+			LU_DBLoadInstances.Log(System.out, "Nine digit ISBN, adding check digit and annotation", LU_DBLoadInstances.LOG_DEBUG);
+			newisbn += computeISBN10CheckDigit(newisbn) + " (Check digit added on load into OLE)";
+		}
+		// Lots of ISBNs with trailing "." or "pbk." or "(pbk. :"
+		// For such instances we want to enclose the trailing sequence
+		// in parentheses (or close the unclosed open paren)
+		// Examples: "0819110264 (pbk. :", "0521222303.", "0702211451 pbk."
+		p = Pattern.compile("^(\\d+)\\s+(\\()?([A-Za-z\\.\\:\\s]+)$");
+		m = p.matcher(newisbn);
+		if ( m.find() ) {
+			LU_DBLoadInstances.Log(System.out, "Trailing characters found, enclosing in parens", LU_DBLoadInstances.LOG_DEBUG);
+			for ( int i = 1; i <= m.groupCount(); i++ ) {
+				LU_DBLoadInstances.Log(System.out, "Match group " + i + ", " + m.group(i), LU_DBLoadInstances.LOG_DEBUG);
+			}
+			// group 2 would be the mismatched opening paren, if it's there
+			newisbn = m.group(1) + " (" + m.group(3) + ")"; 
+		}
+		return newisbn;
+	}
+	
+	public static void fixISBN(Record record) {
+	    MarcFactory factory = MarcFactory.newInstance();
+		List<VariableField> isbns = record.getVariableFields("020");
+		Map<String, List<String>> subfields;		
+		LU_DBLoadInstances.Log(System.out, "Before modification, record is: " + record.toString(), LU_DBLoadInstances.LOG_DEBUG);
+		for ( VariableField isbnentry :isbns ) {
+			subfields = LU_BuildInstance.getSubfields(isbnentry);
+			// if there are multiple "$a" subfields, break them out to create multiple 020s
+			// with a single "$a" subfield, and all other fields identical
+			if ( subfields.get("$a") != null && subfields.get("$a").size() > 1 ) {
+				LU_DBLoadInstances.Log(System.out, "Multiple a subfields, removing the isbn record and creating multiple 020s instead", 
+						               LU_DBLoadInstances.LOG_DEBUG);
+				record.removeVariableField(isbnentry);
+				for ( String subfieldaval : subfields.get("$a") ) {
+					//ControlFieldImpl newisbn = new ControlFieldImpl();
+					DataField newisbn = factory.newDataField("020", ' ', ' ');
+
+					// Add just the one "$a" subfield
+					newisbn.addSubfield(factory.newSubfield('a', subfieldaval));
+					// Then add all the other values of all the other subfields 
+					// of isbnentry to newisbn
+					for ( String subfield : subfields.keySet() ) {
+						List<String> fieldvals = subfields.get(subfield);
+						if ( !subfield.equals("$a") ) {
+							for ( String fieldval : fieldvals ) {
+								newisbn.addSubfield(factory.newSubfield(subfield.charAt(1), fieldval));
+							}
+						}
+					}
+					LU_DBLoadInstances.Log(System.out, "Adding new isbn: " + newisbn.toString(), LU_DBLoadInstances.LOG_DEBUG);
+					record.addVariableField(newisbn);
+					LU_DBLoadInstances.Log(System.out, "Record is now: " + record.toString(), LU_DBLoadInstances.LOG_DEBUG);
+				}					
+			} else {
+				LU_DBLoadInstances.Log(System.out, "Zero or one subfields in record's ISBN, not modifying it", LU_DBLoadInstances.LOG_DEBUG);
+			}
+		}
+
+		// Now there should only be 1 "$a" subfield per 020, but we want to
+		// make sure they're all valid.  Add a "check digit" to the 9 character
+		// ones.  Surround instances of "pbk.", "." etc with parentheses.
+		isbns = record.getVariableFields("020");
+		for ( VariableField isbnentry : isbns ) {
+			subfields = LU_BuildInstance.getSubfields(isbnentry);
+			if ( subfields.get("$a") != null && subfields.get("$a").size() > 0 ) { 
+				String isbnstr = subfields.get("$a").get(0);
+				LU_DBLoadInstances.Log(System.out, "Formatting ISBN string " + isbnstr, LU_DBLoadInstances.LOG_DEBUG);
+				String newisbnstr = LU_BuildInstance.formatISBNString(isbnstr);
+				LU_DBLoadInstances.Log(System.out, "New ISBN string: " + newisbnstr, LU_DBLoadInstances.LOG_DEBUG);
+				if ( !newisbnstr.equals(isbnstr) ) {
+					record.removeVariableField(isbnentry);
+					DataField newisbn = factory.newDataField("020", ' ', ' ');
+					newisbn.addSubfield(factory.newSubfield('a', newisbnstr));
+					for ( String subfield : subfields.keySet() ) {
+						List<String> fieldvals = subfields.get(subfield);
+						if ( !subfield.equals("$a") ) {
+							for ( String fieldval : fieldvals ) {
+								newisbn.addSubfield(factory.newSubfield(subfield.charAt(1), fieldval));
+							}
+						}
+					}					
+					record.addVariableField(newisbn);
+				}
+				LU_DBLoadInstances.Log(System.out, "After formatting ISBN strings, record is now: " + record.toString(),
+						               LU_DBLoadInstances.LOG_DEBUG);
+			} else {
+				LU_DBLoadInstances.Log(System.out, "No $a subfields to format in record's ISBN: " + record.toString(), 
+						               LU_DBLoadInstances.LOG_DEBUG);
+			}
+		}
+				
 	}
 	
 	public void readLehighData(String locationsFilename, String sfxExportFileName) {
@@ -556,16 +683,95 @@ public class LU_BuildInstance {
 		query.setHint("org.hibernate.cacheable", true);
 		List<Serial> results = query.getResultList();
 		for ( Serial s : results ) {
-			System.out.println("Creating serials receiving control record in OLE for serial with migration ID " + s.getId() + " and Sirsi bib ID " + s.getBibid());
+			LU_DBLoadInstances.Log(System.out, "Creating serials receiving control record in OLE for serial with migration ID " + 
+		                           s.getId() + " and Sirsi bib ID " + s.getBibid(), LU_DBLoadInstances.LOG_INFO);
 			for ( OLEHoldings oh : bib.getHoldings() ) {
-				SerialsReceiving sr = new SerialsReceiving();
+				SerialsReceiving sr = new SerialsReceiving(s.getSerialControlId());
 				sr.setBibId(bib.getUniqueIdPrefix() + "-" + bib.getId());				
 				sr.setInstanceId(oh.getUniqueIdPrefix() + "-" + oh.getHoldingsIdentifier());
+				//sr.setRecType(s.getCategory1()+":"+s.getCategory2());
+				sr.setCreateDate(s.getDateCreated());
+				sr.setRecType("Main");
+				String notestr = "Publication cycle definition: " + s.getPublicationCycleDefinition();
+				if ( s.getSerial_notes() != null && s.getSerial_notes().size() > 0 ) {
+					notestr += ", Notes: ";
+					for ( SerialNote note : s.getSerial_notes()) { 
+						notestr += note.getNote() + " ";
+					}
+				}
+				if ( s.getSerial_names() != null && s.getSerial_names().size() > 0 ) {
+					if ( notestr.length() > 0 ) {
+						notestr += ", ";
+					}
+					notestr += ", Names: ";
+					for ( SerialName name : s.getSerial_names() ) {
+						notestr += name + " ";
+					}
+				}
+				if ( s.getCategory1() != null && s.getCategory1().length() > 0 ) {
+					notestr += ", Category 1: " +  s.getCategory1();
+				}
+				if( s.getCategory2() != null && s.getCategory2().length() > 0 ) {
+					notestr += ", Category 2: " + s.getCategory2();
+				}
+				sr.setGenReceivedNote(notestr.substring(0, Math.min(notestr.length(), 499)));
+				if ( s.getSerial_physforms() != null && s.getSerial_physforms().size() > 0 ) {
+					notestr = "";
+					//notestr += "Physforms: ";
+					for ( SerialPhysform form : s.getSerial_physforms() ) {
+						notestr += form.getPhysform() + ", ";
+					}
+					sr.setTreatmentInstrNote(notestr);
+				}
 				
-				SerialsReceivingRecType srtype = new SerialsReceivingRecType();
-				srtype.setSerialsReceivingRec(sr);
-			
+				sr.setPublicDisplay("Y");
+				sr.setActive("Y");
+				sr.setPrintLabel("Y");
+				sr.setCreateItem("N");
+				//sr.setSubscriptionStatus("4"); // not sure what to put here
+				sr.setReceiptLocation(s.getLibrary());;
+				sr.setUnboundLocation(oh.getLocationStr());
+				sr.setSubscriptionStatus(s.getSubscriptionStatus());
+				sr.setVendor(s.getLinkedVendorId());
+
 				LU_DBLoadInstances.ole_em.persist(sr);
+
+				SerialsReceivingRecType srtype = new SerialsReceivingRecType();
+				srtype.setSerialsReceiving(sr);
+				srtype.setRecType("Main");
+				//srtype.setRecType(s.getCategory1() + ":" + s.getCategory2());
+				srtype.setActionInterval(s.getClaimPeriod());
+				if ( s.getNameType().equals("CUSTOM") ) {
+					srtype.setChronCaptionLvl1(s.getCustomIssueNames().substring(0, Math.min(s.getCustomIssueNames().length(), 39)));
+				} else {
+					srtype.setChronCaptionLvl1(s.getNameType().substring(0, Math.min(s.getNameType().length(), 39)));
+				}
+				srtype.setChronCaptionLvl2(s.getLabelSubdiv1());
+				srtype.setChronCaptionLvl3(s.getLabelSubdiv2());
+				srtype.setChronCaptionLvl4(s.getLabelSubdiv3());
+				srtype.setEnumCaptionLvl1(s.getFormSubdiv1());
+				srtype.setEnumCaptionLvl2(s.getFormSubdiv2());
+				srtype.setEnumCaptionLvl3(s.getFormSubdiv3());
+				
+				LU_DBLoadInstances.ole_em.persist(srtype);
+				
+				TypedQuery<Issue> query2 = LU_DBLoadInstances.migration_em.createQuery("SELECT i FROM Issue i where i.serialControlId='" + s.getSerialControlId() + "'", Issue.class);
+				query.setHint("org.hibernate.cacheable", true);
+				List<Issue> results2 = query2.getResultList();
+				for ( Issue i : results2 ) {
+					// Fill in ole_ser_rcv_his_rec from issue data
+					SerialsReceivingHisRec srhr = new SerialsReceivingHisRec(sr);
+					// put PRED_NAME into hisrec's CHRON_LVL_1
+					srhr.setRecType("Main");
+					srhr.setChronLvl1(i.getPredictionName().substring(0, Math.min(i.getPredictionName().length(), 39)));
+					srhr.setEnumLvl1(i.getPredictionNumeration().substring(0, Math.min(i.getPredictionNumeration().length(),  39)));
+					srhr.setClaimCount(i.getClaimNumber());
+					srhr.setClaimDate(i.getClaimDateCreated());
+					srhr.setClaimType(i.getClaimReason());
+					
+					LU_DBLoadInstances.ole_em.persist(srhr);
+				}
+
 			// Need to transform that bib id from Sirsi into an OLE bib id
 			// docstore SOLR search, maybe?
 			// Probably better to look in olemigration database while filling in bib records
@@ -739,9 +945,9 @@ public class LU_BuildInstance {
     		} 
     		*/
     		if ( nonpublicNoteType.contains(pieces[0].trim())) {
-    			note.setType("nonpublic");
+    			note.setType(nonpublicStr);
     		} else if ( publicNoteType.contains(pieces[0].trim())) {
-    			note.setType("public");
+				note.setType(publicStr);
     		} else {
     			LU_DBLoadInstances.Log(System.err, "Unknown type of comment: " + comment, LU_DBLoadInstances.LOG_WARN);
     		}
@@ -812,6 +1018,47 @@ public class LU_BuildInstance {
 					
 				}
 				extentOfOwnership.setTextualHoldings(ownershipstr);
+				VariableField pattern = assocMFHDRec.getVariableField("853");
+				List<VariableField> issues = assocMFHDRec.getVariableFields("863");
+				if ( pattern != null && issues != null && issues.size() > 0) {
+					String notestr = "";
+					if ( pattern != null ) {
+						notestr = "Pattern: ";
+						tmpsubfields = this.getSubfields(pattern);
+						ExtentOfOwnershipNote n = new ExtentOfOwnershipNote();
+						n.setType(nonpublicStr);
+						java.util.Iterator iter = tmpsubfields.keySet().iterator();
+						while ( iter.hasNext() ) {
+							String subfield = (String) iter.next();
+							notestr += subfield + ": " + tmpsubfields.get(subfield);
+							if ( iter.hasNext() ) {
+								notestr += ", ";
+							}
+						}
+						n.setNote(notestr);
+						n.setExtentOfOwnership(extentOfOwnership);
+						extentOfOwnership.getNotes().add(n);
+					}
+					if ( issues != null && issues.size() > 0 ) {
+						for ( VariableField issue : issues ) {
+							notestr = "";
+							tmpsubfields = this.getSubfields(issue);
+							ExtentOfOwnershipNote n = new ExtentOfOwnershipNote();
+							n.setType(nonpublicStr);
+							java.util.Iterator iter = tmpsubfields.keySet().iterator();
+							while ( iter.hasNext() ) {
+								String subfield = (String) iter.next();
+								notestr += subfield + ": " + tmpsubfields.get(subfield);
+								if ( iter.hasNext() ) {
+									notestr += ", ";
+								}
+							}
+							n.setNote(notestr);
+							n.setExtentOfOwnership(extentOfOwnership);
+							extentOfOwnership.getNotes().add(n);							
+						}
+					}
+				}
 				extentOfOwnership.setOLEHoldings(oh);
 				oh.getExtentOfOwnership().add(extentOfOwnership);
 				
@@ -1295,8 +1542,9 @@ public class LU_BuildInstance {
 					this.buildCommonHoldingsData(record, bib, printholding, subfields, MFHDRec, oh);
 					// print holdings get a location and "access location"
 					String locStr = subfields.get("$l").get(0);
-					//oh.setLocationStr(getLocationName(locStr));
-					oh.setLocationStr(locStr);
+					oh.setLocationStr(getLocationName(locStr));
+					// changed on 2014-04-23 -- ccc2
+					//oh.setLocationStr(locStr);
 					oh.setLocationLevelStr("SHELVING");
 					
 					oh.setBib(bib);
@@ -1496,6 +1744,7 @@ public class LU_BuildInstance {
 		ItemType type;
 		String itemtypestr = subfields.get("$t").get(0);
 		item.setItemType(itemtypestr, itemtypestr);
+		
 		// 	Commenting out setting the itemType's codeValue, since OLE's bulk ingest
 		// choked on the field
 		//type.setCodeValue(subfields.get("$t").get(0)); // should be only one of these
@@ -1607,8 +1856,9 @@ public class LU_BuildInstance {
 
 	    	FlatLocation loc = new FlatLocation();
 	    	loc.setLevel("SHELVING");
-	    	//loc.setName(getLocationName(locStr));
-	    	loc.setName(locStr);
+	    	// ccc2 -- changed 2014-04-23
+	    	loc.setName(getLocationName(locStr));
+	    	//loc.setName(locStr);
 		    item.setLocation(loc);
 	    }
 		// TODO: go over these with Doreen
@@ -1797,9 +2047,9 @@ public class LU_BuildInstance {
 	    		} 
 	    		*/
 	    		if ( nonpublicNoteType.contains(pieces[0].trim())) {
-	    			note.setType("nonpublic");
+	    			note.setType(nonpublicStr);
 	    		} else if ( publicNoteType.contains(pieces[0].trim())) {
-	    			note.setType("public");
+	    			note.setType(publicStr);
 	    		} else {
 	    			LU_DBLoadInstances.Log(System.err, "Unknown type of comment: " + comment, LU_DBLoadInstances.LOG_WARN);
 	    		}
@@ -1977,14 +2227,16 @@ public class LU_BuildInstance {
 	}
 	
 	public String getLocationName(String locStr) {
-    	String libraryName = "", shelvingStr = "", collectionCode = "", collectionName = "";
-
+    	String libraryName = "", libraryCode = "", shelvingStr = "", collectionCode = "", collectionName = "";
+    	String newlocStr = "";
     	collectionCode = locationCodeToCollectionCode.get(locStr);
     	if (collectionCode != null) {
 	    	collectionName = collectionCodeToName.get(collectionCode);
 	    	libraryName = this.libraryCodeToName.get(collectionCodeToLibraryCode.get(collectionCode));
+	    	libraryCode = this.collectionCodeToLibraryCode.get(collectionCode);
     	} else {
-    		libraryName = libraryCodeToName.get(locationCodeToLibraryCode.get(locStr));	
+    		libraryName = libraryCodeToName.get(locationCodeToLibraryCode.get(locStr));
+    		libraryCode = locationCodeToLibraryCode.get(locStr);
     	}
     	shelvingStr = locationCodeToShelvingString.get(locStr);
     	
@@ -1992,26 +2244,34 @@ public class LU_BuildInstance {
     	institution.setLevelId((long)LOC_INSTITUTION);
     	institution.setCode("LEHIGH");
     	institution.setName("Lehigh University");
+    	newlocStr = institution.getCode();
     	
     	Location library = new Location();
     	library.setLevelId((long)LOC_LIBRARY);
     	library.setName(libraryName);
+    	library.setCode(libraryCode);
     	library.setParentLocation(institution);
+    	newlocStr += "/" + library.getCode();
     	
     	Location shelving = new Location();
     	shelving.setLevelId((long)LOC_SHELVING);
     	shelving.setName(shelvingStr);
+    	shelving.setCode(locStr);
     	
     	if ( collectionCode != null ) {
     		Location collection = new Location();
     		collection.setLevelId((long)LOC_COLLECTION);
     		collection.setName(collectionName);
+    		collection.setCode(collectionCode);
     		collection.setParentLocation(library);
     		shelving.setParentLocation(collection);
+    		newlocStr += "/" + collection.getCode();
     	} else {
     		shelving.setParentLocation(library);
     	}
-    	return shelving.getName();
+    	//return shelving.getName();
+    	newlocStr += "/" + shelving.getCode();
+    	return newlocStr;
 	}
 	
 	/*
