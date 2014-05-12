@@ -315,6 +315,18 @@ public class LU_BuildInstance {
 			// group 2 would be the mismatched opening paren, if it's there
 			newisbn = m.group(1) + " (" + m.group(3) + ")"; 
 		}
+
+		// Special case for the trailing dot with no space preceding it, which
+		// seems to be all over the place in our data
+		p = Pattern.compile("^(\\d{10})\\.\\s*$");
+		m = p.matcher(newisbn);
+		if ( m.find() ) {
+			LU_DBLoadInstances.Log(System.out, "Trailing dot found, removing it", LU_DBLoadInstances.LOG_DEBUG);
+			for ( int i = 1; i <= m.groupCount(); i++ ) {
+				LU_DBLoadInstances.Log(System.out, "Match group " + i + ", " + m.group(i), LU_DBLoadInstances.LOG_DEBUG);
+			}
+			newisbn = m.group(1); 
+		}
 		return newisbn;
 	}
 	
@@ -1218,7 +1230,6 @@ public class LU_BuildInstance {
 			oh.setCallNumberType(cntypecode, cntypename);
 			oh.setCallNumber(cn);
 			oh.setBib(bib);
-			oh.setBibId(bib.getId());
 			bib.getHoldings().add(oh);
 			holdings.add(oh);
 			
@@ -1548,7 +1559,6 @@ public class LU_BuildInstance {
 					oh.setLocationLevelStr("SHELVING");
 					
 					oh.setBib(bib);
-					oh.setBibId(bib.getId());
 					bib.getHoldings().add(oh);
 					
 					// print holdings also get an item record, unlike electronic ones
@@ -1600,7 +1610,6 @@ public class LU_BuildInstance {
 				oh.setLocationLevelStr("SHELVING");
 
 				oh.setBib(bib);
-				oh.setBibId(bib.getId());
 				bib.getHoldings().add(oh);
 				
 				// print holdings also get an item record, unlike electronic ones
@@ -1733,7 +1742,11 @@ public class LU_BuildInstance {
 		List<FormerIdentifier> fids = new ArrayList<FormerIdentifier>();
 		FormerIdentifier fi = new FormerIdentifier();
 		Identifier id = new Identifier();
-		id.setIdentifierValue(itemString.get(0) + "|" + itemString.get(1) + "|" + itemString.get(2));
+		if ( itemString.size() >= 3 ) {
+			id.setIdentifierValue(itemString.get(0) + "|" + itemString.get(1) + "|" + itemString.get(2));
+		} else {
+			id.setIdentifierValue("N/A");
+		}
 		//id.setSource("SIRSI_ITEMKEY");
 		fi.setIdentifierType("SIRSI_ITEMKEY");
 		fi.setIdentifier(id);
@@ -1763,6 +1776,9 @@ public class LU_BuildInstance {
 		String item_status_code = "";
 		String item_status_name = "";
 		if ( itemString.size() > 0 ) {
+			// Use the "shadowed" attribute to set the staffOnlyFlag
+			item.setStaffOnlyFlag(itemString.get(25));
+
 			String item_res_status = itemString.get(28);
 			String num_charges = itemString.get(5);
 			if ( item_res_status != null && itemReservedStatusCodeMap.get(item_res_status) != null ) {
@@ -1787,6 +1803,7 @@ public class LU_BuildInstance {
 					LU_DBLoadInstances.LOG_WARN);
 			item_status_code = "UNAVAILABLE";
 			item_status_name = "Unavailable";
+			item.setStaffOnlyFlag("N");
 		}
 		item.setItemStatus(item_status_code, item_status_name);
 
@@ -1797,9 +1814,6 @@ public class LU_BuildInstance {
 		DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 		item.setItemStatusDateUpdated(df.format(Calendar.getInstance().getTime()));
 		
-		// Use the "shadowed" attribute to set the staffOnlyFlag
-		item.setStaffOnlyFlag(itemString.get(25));
-
 		// Should also only be one of these
 		if ( subfields.get("$j") != null ) {
 			item.setNumberOfPieces(subfields.get("$j").get(0));

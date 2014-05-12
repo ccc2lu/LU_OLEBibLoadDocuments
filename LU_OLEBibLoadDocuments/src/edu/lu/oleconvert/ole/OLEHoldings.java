@@ -54,7 +54,7 @@ public class OLEHoldings implements Serializable {
 	private List<ExtentOfOwnership> extentOfOwnership;
 	private Instance instance;
 	private Bib bib;
-	private Long bibId;
+	//private Long bibId;
 	private List<Item> items;
 	private String copyNumber;
 	private String publisher;
@@ -116,7 +116,6 @@ public class OLEHoldings implements Serializable {
 	public OLEHoldings(Bib bib) {
 		this();
 	   	this.setBib(bib);
-    	this.setBibId(bib.getId());
 	}
 	public OLEHoldings(Instance i) {
 		this();
@@ -399,9 +398,12 @@ public class OLEHoldings implements Serializable {
 	}
 	
 	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
-	@JoinTable(name="ole_ds_bib_holdings_t",
-	   joinColumns={@JoinColumn(name="HOLDINGS_ID", referencedColumnName="HOLDINGS_ID")},
-	   inverseJoinColumns={@JoinColumn(name="BIB_ID", referencedColumnName="BIB_ID")})	
+	// Apparently ole_ds_bib_holdings_t is only meant for bound-withs, it's not
+	// a join table between ole_ds_bib_t and ole_ds_holdings_t.
+	//@JoinTable(name="ole_ds_bib_holdings_t",
+	//   joinColumns={@JoinColumn(name="HOLDINGS_ID", referencedColumnName="HOLDINGS_ID")},
+	//   inverseJoinColumns={@JoinColumn(name="BIB_ID", referencedColumnName="BIB_ID")})
+	@JoinColumn(name="BIB_ID")
 	public Bib getBib() {
 		return this.bib;
 	}
@@ -558,14 +560,6 @@ public class OLEHoldings implements Serializable {
 		for ( Coverage c : this.coverage ) {
 			c.setOLEHoldings(this);
 		}
-	}
-	
-	@Column(name="BIB_ID", nullable=false)
-	public Long getBibId() {
-		return bibId;
-	}
-	public void setBibId(Long bibId) {
-		this.bibId = bibId;
 	}
 
 	@Column(name="HOLDINGS_TYPE")
