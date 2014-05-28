@@ -63,6 +63,12 @@ public class Bib implements Serializable {
 	
 	public Bib(String formerId) {
 		this();
+		try {
+			this.setId(Long.parseLong(formerId));
+		} catch(Exception e) {
+			LU_DBLoadInstances.Log(System.err, "Unable to parse bib id from string " + formerId,
+					LU_DBLoadInstances.LOG_ERROR);
+		}
 		this.setFormerId(formerId);
 	}
 	
@@ -76,7 +82,7 @@ public class Bib implements Serializable {
 	}
 	
 	@Id
-	@GeneratedValue
+	//@GeneratedValue
 	@Column(name="BIB_ID")
 	public Long getId() {
 		return id;

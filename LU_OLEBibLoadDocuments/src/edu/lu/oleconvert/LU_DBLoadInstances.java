@@ -288,12 +288,15 @@ public class LU_DBLoadInstances {
 							holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
 
 						assocMFHDRecords.add(nextrecord);
+						/*
+						 * I'm not inserting the bibs for MFHD records anymore
 						Bib tmpbib = buildBib(nextrecord);
 						if ( tmpbib != null ) {
 							ole_em.persist(tmpbib);
 						} else {
 							LU_DBLoadInstances.Log(System.err, "Unable to persist bib for record " + nextrecord.getControlNumber(), LOG_ERROR);							
-						}						
+						}
+						*/						
 						nextrecord = reader.next();
 					}
 
@@ -384,7 +387,8 @@ public class LU_DBLoadInstances {
 			writer = new MarcXmlWriter(out, "ISO-8859-1");
 		}
 		*/
-		writer = new MarcXmlWriter(out, "ISO-8859-1");
+		//writer = new MarcXmlWriter(out, "ISO-8859-1");
+    	writer = new MarcXmlWriter(out, "UTF-8");
 
         String marcXML;
         
@@ -396,11 +400,11 @@ public class LU_DBLoadInstances {
         String dateLine = (String) KeyToDate.get(catkey);
         
         // dateLine string should be of the form: 
-        // <catalog key in Siris>|<MARC FIELD 008>|<shadowed>|<status>|<date catalog record created>|<date cataloged>|<date modified>|
+        // <catalog key in Siris>|<MARC FIELD 008>|<shadowed>|<status>|<date catalog record created>|<date cataloged>|<date modified>|<flexible key>|
         // 1 means shadowed, 0 means unshadowed
         // status may be any of the following: 0 (NOTEXT), 1 (INTEXT), 4 (UPDTEXT), 6 (LOCKTEXT), 1000 (USERLOCK)
         // MARC field 008 is "fixed length data elements and always seems to be populated
-        String shadowed, status, dateCataloged, dateModified;
+        String shadowed, status, dateCataloged, dateModified, titleControlNumber;
         status = "Catalogued";
         if ( dateLine == null ) {
         	Log(System.err, "ERROR: No mapping found for key " + catkey, LOG_ERROR);
@@ -409,7 +413,7 @@ public class LU_DBLoadInstances {
 
         } else {
         	String[] dateParts = dateLine.split("\\|");
-        	if ( dateParts.length < 7 ) {
+        	if ( dateParts.length < 8 ) {
         		System.err.println("ERROR: Can't get shadowed, status, date cataloged or modified, not enough fields in line: " + dateLine);
             	System.err.println("Filling in additional attributes with empty strings");
         		dateCataloged = dateModified = shadowed = status = "";
@@ -429,7 +433,8 @@ public class LU_DBLoadInstances {
         		} else {
         			dateModified = dateParts[6];
         		}
-
+        		titleControlNumber = dateParts[7];
+        		LU_BuildInstance.checkTitleControlNumbers(record, titleControlNumber);
         	}
         }
         
@@ -438,7 +443,8 @@ public class LU_DBLoadInstances {
 	        //out.flush();
 	        out.close();
 	        writer.close();
-			marcXML = out.toString("ISO-8859-1");
+			//marcXML = out.toString("ISO-8859-1");
+	        marcXML = out.toString("UTF-8");
 			String xmldecl = "<\\?xml version=\"1.0\" encoding=\"UTF-8\"\\?>";
 			marcXML = marcXML.replaceFirst(xmldecl, "");
 	        bib.setContent(marcXML);

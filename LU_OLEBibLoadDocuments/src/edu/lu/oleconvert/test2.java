@@ -37,6 +37,10 @@ import org.marc4j.marc.VariableField;
 import org.marc4j.marc.impl.ControlFieldImpl;
 import org.xml.sax.InputSource;
 
+import org.solrmarc.*;
+import org.solrmarc.callnum.DeweyCallNumber;
+import org.solrmarc.callnum.LCCallNumber;
+
 import edu.lu.oleconvert.ole.Bib;
 import edu.lu.oleconvert.ole.Coverage;
 
@@ -66,8 +70,78 @@ public class test2 {
 		System.out.println("New isbn: " + LU_BuildInstance.formatISBNString(testisbn));
 		testisbn = "224613962";
 		System.out.println("New isbn: " + LU_BuildInstance.formatISBNString(testisbn));
-		*/		
-		fixISBNs();
+		*/
+		//fixISBNs();
+		/*
+		try {
+			testCheckTitleControlNumbers();
+		} catch (Exception e) {
+			System.err.println("Exception: " + e.getMessage());
+			e.printStackTrace();
+		}
+		*/
+		testNormalizeCallNumbers();
+	}
+	
+	public static void testNormalizeCallNumbers() {
+		String ddc_callnumbers[] = { "901.934 S324m 1979", 
+				"557 R113m v.1",
+				"624.1513 Y54s",
+				"624.152 S933",
+				"C 13.29/2:122",
+				"551.51 H966",
+				"C 13.29/2:124",
+				"624.1513 L322",
+				"614.83 A799 v.1"
+				}; 
+		String sudoc_callnumbers[] = { "C 13.29/2:121",
+				 "C 13.29/2:122",
+				 "C 13.29/2:124",
+				 "A 1.76:521/2",
+				 "LC 41.9:Ar 1",
+				 "HE 20.3173/2:CK 21/",
+				 "JU 10.8:",
+				 "FILM",
+				 "TD 4.210: 1977-1981"
+		};
+		String lcc_callnumbers[] = { "ML410 .M9 O9 1980",
+				"ML410 .M23 B23 1980",
+				"ML1156 .R67 1980",
+				"ML1700 .D75",
+				"M2018 .M32 O6",
+				"ML113 .H52 1980 v.1",
+				"ML113 .H52 1980 v.2",
+				"ML3780 .G74",
+				"MT145 .M7 F67 1971b",
+				"MT50.G643 H4 1965",
+				"MT50.G643 H4 1965",
+				"MT145 .D289 S3 1966",
+				"ML3858 .M58",
+				"ML1731 .F45",
+				"M1500 .W15 T6 1973",
+				"M1500 .W15 T6 1973",
+				"M1500 .W15 T6 1973",
+				"M1500 .W15 T6 1973",
+				"PT2361 .Z5 N4 1965"
+		};
+
+		System.out.println("Normalizing Dewey callnumbers");
+		for ( String ddc_cn : Arrays.asList(ddc_callnumbers)) {
+			DeweyCallNumber ddc = new DeweyCallNumber(ddc_cn);
+			System.out.println("Normal form of " + ddc_cn + " is " + LU_BuildInstance.normalizeCallNumber(ddc_cn, "DDC"));
+		}
+		
+		System.out.println();
+		System.out.println("Normalizing LoC callnumbers");
+		for (String lcc_cn : Arrays.asList(lcc_callnumbers)) {
+			System.out.println("Normal form of " + lcc_cn + " is " + LU_BuildInstance.normalizeCallNumber(lcc_cn, "LCC"));
+		}
+		
+		System.out.println();
+		System.out.println("Normalizing SuDoc callnumbers");
+		for (String sudoc_cn : Arrays.asList(sudoc_callnumbers)) {
+			System.out.println("Normal form of " + sudoc_cn + " is " + LU_BuildInstance.normalizeCallNumber(sudoc_cn, "SuDoc"));
+		}
 	}
 	
 	public static void testReadSFXData() {
@@ -556,6 +630,83 @@ public class test2 {
 				System.out.println("No $a subfields to format in record's ISBN: " + record.toString());
 			}
 		}
+				
+	}
+	
+	public static void testCheckTitleControlNumbers() throws Exception {
+		String filename = "/mnt/bigdrive/bibdata/sirsidump/20140509/mod.catalog.marcxml";
+	    // create a factory instance
+		Reader input;
+		try {
+			input = new FileReader(filename);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			input = null;
+		}
+		HashMap<String, String> KeyToDate = new HashMap<String, String>();
+		BufferedReader inFile = new BufferedReader(new FileReader("/mnt/bigdrive/bibdata/sirsidump/20140509/catalog-all.KeysAndDates"));
+		LU_DBLoadInstances.Log("Reading in map of catalog keys to dates, shadowed values, statuses ...");
+		int counter = 0, limit = 50000;
+		String line = "", key = "";
+		String parts[];
+		while(inFile.ready()) {
+			line = inFile.readLine();
+			parts = line.split("\\|");
+			//key = "a" + parts[0];
+			key = LU_DBLoadInstances.formatCatKey(parts[0]);
+
+			//System.err.println("K=" + key + ", V=" + line);
+			KeyToDate.put(key, line);
+			counter++;
+			if ( counter % 100000 == 0 ) {
+				LU_DBLoadInstances.Log(System.out, counter + " records mapped ...", LU_DBLoadInstances.LOG_INFO);
+			}
+		}
+		LU_DBLoadInstances.Log("Done reading in catalog keys map");
+		inFile.close();
+		InputSource inputsource = new InputSource(input);
+		inputsource.setEncoding("UTF-8");
+		//MarcReader reader = new MarcStreamReader(input, "ISO-8859-1");
+		//MarcXmlReader reader = new MarcXmlReader(new FileInputStream(dumpdir + "/" + args[2]), "UTF-8");
+		MarcXmlReader reader = new MarcXmlReader(inputsource);
+		List<String> rectypes = new ArrayList<String>();
+		
+		List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
+		Record xmlrecord, nextrecord;
+		nextrecord = reader.next();
+		List<Record> assocMFHDRecords = new ArrayList<Record>();
+		String titleControlNumber = "", dateLine = "";
+		String[] dateParts;
+		counter = 0;
+		do {
+			
+			assocMFHDRecords.clear();
+			xmlrecord = nextrecord;
+			
+			String catkey = LU_DBLoadInstances.formatCatKey(xmlrecord.getControlNumber()); // need to set this to what's in 001 of the bib to link them
+
+	        dateLine = (String) KeyToDate.get(catkey);
+	        dateParts = dateLine.split("\\|");
+	        titleControlNumber = dateParts[7];
+	        System.out.println("Record before checking control numbers: ");
+	        System.out.println(xmlrecord.toString());
+			LU_BuildInstance.checkTitleControlNumbers(xmlrecord, titleControlNumber);
+			System.out.println();
+	        System.out.println("Record after checking control numbers: ");
+	        System.out.println(xmlrecord.toString());
+			nextrecord = reader.next();
+			// The associated holdings records for a bib record should always come right after it
+			// So we keep looping and adding them to an ArrayList as we go
+			while ( nextrecord != null && 
+					holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
+
+				assocMFHDRecords.add(nextrecord);
+				nextrecord = reader.next();
+			}
+
+		} while(nextrecord != null && (limit < 0 || counter < limit) );
+		System.out.println("Done processing records");
 				
 	}
 	

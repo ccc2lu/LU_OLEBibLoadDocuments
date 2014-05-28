@@ -20,7 +20,7 @@ public class Issue implements Serializable {
 	@Id
 	@GeneratedValue
 	@Column(name="id")
-	private Long id;
+	private int id;
 	
 	@Column(name="SERC_ID")
 	private String serialControlId;
@@ -83,11 +83,11 @@ public class Issue implements Serializable {
 		super();
 	}
 
-	public Long getId() {
+	public int getId() {
 		return id;
 	}
 
-	public void setId(Long id) {
+	public void setId(int id) {
 		this.id = id;
 	}
 

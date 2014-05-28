@@ -38,6 +38,7 @@ public class CallNumber implements Serializable {
 		prefix = number = "";
 		//shelvingScheme = new ShelvingScheme();
 		shelvingOrder = new ShelvingOrder();
+		shelvingOrder.setShelvingOrder("X"); // there has to be value here for call number browse to work in OLE
 	}
 	
 	/*
@@ -97,6 +98,7 @@ public class CallNumber implements Serializable {
 		}
 		System.err.println();
 		*/
+		// TODO: normalize the call number and set the shelving order string to the normalized version
 		this.number = number;
 	}
 

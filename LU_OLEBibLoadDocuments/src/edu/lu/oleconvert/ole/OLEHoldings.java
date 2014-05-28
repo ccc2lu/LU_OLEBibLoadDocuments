@@ -87,6 +87,7 @@ public class OLEHoldings implements Serializable {
 	private String holdingsType;
 	private List<Coverage> coverage;
 	private String uniqueIdPrefix;
+	private String shelvingOrder;
 	
 	public OLEHoldings() {
 		super();

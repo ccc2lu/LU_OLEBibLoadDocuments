@@ -22,7 +22,7 @@ public class Serial implements Serializable {
 
 	@Id
 	@Column(name="id")
-	private Long id;
+	private int id;
 	
 	@Column(name="bibid")
 	private String bibid; // bibid in Sirsi -- former identifier in OLE, but padded out to 8 characters 
@@ -155,11 +155,11 @@ public class Serial implements Serializable {
 		super();
 	}
 
-	public Long getId() {
+	public int getId() {
 		return id;
 	}
 
-	public void setId(Long id) {
+	public void setId(int id) {
 		this.id = id;
 	}
 

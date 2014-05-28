@@ -52,7 +52,10 @@ import org.apache.commons.lang3.time.DateUtils;
 import org.marc4j.marc.DataField;
 import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Record;
+import org.marc4j.marc.Subfield;
 import org.marc4j.marc.VariableField;
+import org.solrmarc.callnum.DeweyCallNumber;
+import org.solrmarc.callnum.LCCallNumber;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -274,6 +277,99 @@ public class LU_BuildInstance {
 		
 	}
 	
+	public static String normalizeCallNumber(String callnum, String type) {
+		String normcn = "";
+		/*
+		if ( type.toUpperCase().equals("SUDOC") ) {
+			normcn = CallNumUtils.getSuDocShelfKey(callnum);
+		} else if ( type.toUpperCase().equals("LCC") ) {
+			normcn = CallNumUtils.getLCShelfkey(callnum, callnum);
+		} else if ( type.toUpperCase().equals("DDC") ) {
+			normcn = CallNumUtils.getDeweyShelfKey(callnum);
+		} else {
+			LU_DBLoadInstances.Log(System.out, "Callnumber type is neither SuDoc, LCC, or DDC, not normalizing: " 
+                    + callnum + ", type: " + type,
+                    LU_DBLoadInstances.LOG_WARN);
+			normcn = callnum;						
+		}
+		*/
+		
+		// Regular expression stolen from SuDoc.pm:
+		// https://metacpan.org/pod/Text::SuDocs
+		String sudocpattern = "^(\\p{IsAlpha}+)\\s*(\\p{IsDigit}+)\\s*\\.\\s*(?:(\\p{IsAlpha}+)\\s+)?(\\p{IsDigit}+)(?:/(\\p{IsAlnum}+)(-\\p{IsAlnum}+)?)?\\s*(?::\\s*(.*))?$";
+		Pattern p;
+		Matcher m;
+
+		if ( type.toUpperCase().equals("SUDOC") ) {
+			LU_DBLoadInstances.Log(System.out, "Callnumber type is SuDoc, not normalizing: " 
+                    + callnum + ", type: " + type,
+                    LU_DBLoadInstances.LOG_INFO);
+			normcn = callnum;
+			/*
+			String agency = "", subagency = "", committee = "", series = "", relseries = "", document = "";
+			p = Pattern.compile(sudocpattern);
+			m = p.matcher(callnum);
+			if ( m.find() ) {
+				agency = ( m.group(1) != null) ? m.group(1) : "";
+				subagency = ( m.group(2) != null )  ? m.group(2) : "";
+				committee = ( m.group(3) != null ) ? m.group(3) : "";
+				if ( committee != null && committee.length() > 0 ) {
+					committee += " ";
+				}
+				series = ( m.group(4) != null ) ? m.group(4) : "";
+				relseries = ( m.group(5) != null ) ? m.group(5) : "";
+				if ( m.group(6) != null && m.group(6).length() > 0 ) {
+					relseries = relseries + "." + m.group(6);
+				}
+				if ( relseries != null && relseries.length() > 0 ) {
+					relseries = "/" + relseries;
+				}
+				document = ( m.group(7) != null ) ? m.group(7) : "";
+				normcn = String.format("%s %s.%s%s%s", agency, subagency, committee, series, relseries);
+				String format = "%08d";
+				//normcn = normcn.replaceAll("\\b(\\d+)\\b", String.format(format, Integer.parseInt("$1")));
+				p = Pattern.compile("\\b(\\d{1,6})\\b");
+				m = p.matcher(normcn);
+				//StringBuffer new_normcn = new StringBuffer();
+				//m.replaceAll(String.format(format, Integer.parseInt("5")));
+				int index = 0;
+				while ( m.find(index) ) {
+					
+					int num = Integer.parseInt(m.group(1));
+					String repl = String.format(format, num);
+					System.out.println("Normalizing sudoc, matching group: " + m.group(1) + ", replacing with " + repl);
+					index = normcn.indexOf(m.group(1)) + 8;
+					normcn = m.replaceFirst(String.format(format, num));
+					m = p.matcher(normcn);
+					System.out.println("String is now: " + normcn);
+					
+				}
+				//normcn = normcn.replaceAll("\\b(\\d+)\\b", "$1");
+				
+				normcn = normcn.replaceAll("\\s", "_");
+				
+			} else {
+				LU_DBLoadInstances.Log(System.out, "SuDoc callnumber didn't match pattern: " + callnum,
+									   LU_DBLoadInstances.LOG_WARN);
+				normcn = callnum;
+			}
+			*/
+		} else if ( type.toUpperCase().equals("LCC") ) {
+			LCCallNumber lcc_num = new LCCallNumber(callnum);
+			normcn = lcc_num.getShelfKey();
+		} else if ( type.toUpperCase().equals("DDC") ) {
+			DeweyCallNumber ddc_num = new DeweyCallNumber(callnum);
+			normcn = ddc_num.getShelfKey();
+		} else {
+			LU_DBLoadInstances.Log(System.out, "Callnumber type is neither SuDoc, LCC, or DDC, not normalizing: " 
+		                           + callnum + ", type: " + type,
+		                           LU_DBLoadInstances.LOG_WARN);
+			normcn = callnum;			
+		}
+		
+		return normcn;
+	}
+	
 	public static String computeISBN10CheckDigit(String isbn) {
 		int digit = 0;
 		for ( int i = 0; i < 9; i++ ) {
@@ -328,6 +424,167 @@ public class LU_BuildInstance {
 			newisbn = m.group(1); 
 		}
 		return newisbn;
+	}
+	
+	public static String formatOCLCControlNumber(String tcn) {
+		//tcn = tcn.replaceAll("(Sirsi)", "");
+		tcn = tcn.trim();
+		if ( tcn.length() > 0 ) {
+			if ( tcn.substring(0, 1).equals("o") ) {
+				tcn = tcn.substring(1);
+			}
+			if ( tcn.length() >= 3 && tcn.substring(0, 2).equals("aas") ) {
+				tcn = "(Sirsi)" + tcn;
+			} else {
+				tcn = "(OCoLC)" + tcn;
+			}
+		}
+		return tcn;
+	}
+	
+	// Returns the index in the record's collection of fields of the first
+	// field with the tag in the "field" parameter, or if there aren't any instances
+	// of that field, then the index of the first field that is lexicographically
+	// greater than that field
+	public static int getFirstFieldIndex(Record record, String field) {
+		int i = 0;
+		//boolean none = (record.getVariableFields(field).size() == 0);
+		boolean none = (record.getVariableFields(field).size() == 0);
+		List<DataField> fields = record.getDataFields();
+		i = 0;
+		while ( ( i < fields.size() ) &&
+				!( (none && (fields.get(i).getTag().compareTo(field) > 0 ) ) ||		
+			        fields.get(i).getTag().equals(field) ) ) {
+			i++;
+		}
+		return i;
+	}
+	
+	public static void checkTitleControlNumbers(Record record, String titleControlNumber) {
+	    MarcFactory factory = MarcFactory.newInstance();
+	    int first035 = getFirstFieldIndex(record, "035");
+	    List<VariableField> controlnumbers = record.getVariableFields("035");
+    	Matcher m;
+    	Pattern oclctcnpattern = Pattern.compile("\\(OCoLC\\)\\s*(\\d+)");
+    	Pattern sirsitcnpattern = Pattern.compile("\\(Sirsi\\)\\s*o(\\d+)");
+    	List<String> existingTCNs = new ArrayList<String>();
+		//Map<String, List<String>> subfields;		
+	    DataField newtcn;
+	    if ( controlnumbers.size() == 0 ) {
+	    	// No 035's, add the titleControlNumber
+	    	LU_DBLoadInstances.Log(System.out, "No title control number fields, adding one at index " + first035, LU_DBLoadInstances.LOG_DEBUG);
+	    	newtcn = factory.newDataField("035", ' ', ' ');
+	    	titleControlNumber = formatOCLCControlNumber(titleControlNumber);
+	    	newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
+	    	record.getDataFields().add(first035, newtcn);
+	    } else {
+	    	// There could be multiple 035 fields.  One of them may already be in the form "(OCoLC)<number>"
+	    	// If so, swap that one in to be first.
+	    	// If there isn't one like that, but there is one of the form 
+	    	// (\(.*\))\s*?o(\d+)
+	    	// Then make that one first and change it to be
+	    	// (OCoLC)$2
+	    	
+	    	// First we'll look for one that starts with (OCoLC)
+	    	String oclcnum = "";
+	    	String sirsinum = "";
+	    	int oclcnumindex = 0, sirsinumindex = 0;
+	    	for ( int i = 0; i < record.getDataFields().size(); i++ ) {
+	    		DataField tcn_df = record.getDataFields().get(i); 
+	    		if ( tcn_df.getTag().equals("035")) {
+	    			
+	    			if ( existingTCNs.contains(tcn_df.toString().trim()) ) {
+	    				LU_DBLoadInstances.Log(System.out, "Removing 035 with only duplicate TCN data " + 
+	    			                           tcn_df.toString().trim() + " at index " + i, 
+	    			                           LU_DBLoadInstances.LOG_DEBUG);
+						record.getDataFields().remove(i);
+						i--; // Everything past this in the array has been left-shifted one now, so we decrement i
+						continue;
+	    			} else {
+	    				existingTCNs.add(tcn_df.toString().trim());
+	    				LU_DBLoadInstances.Log(System.out, "Added data to existing TCNs: " + tcn_df.toString(),
+	    						LU_DBLoadInstances.LOG_DEBUG);
+
+	    				List<Subfield> subfields = tcn_df.getSubfields('a');
+	    				LU_DBLoadInstances.Log(System.out, "TCN found at index " + i, 
+	    						LU_DBLoadInstances.LOG_DEBUG);
+	    				if ( (oclcnum.length() > 0 || sirsinum.length() > 0) ) {
+	    					if ( tcn_df.getSubfields().size() == 1 ) {
+	    						// We already found a TCN for this record, and this 035 only has
+	    						// a single subfield.  If the number matches, remove this field
+	    						String data = tcn_df.getSubfields().get(0).getData().trim();
+	    						LU_DBLoadInstances.Log(System.out, "Checking for data in existing OCLC and Sirsi TCNs: " + data,
+	    											   LU_DBLoadInstances.LOG_DEBUG);
+	    						if ( (oclcnum.length() > 0 && data.contains(oclcnum)) || // just the number part of OCLC TCN matches
+	    								(sirsinum.length()> 0 && data.contains(sirsinum)) ) { // exact match for any other TCN type
+	    							LU_DBLoadInstances.Log(System.out, "Removing 035 with only duplicate TCN data " + data + " at index " + i, 
+	    									LU_DBLoadInstances.LOG_DEBUG);
+	    							record.getDataFields().remove(i);
+	    							i--; // Everything past this in the array has been left-shifted one now, so we decrement i
+	    							continue;
+	    						}
+	    					}
+	    				}
+	    				for ( Subfield sub : subfields ) {
+	    					String data = sub.getData().trim();
+	    					m = oclctcnpattern.matcher(data);
+	    					if ( m.find() ) {
+	    						// There already is an OCoLC number, make it first and remove any dups
+	    						oclcnum = m.group(1);
+	    						oclcnumindex = i;
+	    					}
+	    					m = sirsitcnpattern.matcher(data);
+	    					if ( m.find() ) {
+	    						// May want to remove this one, if there is also an
+	    						// OCoLCtcnstr and the value of the number matched by \\d+ is the same 
+	    						sirsinum = m.group(1);
+	    						sirsinumindex = i;
+	    					}
+	    				}
+	    			}
+	    		} else {
+	    			LU_DBLoadInstances.Log(System.out, "Skipping data field with tag " + tcn_df.getTag(), 
+			                LU_DBLoadInstances.LOG_DEBUG);
+	    		}
+	    	}
+	    	LU_DBLoadInstances.Log(System.out, "Existing OCLC num: " + oclcnum + " at index " + oclcnumindex + 
+	    			                ", existing sirsi num: " + sirsinum + " at index " + sirsinumindex, 
+	    			                LU_DBLoadInstances.LOG_DEBUG);
+	    	if ( oclcnum.length() > 0 ) {
+	    		// Find and remove the OCoLC 035 entry, and insert it to be the first 035 entry
+	    		if ( sirsinum.length() > 0 && sirsinum.equals(oclcnum)) {
+	    			// There's an identical Sirsi number, remove it
+	    			if ( oclcnumindex > sirsinumindex ) {
+	    				oclcnumindex--;
+	    			}
+	    			record.getDataFields().remove(sirsinumindex);
+	    		}
+	    		LU_DBLoadInstances.Log(System.out, "Moving OCLC control number to index " + first035, LU_DBLoadInstances.LOG_DEBUG);
+	    		DataField oclcnumfield = record.getDataFields().get(oclcnumindex);
+	    		record.getDataFields().remove(oclcnumindex);
+	    		record.getDataFields().add(first035, oclcnumfield);
+	    	} else if ( sirsinum.length() > 0 ) {
+		    	LU_DBLoadInstances.Log(System.out, "Existing sirsi num: " + sirsinum + " at index " + sirsinumindex, 
+		                LU_DBLoadInstances.LOG_DEBUG);
+
+	    		// No OCLC number, but there is a Sirsi number.  Remove it
+	    		record.getDataFields().remove(sirsinumindex);
+
+	    		// Then add the formatted 035 from the Sirsi number
+		    	newtcn = factory.newDataField("035", ' ', ' ');
+		    	titleControlNumber = formatOCLCControlNumber(sirsinum);
+		    	newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
+		    	record.getDataFields().add(first035, newtcn);
+	    	} else {
+	    		LU_DBLoadInstances.Log(System.out, "No existing OCLC or Sirsi TCN, adding new one at index " + first035, 
+		                LU_DBLoadInstances.LOG_DEBUG);
+		    	newtcn = factory.newDataField("035", ' ', ' ');
+		    	titleControlNumber = formatOCLCControlNumber(titleControlNumber);
+		    	newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
+		    	record.getDataFields().add(first035, newtcn);
+	    		
+	    	}
+	    }
 	}
 	
 	public static void fixISBN(Record record) {
@@ -1519,19 +1776,13 @@ public class LU_BuildInstance {
 				    CallNumber cn = new CallNumber();
 				    // Same as the shelvingscheme for now
 				    String cntype = subfields.get("$w").get(0);
-				    
-				    // Going to try leaving this blank to see if OLE generates it
-				    // It should be a "normalized" version of the call number, with
-				    // spaces and other stuff removed
-				    //ShelvingOrder shelvingOrder = new ShelvingOrder();
-				    //shelvingOrder.setShelvingOrder(subfields.get("$w").get(0));
-				    //cn.setShelvingOrder(shelvingOrder);
-				    
+				    				    
 				    //cn.setPrefix(subfields.get("$a").get(0));
 				    //cn.setNumber(subfields.get("$i").get(0));
 				    cn.setPrefix("");
 				    cn.setNumber(subfields.get("$a").get(0));
 
+				    
 				    // Not used: callNumberType, callNumberPrefix, itemPart,
 				    // They make reference to MFHD 852 codes i, h, and k
 				    // Those don't appear to be in our data anywhere
@@ -1548,6 +1799,13 @@ public class LU_BuildInstance {
 						cntypename = "N/A";
 					}
 					oh.setCallNumberType(cntypecode, cntypename);
+
+					// It should be a "normalized" version of the call number, with
+				    // spaces and other stuff removed
+				    ShelvingOrder shelvingOrder = new ShelvingOrder();
+				    shelvingOrder.setShelvingOrder(LU_BuildInstance.normalizeCallNumber(cn.getNumber(), cntypecode));
+				    cn.setShelvingOrder(shelvingOrder);
+
 				    oh.setCallNumber(cn);
 				    
 					this.buildCommonHoldingsData(record, bib, printholding, subfields, MFHDRec, oh);
@@ -1577,12 +1835,6 @@ public class LU_BuildInstance {
 			    // Same as the shelvingscheme for now
 			    String cntype = subfields.get("$w").get(0);
 			    
-			    // Going to try leaving this blank to see if OLE generates it
-			    // It should be a "normalized" version of the call number, with
-			    // spaces and other stuff removed
-			    //ShelvingOrder shelvingOrder = new ShelvingOrder();
-			    //shelvingOrder.setShelvingOrder(subfields.get("$w").get(0));
-			    //cn.setShelvingOrder(shelvingOrder);
 			    
 			    cn.setPrefix("");
 			    cn.setNumber(subfields.get("$a").get(0));
@@ -1601,6 +1853,11 @@ public class LU_BuildInstance {
 					cntypename = "N/A";
 				}
 				oh.setCallNumberType(cntypecode, cntypename);
+				// It should be a "normalized" version of the call number, with
+			    // spaces and other stuff removed
+			    ShelvingOrder shelvingOrder = new ShelvingOrder();
+			    shelvingOrder.setShelvingOrder(LU_BuildInstance.normalizeCallNumber(cn.getNumber(), cntypecode));
+			    cn.setShelvingOrder(shelvingOrder);
 			    oh.setCallNumber(cn);
 			    
 				this.buildCommonHoldingsData(record, bib, printholding, subfields, null, oh);
@@ -2170,9 +2427,6 @@ public class LU_BuildInstance {
 	    // Same as the shelvingscheme for now
 	    String cntype = subfields.get("$w").get(0);
 	    
-	    ShelvingOrder shelvingOrder = new ShelvingOrder();
-	    shelvingOrder.setShelvingOrder(subfields.get("$w").get(0));
-	    cn.setShelvingOrder(shelvingOrder);
 	    cn.setPrefix("");
 	    cn.setNumber(subfields.get("$a").get(0));
 
@@ -2190,6 +2444,11 @@ public class LU_BuildInstance {
 			cntypename = "N/A";
 		}
 		oh.setCallNumberType(cntypecode, cntypename);
+		// It should be a "normalized" version of the call number, with
+	    // spaces and other stuff removed
+	    ShelvingOrder shelvingOrder = new ShelvingOrder();
+	    shelvingOrder.setShelvingOrder(LU_BuildInstance.normalizeCallNumber(cn.getNumber(), cntypecode));
+	    cn.setShelvingOrder(shelvingOrder);
 	    oh.setCallNumber(cn);
 	    
 	    

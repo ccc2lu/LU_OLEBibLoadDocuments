@@ -22,7 +22,7 @@ public class SerialNote implements Serializable {
 	@Id
 	@GeneratedValue
 	@Column(name="id")
-	private Long id;
+	private int id;
 	
 	@Column(name="note")
 	private String note;
@@ -35,11 +35,11 @@ public class SerialNote implements Serializable {
 		super();
 	}
 
-	public Long getId() {
+	public int getId() {
 		return id;
 	}
 
-	public void setId(Long id) {
+	public void setId(int id) {
 		this.id = id;
 	}
 
