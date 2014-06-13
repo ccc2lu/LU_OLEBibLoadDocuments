@@ -64,7 +64,13 @@ public class Bib implements Serializable {
 	public Bib(String formerId) {
 		this();
 		try {
-			this.setId(Long.parseLong(formerId));
+			if ( formerId.substring(0,1).equals("o") ) {
+				LU_DBLoadInstances.Log(System.err, "Stripping first 3 characters off of bib ID " + formerId,
+						LU_DBLoadInstances.LOG_WARN);
+				this.setId(Long.parseLong(formerId.substring(3)));
+			} else {
+				this.setId(Long.parseLong(formerId));
+			}
 		} catch(Exception e) {
 			LU_DBLoadInstances.Log(System.err, "Unable to parse bib id from string " + formerId,
 					LU_DBLoadInstances.LOG_ERROR);

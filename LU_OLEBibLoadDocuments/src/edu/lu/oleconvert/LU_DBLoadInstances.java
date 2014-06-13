@@ -273,14 +273,6 @@ public class LU_DBLoadInstances {
 					
 					LU_BuildInstance.fixISBN(xmlrecord);
 					
-					// Build a bib record from the xmlrecord
-					bib = buildBib(xmlrecord);
-					if ( bib != null ) {
-						ole_em.persist(bib);
-					} else {
-						LU_DBLoadInstances.Log(System.err, "Unable to persist bib for record " + xmlrecord.getControlNumber(), LOG_ERROR);						
-					}
-					
 					nextrecord = reader.next();
 					// The associated holdings records for a bib record should always come right after it
 					// So we keep looping and adding them to an ArrayList as we go
@@ -299,7 +291,29 @@ public class LU_DBLoadInstances {
 						*/						
 						nextrecord = reader.next();
 					}
-
+					// If subsequent records have the same bib ID in the 001 field,
+					// then we're going to append all the 999 fields of those records to xmlrecord, 
+					// and skip the records with the same bib ID
+					while ( nextrecord != null &&
+							nextrecord.getControlNumber().equals(xmlrecord.getControlNumber())) {
+						LU_DBLoadInstances.Log(System.out, "Two record with same control number, first: ", LOG_INFO);
+						LU_DBLoadInstances.Log(System.out, xmlrecord.toString(), LOG_INFO);
+						LU_DBLoadInstances.Log(System.out, "Second: ", LOG_INFO);
+						LU_DBLoadInstances.Log(System.out, nextrecord.toString(), LOG_INFO);
+						LU_DBLoadInstances.Log(System.out, "Appending 999s from second record to first", LOG_INFO);
+						LU_BuildInstance.append999fields(xmlrecord, nextrecord);
+						LU_DBLoadInstances.Log(System.out, "First record is now: ", LOG_INFO);
+						LU_DBLoadInstances.Log(System.out, xmlrecord.toString(), LOG_INFO);
+						nextrecord = reader.next();
+					}
+					
+					// Build a bib record from the xmlrecord
+					bib = buildBib(xmlrecord);
+					if ( bib != null ) {
+						ole_em.persist(bib);
+					} else {
+						LU_DBLoadInstances.Log(System.err, "Unable to persist bib for record " + xmlrecord.getControlNumber(), LOG_ERROR);						
+					}
 
 					//request=BuildRequestDocument.buildRequest(loadprops.getProperty("load.user"));
 

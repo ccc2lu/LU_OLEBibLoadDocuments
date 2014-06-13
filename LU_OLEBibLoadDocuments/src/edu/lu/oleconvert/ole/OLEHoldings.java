@@ -46,8 +46,12 @@ public class OLEHoldings implements Serializable {
 	private List<OLEHoldingsNote> notes;
 	// Eventually this will be an entity, for now it's still embedded
 	//private Location location;
-	private String locationStr;
-	private String locationLevelStr;
+	
+	private FlatLocation flatLocation;
+	
+	//private String locationStr;
+	//private String locationLevelStr;
+	
 	private CallNumber callNumber;
 	// ole_ds_call_number_type_t removed from the docstore database apparently
 	private CallNumberType callNumberType;
@@ -139,6 +143,16 @@ public class OLEHoldings implements Serializable {
 		this.staffOnly = staffOnly;
 	}
 	
+	@Embedded
+	public FlatLocation getFlatLocation() {
+		return flatLocation;
+	}
+	
+	public void setFlatLocation(FlatLocation flat) {
+		this.flatLocation = flat;
+	}
+	
+	/*
 	@Column(name="LOCATION")
 	public String getLocationStr() {
 		return locationStr;
@@ -154,7 +168,8 @@ public class OLEHoldings implements Serializable {
 	public void setLocationLevelStr(String locationLevelStr) {
 		this.locationLevelStr = locationLevelStr;
 	}
-
+	*/
+	
 	@Column(name="DATE_CREATED")
 	public String getCreatedDate() {
 		return createdDate;

@@ -587,6 +587,18 @@ public class LU_BuildInstance {
 	    }
 	}
 	
+	public static void append999fields(Record destrec, Record sourcerec) {
+		MarcFactory factory = MarcFactory.newInstance();
+		List<VariableField> source999s = sourcerec.getVariableFields("999");
+		for( VariableField source999vf : source999s ) {
+			DataField source999 = (DataField) source999vf;
+			//DataField dest999 = factory.newDataField("999", ' ', ' ');
+			//dest999.
+			destrec.addVariableField(source999);
+			//destrec.getDataFields().add(source999);
+		}
+	}
+	
 	public static void fixISBN(Record record) {
 	    MarcFactory factory = MarcFactory.newInstance();
 		List<VariableField> isbns = record.getVariableFields("020");
@@ -998,8 +1010,12 @@ public class LU_BuildInstance {
 				sr.setPrintLabel("Y");
 				sr.setCreateItem("N");
 				//sr.setSubscriptionStatus("4"); // not sure what to put here
-				sr.setReceiptLocation(s.getLibrary());;
-				sr.setUnboundLocation(oh.getLocationStr());
+				sr.setReceiptLocation(s.getLibrary());
+				if ( oh.getFlatLocation() != null ) {
+					sr.setUnboundLocation(oh.getFlatLocation().getLocCodeString());
+				} else {
+					sr.setUnboundLocation("");
+				}
 				sr.setSubscriptionStatus(s.getSubscriptionStatus());
 				sr.setVendor(s.getLinkedVendorId());
 
@@ -1249,6 +1265,42 @@ public class LU_BuildInstance {
 		}
 		*/
 		
+	   	LU_DBLoadInstances.Log(System.out, "Adding callnumber info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
+	    CallNumber cn = new CallNumber();
+	    // Same as the shelvingscheme for now
+	    String cntype = subfields.get("$w").get(0);
+	    				    
+	    //cn.setPrefix(subfields.get("$a").get(0));
+	    //cn.setNumber(subfields.get("$i").get(0));
+	    cn.setPrefix("");
+	    cn.setNumber(subfields.get("$a").get(0));
+
+	    
+	    // Not used: callNumberType, callNumberPrefix, itemPart,
+	    // They make reference to MFHD 852 codes i, h, and k
+	    // Those don't appear to be in our data anywhere
+	    // TODO: run that by Doreen, et al ^^^
+	    // Also not used currently: shelving scheme
+		String cntypecode = callNumberTypeCodes.get(cntype);
+		String cntypename = callNumberTypeNames.get(cntype);
+		if ( cntypecode == null || cntypecode.length() == 0) {
+		   	LU_DBLoadInstances.Log(System.out, "Unrecognized cntype: " + cntype + ", unable to set cntypecode", LU_DBLoadInstances.LOG_WARN);
+			cntypecode = "N/A";
+		}
+		if ( cntypename == null || cntypename.length() == 0) {
+			LU_DBLoadInstances.Log(System.out, "Unrecognized cntype: " + cntype + ", unable to set cntypename", LU_DBLoadInstances.LOG_WARN);
+			cntypename = "N/A";
+		}
+		oh.setCallNumberType(cntypecode, cntypename);
+
+		// It should be a "normalized" version of the call number, with
+	    // spaces and other stuff removed
+	    ShelvingOrder shelvingOrder = new ShelvingOrder();
+	    shelvingOrder.setShelvingOrder(LU_BuildInstance.normalizeCallNumber(cn.getNumber(), cntypecode));
+	    cn.setShelvingOrder(shelvingOrder);
+
+	    oh.setCallNumber(cn);
+	    
 		oh.setStaffOnly(bib.getStaffOnly());
 	    List<String> commentfields = subfields.get("$o"); // TODO: figure out the split and regex, test this
 	    if ( commentfields != null && commentfields.size() > 0 ) {
@@ -1470,6 +1522,10 @@ public class LU_BuildInstance {
 			}
 			*/
 			
+			/*
+			 * Librarians asked that we put the call number from 999 $a and type from 999 $w
+			 * into the holdings call number fields for electronic records, too
+			 * 
 			String domainstr = "";
 			try {
 				domainstr = this.getDomain(oh.getAccessURIs().get(0).getUri());
@@ -1479,6 +1535,8 @@ public class LU_BuildInstance {
 				domainstr = "N/A";
 			}
 			
+			
+			 
 			CallNumber cn = new CallNumber();
 			cn.setNumber("E-Resource: " + domainstr);
 			
@@ -1486,6 +1544,8 @@ public class LU_BuildInstance {
 			String cntypename = callNumberTypeNames.get(ELECTRONIC_RESOURCE);
 			oh.setCallNumberType(cntypecode, cntypename);
 			oh.setCallNumber(cn);
+			*/
+			
 			oh.setBib(bib);
 			bib.getHoldings().add(oh);
 			holdings.add(oh);
@@ -1772,49 +1832,17 @@ public class LU_BuildInstance {
 					oh.setHoldingsType("print");
 					subfields = LU_BuildInstance.getSubfields(printholding);
 					
-				   	LU_DBLoadInstances.Log(System.out, "Adding callnumber info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
-				    CallNumber cn = new CallNumber();
-				    // Same as the shelvingscheme for now
-				    String cntype = subfields.get("$w").get(0);
-				    				    
-				    //cn.setPrefix(subfields.get("$a").get(0));
-				    //cn.setNumber(subfields.get("$i").get(0));
-				    cn.setPrefix("");
-				    cn.setNumber(subfields.get("$a").get(0));
-
-				    
-				    // Not used: callNumberType, callNumberPrefix, itemPart,
-				    // They make reference to MFHD 852 codes i, h, and k
-				    // Those don't appear to be in our data anywhere
-				    // TODO: run that by Doreen, et al ^^^
-				    // Also not used currently: shelving scheme
-					String cntypecode = callNumberTypeCodes.get(cntype);
-					String cntypename = callNumberTypeNames.get(cntype);
-					if ( cntypecode == null || cntypecode.length() == 0) {
-					   	LU_DBLoadInstances.Log(System.out, "Unrecognized cntype: " + cntype + ", unable to set cntypecode", LU_DBLoadInstances.LOG_WARN);
-						cntypecode = "N/A";
-					}
-					if ( cntypename == null || cntypename.length() == 0) {
-						LU_DBLoadInstances.Log(System.out, "Unrecognized cntype: " + cntype + ", unable to set cntypename", LU_DBLoadInstances.LOG_WARN);
-						cntypename = "N/A";
-					}
-					oh.setCallNumberType(cntypecode, cntypename);
-
-					// It should be a "normalized" version of the call number, with
-				    // spaces and other stuff removed
-				    ShelvingOrder shelvingOrder = new ShelvingOrder();
-				    shelvingOrder.setShelvingOrder(LU_BuildInstance.normalizeCallNumber(cn.getNumber(), cntypecode));
-				    cn.setShelvingOrder(shelvingOrder);
-
-				    oh.setCallNumber(cn);
+					// Callnumber and type setting code used to be here, moved into 
+					// buildCommonHoldingsData since e-holdings will use the same info now
 				    
 					this.buildCommonHoldingsData(record, bib, printholding, subfields, MFHDRec, oh);
 					// print holdings get a location and "access location"
 					String locStr = subfields.get("$l").get(0);
-					oh.setLocationStr(getLocationName(locStr));
+					oh.setFlatLocation(this.getFlatLocation(locStr));
+					
 					// changed on 2014-04-23 -- ccc2
-					//oh.setLocationStr(locStr);
-					oh.setLocationLevelStr("SHELVING");
+					//oh.setLocationStr(getLocationName(locStr));
+					//oh.setLocationLevelStr("SHELVING");
 					
 					oh.setBib(bib);
 					bib.getHoldings().add(oh);
@@ -1830,41 +1858,22 @@ public class LU_BuildInstance {
 				oh.setHoldingsType("print");
 				subfields = LU_BuildInstance.getSubfields(printholding);
 				
-			   	LU_DBLoadInstances.Log(System.out, "Adding callnumber info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
-			    CallNumber cn = new CallNumber();
-			    // Same as the shelvingscheme for now
-			    String cntype = subfields.get("$w").get(0);
-			    
-			    
-			    cn.setPrefix("");
-			    cn.setNumber(subfields.get("$a").get(0));
+				// Callnumber and type setting code used to be here, moved into
+			    // buildCommonHoldingsData since electronic holdings now use the
+			    // same info
 
 			    // Not used: callNumberType, callNumberPrefix, itemPart,
 			    // They make reference to MFHD 852 codes i, h, and k
 			    // Those don't appear to be in our data anywhere
 			    // TODO: run that by Doreen, et al ^^^
 			    // Also not used currently: shelving scheme
-				String cntypecode = callNumberTypeCodes.get(cntype);
-				String cntypename = callNumberTypeNames.get(cntype);
-				if ( cntypecode == null || cntypecode.length() == 0) {
-					cntypecode = "N/A";
-				}
-				if ( cntypename == null || cntypename.length() == 0) {
-					cntypename = "N/A";
-				}
-				oh.setCallNumberType(cntypecode, cntypename);
-				// It should be a "normalized" version of the call number, with
-			    // spaces and other stuff removed
-			    ShelvingOrder shelvingOrder = new ShelvingOrder();
-			    shelvingOrder.setShelvingOrder(LU_BuildInstance.normalizeCallNumber(cn.getNumber(), cntypecode));
-			    cn.setShelvingOrder(shelvingOrder);
-			    oh.setCallNumber(cn);
-			    
+			   			    
 				this.buildCommonHoldingsData(record, bib, printholding, subfields, null, oh);
 				// print holdings get a location and "access location"
 				String locStr = subfields.get("$l").get(0);
-				oh.setLocationStr(getLocationName(locStr));
-				oh.setLocationLevelStr("SHELVING");
+				oh.setFlatLocation(this.getFlatLocation(locStr));
+				//oh.setLocationStr(getLocationName(locStr));
+				//oh.setLocationLevelStr("SHELVING");
 
 				oh.setBib(bib);
 				bib.getHoldings().add(oh);
@@ -2125,10 +2134,10 @@ public class LU_BuildInstance {
 	    	}
 			*/
 
-	    	FlatLocation loc = new FlatLocation();
-	    	loc.setLevel("SHELVING");
+	    	FlatLocation loc = this.getFlatLocation(locStr);
+	    	//loc.setLevel("SHELVING");
 	    	// ccc2 -- changed 2014-04-23
-	    	loc.setName(getLocationName(locStr));
+	    	//loc.setName(getLocationName(locStr));
 	    	//loc.setName(locStr);
 		    item.setLocation(loc);
 	    }
@@ -2394,8 +2403,9 @@ public class LU_BuildInstance {
 	    	}
 			*/
 
-		    oh.setLocationStr(getLocationName(locStr));
-		    oh.setLocationLevelStr("SHELVING");
+	    	oh.setFlatLocation(this.getFlatLocation(locStr));
+		    //oh.setLocationStr(getLocationName(locStr));
+		    //oh.setLocationLevelStr("SHELVING");
 	    	
 	    	/* old code 
 	    	LocationLevel locLevel1 = new LocationLevel();
@@ -2499,9 +2509,11 @@ public class LU_BuildInstance {
 		//oh.setInstance(inst);
 	}
 	
-	public String getLocationName(String locStr) {
+	public FlatLocation getFlatLocation(String locStr) {
     	String libraryName = "", libraryCode = "", shelvingStr = "", collectionCode = "", collectionName = "";
+    	FlatLocation flatLoc = new FlatLocation();
     	String newlocStr = "";
+    	String levelStr = "";
     	collectionCode = locationCodeToCollectionCode.get(locStr);
     	if (collectionCode != null) {
 	    	collectionName = collectionCodeToName.get(collectionCode);
@@ -2518,6 +2530,7 @@ public class LU_BuildInstance {
     	institution.setCode("LEHIGH");
     	institution.setName("Lehigh University");
     	newlocStr = institution.getCode();
+    	levelStr = "Institution";
     	
     	Location library = new Location();
     	library.setLevelId((long)LOC_LIBRARY);
@@ -2525,6 +2538,7 @@ public class LU_BuildInstance {
     	library.setCode(libraryCode);
     	library.setParentLocation(institution);
     	newlocStr += "/" + library.getCode();
+    	levelStr += "/Library";
     	
     	Location shelving = new Location();
     	shelving.setLevelId((long)LOC_SHELVING);
@@ -2539,12 +2553,16 @@ public class LU_BuildInstance {
     		collection.setParentLocation(library);
     		shelving.setParentLocation(collection);
     		newlocStr += "/" + collection.getCode();
+    		levelStr += "/Collection";
     	} else {
     		shelving.setParentLocation(library);
     	}
     	//return shelving.getName();
     	newlocStr += "/" + shelving.getCode();
-    	return newlocStr;
+    	levelStr += "/Shelving";
+    	flatLoc.setLevel(levelStr);
+    	flatLoc.setLocCodeString(newlocStr);
+    	return flatLoc;
 	}
 	
 	/*

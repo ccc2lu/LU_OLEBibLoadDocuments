@@ -59,6 +59,8 @@ public class Item implements Serializable {
 	private Deliver_ItemType itemType;
 	
 	FlatLocation location;
+	String locationLevel;
+	
 	private String copyNumber;
 	// Not in the data model anymore in 1.5, apparently
 	//private String copyNumberLabel;
@@ -172,6 +174,7 @@ public class Item implements Serializable {
 		//this.callNumber.setItemPart(i.getCallNumber().getClassificationPart());
 		this.callNumberType = i.getCallNumberType();
 		this.location = i.getLocation();
+		this.locationLevel = i.getLocationLevel();
 		this.highDensityStorage = i.getHighDensityStorage();
 		this.temporaryItemType = i.getTemporaryItemType();
 		//this.extension = i.getExtension();
@@ -626,6 +629,17 @@ public class Item implements Serializable {
 	public void setLocation(FlatLocation location) {
 		this.location = location;
 	}
+	
+	/*
+	@Column(name="LOCATION_LEVEL")
+	public String getLocationLevel() {
+		return this.locationLevel;
+	}
+	
+	public void setLocationLevel(String level) { 
+		this.locationLevel = level;
+	}
+	*/
 	
 	@Embedded
 	@XmlElement(name="callNumber", required=true, nillable=true)

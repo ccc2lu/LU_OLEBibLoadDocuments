@@ -18,12 +18,12 @@ public class FlatLocation implements Serializable {
 	private static final long serialVersionUID = 1560568398796499235L;
 	
 	private String level;
-	private String name;
+	private String locCodeString;
 	
 	public FlatLocation() {
 		super();
 		level = "";
-		name = "";
+		locCodeString = "";
 	}
 
 	@Column(name="LOCATION_LEVEL")
@@ -38,12 +38,12 @@ public class FlatLocation implements Serializable {
 
 	@Column(name="LOCATION")
 	@XmlElement(name="name")
-	public String getName() {
-		return name;
+	public String getLocCodeString() {
+		return locCodeString;
 	}
 
-	public void setName(String name) {
-		this.name = name;
+	public void setLocCodeString(String str) {
+		this.locCodeString = str;
 	}
 
 }
