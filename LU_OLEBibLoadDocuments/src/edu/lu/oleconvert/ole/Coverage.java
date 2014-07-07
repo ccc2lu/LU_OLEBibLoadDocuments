@@ -46,7 +46,7 @@ public class Coverage implements Serializable {
 	
 	@Id
 	@GeneratedValue
-	@Column(name="EHOLDINGS_COVERAGE_ID")
+	@Column(name="HOLDINGS_COVERAGE_ID")
 	public Long getId() {
 		return id;
 	}

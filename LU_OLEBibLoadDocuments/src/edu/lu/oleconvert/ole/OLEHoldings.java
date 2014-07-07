@@ -40,6 +40,7 @@ public class OLEHoldings implements Serializable {
 
 	//private String primary;
 	private Long holdingsIdentifier;
+	private String formerId;
 	private ReceiptStatus receiptStatus;
 	//private ArrayList<URI> uri;
 	private List<AccessURI> accessURIs;
@@ -125,6 +126,14 @@ public class OLEHoldings implements Serializable {
 	public OLEHoldings(Instance i) {
 		this();
 		this.setInstance(i);
+	}
+	
+	@Column(name="FORMER_HOLDINGS_ID")
+	public String getFormerId() {
+		return this.formerId;
+	}
+	public void setFormerId(String fid) {
+		this.formerId = fid;
 	}
 	
 	@Column(name="UNIQUE_ID_PREFIX")

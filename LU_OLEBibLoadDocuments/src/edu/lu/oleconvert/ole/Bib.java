@@ -32,6 +32,9 @@ public class Bib implements Serializable {
 	 */
 	private static final long serialVersionUID = 1102828622828122306L;
 	
+	private static DateFormat df = new SimpleDateFormat("yyyyMMdd");
+	private static String datestr = df.format(Calendar.getInstance().getTime());
+	
 	private Long id;
 	private String formerId;
 	private String fastAdd;
@@ -49,11 +52,9 @@ public class Bib implements Serializable {
 	
 	public Bib() {
 		// Set some default values
-		DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
-		String datestr = df.format(Calendar.getInstance().getTime());
-		this.setDateCreated(datestr);
-		this.setStatusUpdatedDate(datestr);
-		this.setDateUpdated(datestr);
+		this.setDateCreated(datestr, false);
+		this.setStatusUpdatedDate(datestr, false);
+		this.setDateUpdated(datestr, false);
 		this.setCreatedBy("BulkIngest-User");
 		this.setUpdatedBy("BulkIngest-User");
 		holdings = new ArrayList<OLEHoldings>();
@@ -134,8 +135,6 @@ public class Bib implements Serializable {
 		return dateCreated;
 	}
 	public void setDateCreated(String dateCreated) {
-		DateFormat df = new SimpleDateFormat("yyyyMMdd");
-		String datestr = df.format(Calendar.getInstance().getTime());
 		try {
 			df.parse(dateCreated);
 			// if there's no exception, then it's fine, assign the date created
@@ -144,6 +143,13 @@ public class Bib implements Serializable {
 			LU_DBLoadInstances.Log(System.err, "Unable to set bib record's created date from date string: " + dateCreated,
 					LU_DBLoadInstances.LOG_ERROR);
 			this.dateCreated = datestr;
+		}
+	}
+	public void setDateCreated(String newdateCreated, boolean check) {
+		if ( check ) {
+			setDateCreated(newdateCreated);
+		} else {
+			this.dateCreated = newdateCreated;
 		}
 	}
 	
@@ -160,8 +166,6 @@ public class Bib implements Serializable {
 		return dateUpdated;
 	}
 	public void setDateUpdated(String dateUpdated) {
-		DateFormat df = new SimpleDateFormat("yyyyMMdd");
-		String datestr = df.format(Calendar.getInstance().getTime());
 		try {
 			df.parse(dateUpdated);
 			// if there's no exception, then it's fine, assign the date created
@@ -171,6 +175,13 @@ public class Bib implements Serializable {
 					LU_DBLoadInstances.LOG_ERROR);
 			this.dateUpdated = datestr;
 		}		
+	}
+	public void setDateUpdated(String newdateUpdated, boolean check) {
+		if ( check ) {
+			setDateUpdated(newdateUpdated);
+		} else {
+			this.dateUpdated = newdateUpdated;
+		}
 	}
 	
 	@Column(name="STATUS")
@@ -195,8 +206,6 @@ public class Bib implements Serializable {
 	}
 	
 	public void setStatusUpdatedDate(String statusUpdatedDate) {
-		DateFormat df = new SimpleDateFormat("yyyyMMdd");
-		String datestr = df.format(Calendar.getInstance().getTime());
 		try {
 			df.parse(statusUpdatedDate);
 			// if there's no exception, then it's fine, assign the date created
@@ -206,6 +215,14 @@ public class Bib implements Serializable {
 					LU_DBLoadInstances.LOG_ERROR);
 			this.statusUpdatedDate = datestr;
 		}		
+	}
+	
+	public void setStatusUpdatedDate(String updatedDate, boolean check) {
+		if ( check ) {
+			setStatusUpdatedDate(updatedDate);
+		} else {
+			this.statusUpdatedDate = updatedDate;
+		}
 	}
 	
 	@Column(name="UNIQUE_ID_PREFIX")

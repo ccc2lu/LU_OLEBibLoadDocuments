@@ -59,7 +59,7 @@ public class Item implements Serializable {
 	private Deliver_ItemType itemType;
 	
 	FlatLocation location;
-	String locationLevel;
+	//String locationLevel;
 	
 	private String copyNumber;
 	// Not in the data model anymore in 1.5, apparently
@@ -152,6 +152,8 @@ public class Item implements Serializable {
 		this.setUpdatedDate(datestr);
 		this.setUpdatedBy("BulkIngest-User");
 		this.setItemStatusDateUpdated(datestr);
+		this.setItemDamagedStatus("N");
+		this.setMissingPieces("N");
 		this.setUniqueIdPrefix("wio");
 	}
 	
@@ -174,7 +176,7 @@ public class Item implements Serializable {
 		//this.callNumber.setItemPart(i.getCallNumber().getClassificationPart());
 		this.callNumberType = i.getCallNumberType();
 		this.location = i.getLocation();
-		this.locationLevel = i.getLocationLevel();
+		//this.locationLevel = i.getLocationLevel();
 		this.highDensityStorage = i.getHighDensityStorage();
 		this.temporaryItemType = i.getTemporaryItemType();
 		//this.extension = i.getExtension();
@@ -197,6 +199,8 @@ public class Item implements Serializable {
 		checkinNote = i.getCheckinNote();
 		staffOnlyFlag = i.getStaffOnlyFlag();
 		fastAddFlag = i.getFastAddFlag();
+		this.itemDmgStatus = i.getItemDamagedStatus();
+		this.missingPieces = i.getMissingPieces();
 		this.accessInformation = i.getAccessInformation();
 		this.itemHoldings = i.getItemHoldings();
 		this.claimsReturnedFlag = i.getClaimsReturnedFlag();

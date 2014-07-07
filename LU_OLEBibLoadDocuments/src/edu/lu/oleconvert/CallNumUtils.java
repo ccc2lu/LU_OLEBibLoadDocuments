@@ -1,7 +1,14 @@
 package edu.lu.oleconvert;
 
-// From ole-common/ole-utility/src/main/java/org/kuali/ole/utility/callnumber/CallNumUtils.java
-// OLE copied it from SolrMarc code
+/**
+ *
+ * Taken from Kuali OLE, 
+ * ole-common/ole-utility/src/main/java/org/kuali/ole/utility/callnumber/CallNumUtils.java
+ * They took it from the SolrMarc project
+ * I (ccc2@lehigh.edu) commented out the parts that made use of IBM's icu.lang.UCharacter class,
+ * since I only need this for the normalization methods, not the string reversal methods that
+ * used that class.
+ */
 
 //import com.ibm.icu.lang.UCharacter;
 import org.apache.commons.lang3.StringUtils;
@@ -844,21 +851,46 @@ public final class CallNumUtils {
         return suffix;
     }
 
-    /*
-    // given a shelfkey (a lexicaly sortable call number), return the reverse
-    // shelf key - a sortable version of the call number that will give the
-    // reverse order (for getting "previous" call numbers in a list)
+    /**
+     * given a shelfkey (a lexicaly sortable call number), return the reverse
+     * shelf key - a sortable version of the call number that will give the
+     * reverse order (for getting "previous" call numbers in a list)
+     * 
+     * Commented out by ccc2@lehigh.edu since it's the only method that calls
+     * reverseAlphanum, which I don't use and requires the UCharacter class
+     * 
     public static String getReverseShelfKey(String shelfkey) {
         StringBuilder resultBuf = new StringBuilder(reverseDefault);
         if (shelfkey != null && shelfkey.length() > 0)
             resultBuf.replace(0, shelfkey.length(), reverseAlphanum(shelfkey));
         return resultBuf.toString();
     }
-
+	*/
     
-     // return the reverse String value, mapping A --> 9, B --> 8, ...
-     //9 --> A and also non-alphanum to sort properly (before or after alphanum)
+    /**
+     * return the reverse String value, mapping A --> 9, B --> 8, ...
+     * 9 --> A and also non-alphanum to sort properly (before or after alphanum)
+	 *
+     * Commented out by ccc2@lehigh.edu since I don't need it and it's the only
+     * method that uses the IBM UCharacter class, which I don't want to bring
+     * in a .jar for since I don't use this method 
+     * 
+
     private static String reverseAlphanum(String orig) {
+
+
+//        char[] origArray = orig.toCharArray();
+//
+//        char[] reverse = new char[origArray.length];
+//        for (int i = 0; i < origArray.length; i++) {
+//            Character ch = origArray[i];
+//            if (ch != null) {
+//                if (Character.isLetterOrDigit(ch))
+//                   reverse[i] = alphanumReverseMap.get(ch);
+//                else
+//                    reverse[i] = reverseNonAlphanum(ch);
+//            }
+//        }
 
         StringBuilder reverse = new StringBuilder();
         for (int ix = 0; ix < orig.length(); ) {
@@ -899,7 +931,8 @@ public final class CallNumUtils {
 
         return new String(reverse);
     }
-*/
+	*/
+    
     /**
      * for non alpha numeric characters, return a character that will sort
      * first or last, whichever is the opposite of the original character.

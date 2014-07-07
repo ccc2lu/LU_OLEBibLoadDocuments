@@ -19,7 +19,7 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
 @Entity
-@Table(name="ole_ds_location_m_t")
+@Table(name="ole_locn_t")
 @XmlType(name="location")
 public class Location implements Serializable {
 	
@@ -28,7 +28,8 @@ public class Location implements Serializable {
 	 */
 	private static final long serialVersionUID = -574288814004619433L;
 	private Long id;
-	private Long levelId;
+	private String objectId;
+	private LocationLevel level;
 	private String code;
 	private String name;
 	private Location parentLocation;
@@ -53,7 +54,7 @@ public class Location implements Serializable {
 	
 	@Id
 	@GeneratedValue
-	@Column(name="LOCATION_ID")
+	@Column(name="LOCN_ID")
 	public Long getId() {
 		return this.id;
 	}
@@ -61,14 +62,16 @@ public class Location implements Serializable {
 		this.id = id;
 	}
 	
-	public Long getLevelId() {
-		return levelId;
+	@ManyToOne
+	@JoinColumn(name="LEVEL_ID")
+	public LocationLevel getLevel() {
+		return level;
 	}
-	public void setLevelId(Long id) {
-		this.levelId = id;
+	public void setLevel(LocationLevel lvl) {
+		this.level = lvl;
 	}
 	
-	@Column(name="NAME")
+	@Column(name="LOCN_NAME")
 	@XmlElement(name="name")
 	public String getName() {
 		return name;
@@ -77,7 +80,7 @@ public class Location implements Serializable {
 		this.name = name;
 	}
 	
-	@Column(name="CODE")
+	@Column(name="LOCN_CD")
 	public String getCode() {
 		return code;
 	}
@@ -89,7 +92,7 @@ public class Location implements Serializable {
 	// If not, try making it bi-directional by adding a collection of sublocations
 	// with a mappedBy field of parentLocation
 	@ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
-	@JoinColumn(name="PARENT_LOCATION_ID", referencedColumnName="LOCATION_ID")
+	@JoinColumn(name="PARENT_LOCN_ID", referencedColumnName="LOCN_ID")
 	public Location getParentLocation() {
 		return this.parentLocation;
 	}

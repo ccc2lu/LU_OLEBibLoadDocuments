@@ -19,6 +19,5 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="/home/ccc2/dev/ole/solrmarc/trunk/lib/solrmarc/build/MarcImporter.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

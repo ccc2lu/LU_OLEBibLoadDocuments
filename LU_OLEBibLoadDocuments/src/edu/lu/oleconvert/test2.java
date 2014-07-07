@@ -21,11 +21,20 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.EntityTransaction;
+import javax.persistence.Persistence;
+import javax.persistence.TypedQuery;
+
+import migration.SirsiCallNumber;
 
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.time.DateUtils;
@@ -37,12 +46,15 @@ import org.marc4j.marc.VariableField;
 import org.marc4j.marc.impl.ControlFieldImpl;
 import org.xml.sax.InputSource;
 
-import org.solrmarc.*;
-import org.solrmarc.callnum.DeweyCallNumber;
-import org.solrmarc.callnum.LCCallNumber;
+//import org.solrmarc.*;
+//import org.solrmarc.callnum.DeweyCallNumber;
+//import org.solrmarc.callnum.LCCallNumber;
 
 import edu.lu.oleconvert.ole.Bib;
+import edu.lu.oleconvert.ole.BoundWith;
 import edu.lu.oleconvert.ole.Coverage;
+import edu.lu.oleconvert.ole.OLEHoldings;
+import migration.*;
 
 public class test2 {
 
@@ -80,9 +92,59 @@ public class test2 {
 			e.printStackTrace();
 		}
 		*/
-		testNormalizeCallNumbers();
+		//testNormalizeCallNumbers();
+		//testSplit();
+		testBWLoad();
 	}
 	
+	public static void testBWLoad() {
+
+		EntityManagerFactory ole_emf;
+		EntityManager ole_em;
+		EntityManagerFactory migration_emf;
+		EntityManager migration_em;
+		
+		ole_emf = Persistence.createEntityManagerFactory("ole");
+		ole_em = ole_emf.createEntityManager();
+		EntityTransaction ole_tx = ole_em.getTransaction();
+		
+		migration_emf = Persistence.createEntityManagerFactory("olemigration");
+		migration_em = migration_emf.createEntityManager();
+		
+		TypedQuery<SirsiCallNumber> query = migration_em.createQuery("select scn from SirsiCallNumber scn where scn.level='CHILD'", SirsiCallNumber.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<SirsiCallNumber> results = query.getResultList();
+		Iterator it = results.iterator();
+		while ( it.hasNext() ) {
+			SirsiCallNumber scn = (SirsiCallNumber) it.next();
+			// Check if this is a child record, and if so, create a bound-with
+			if ( scn.getLevel().equals("CHILD") ) {
+				// bib id will be the cat key for the parent, holdings id we'll have to retrieve
+				// though using 
+				TypedQuery<OLEHoldings> holdings_query = ole_em.createQuery("select oh from OLEHoldings oh where oh.formerId='" + scn.getParent_cat_key() + "|" + scn.getParent_callnum_key() + "'", OLEHoldings.class);
+				List<OLEHoldings> holdings_results = holdings_query.getResultList();
+				if ( holdings_results.size() > 0 ) {
+					ole_tx.begin();
+					BoundWith bw = new BoundWith();
+					bw.setBibId((long)scn.getParent_cat_key());
+					OLEHoldings oh = holdings_results.get(0);
+					bw.setHoldingsId(oh.getHoldingsIdentifier());
+					ole_em.persist(bw);
+					ole_tx.commit();
+				} else {
+					LU_DBLoadInstances.Log(System.err, "No holdings record found for former ID " + scn.getParent_cat_key() + "|" + scn.getParent_callnum_key(),
+							LU_DBLoadInstances.LOG_WARN);
+				}
+			}
+		}
+	}
+	public static void testSplit() {
+		String line = "120710|6|315629|1|CATSU|20080102|LEHIGH|";
+		String[] fields = line.split("\\|");
+		for ( int i = 0; i < fields.length; i++ ) {
+			System.out.println("Field " + i + " = " + fields[i]);
+		}
+	}
 	public static void testNormalizeCallNumbers() {
 		String ddc_callnumbers[] = { "901.934 S324m 1979", 
 				"557 R113m v.1",

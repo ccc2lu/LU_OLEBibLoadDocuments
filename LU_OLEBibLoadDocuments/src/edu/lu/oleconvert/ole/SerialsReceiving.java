@@ -42,6 +42,10 @@ public class SerialsReceiving implements Serializable {
 	@Column(name="SER_RCV_REC_ID")
 	private Long id;
 	
+	@OneToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
+	@JoinColumn(name="FDOC_NBR", referencedColumnName="DOC_HDR_ID")
+	private FDoc fDoc;
+	
 	@OneToMany(fetch=FetchType.LAZY, mappedBy="serialsReceiving", cascade=CascadeType.ALL)
 	List<SerialsReceivingHisRec> serialsReceivingHistory;
 	
@@ -141,8 +145,8 @@ public class SerialsReceiving implements Serializable {
 	private String bibId;
 	
 	// NULL in all the Chicago data, not sure what to do with this
-	@Column(name="FDOC_NBR")
-	private String fDocNumber;
+	//@Column(name="FDOC_NBR")
+	//private String fDocNumber;
 	
 	// Y or N in Chicago data
 	@Column(name="CLAIM")
@@ -177,6 +181,10 @@ public class SerialsReceiving implements Serializable {
 	public SerialsReceiving(String serId) {
 		this();
 		this.setReceivingRec(serId);
+		this.fDoc = new FDoc(this);
+		// cascade should handle persisting this
+		//LU_DBLoadInstances.ole_em.persist(this.fDoc);
+		
 		//this.setId(serId);
 		//this.setObjId(serId);
 	}
@@ -257,7 +265,7 @@ public class SerialsReceiving implements Serializable {
 
 	public void setCreateDate(String createDate) {
 		String[] acceptedFormats = {"yyyyMMdd", "yyyy", "yyyy-MM-dd"};
-		DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+		DateFormat df = new SimpleDateFormat("yyyyMMdd");
 		try {
 			Date newcreate = DateUtils.parseDate(createDate, acceptedFormats);
 			// if there's no exception, then it's fine, assign the date created
@@ -267,6 +275,9 @@ public class SerialsReceiving implements Serializable {
 					LU_DBLoadInstances.LOG_ERROR);
 			this.createDate = null;
 		}
+		LU_DBLoadInstances.Log(System.out, "Serials receiving record createDate set to: " + createDate,
+				LU_DBLoadInstances.LOG_INFO);
+		
 	}
 
 	public String getVendor() {
@@ -349,12 +360,12 @@ public class SerialsReceiving implements Serializable {
 		this.poId = poId;
 	}
 
-	public String getfDocNumber() {
-		return fDocNumber;
+	public FDoc getFDoc() {
+		return fDoc;
 	}
 
-	public void setfDocNumber(String fDocNumber) {
-		this.fDocNumber = fDocNumber;
+	public void setFDoc(FDoc doc) {
+		this.fDoc = doc;
 	}
 
 	public String getClaim() {

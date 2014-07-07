@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 
@@ -28,10 +29,13 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Persistence;
+import javax.persistence.TypedQuery;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.transform.Result;
 import javax.xml.transform.sax.SAXResult;
+
+import migration.SirsiCallNumber;
 
 import org.apache.xml.serialize.OutputFormat;
 import org.apache.xml.serialize.XMLSerializer;
@@ -45,6 +49,7 @@ import org.xml.sax.InputSource;
 //import edu.indiana.libraries.JPADriver.classes.JPADriver;
 //import edu.indiana.libraries.LoadDocstore.jaxb.RequestType;
 import edu.lu.oleconvert.ole.Bib;
+import edu.lu.oleconvert.ole.BoundWith;
 import edu.lu.oleconvert.ole.Instance;
 import edu.lu.oleconvert.ole.InstanceCollection;
 import edu.lu.oleconvert.ole.OLEHoldings;
@@ -140,12 +145,22 @@ public class LU_DBLoadInstances {
 
 		String dumpdir = args[0];
 		String lehighDataDir = args[1];
-
+		boolean dostage = args[4].equals("Y");
+		
 		try {
 
 
-			LU_BuildInstance instanceBuilder = new LU_BuildInstance(dumpdir + "/mod.allcallnums.txt", 
+			/*LU_BuildInstance instanceBuilder = new LU_BuildInstance(dumpdir + "/mod.allcallnums.txt", 
 					dumpdir + "/mod.allcallnumsshelvingkeys.txt",
+					dumpdir + "/mod.allcallnumsitemnumbers.txt",
+					dumpdir + "/mod.allcallnumsanalytics.txt",        														
+					dumpdir + "/mod.allitems.txt",
+					lehighDataDir + "/Lehigh Locations.csv",
+					lehighDataDir + "/sfx_export_portfolios.csv");
+					*/
+			LU_BuildInstance instanceBuilder = new LU_BuildInstance(dostage, dumpdir + "/mod.allcallnums.txt", 
+					dumpdir + "/mod.allcallnumsshelvingkeys.txt",
+					dumpdir + "/mod.boundwiths.txt",
 					dumpdir + "/mod.allcallnumsitemnumbers.txt",
 					dumpdir + "/mod.allcallnumsanalytics.txt",        														
 					dumpdir + "/mod.allitems.txt",
@@ -169,9 +184,10 @@ public class LU_DBLoadInstances {
 			 * 1 - Lehigh Data directory
 			 * 2 - map of catalog keys to dates/shadowed values/statuses
 			 * 3 - MarcXML input file of bibs/items data
-			 * 4 (optional) - number of records to create
+			 * 4 - stage Sirsi data in migration database(Y or N)
+			 * 5 (optional) - number of records to create
 			 */
-			LU_DBLoadInstances.Log("Args: ");
+			LU_DBLoadInstances.Log("Args: " + args.length + " of them, ");
 			for ( int i = 0; i < args.length; i++ ) {
 				LU_DBLoadInstances.Log("arg " + i + "=" + args[i] + ", ");
 			}
@@ -247,8 +263,8 @@ public class LU_DBLoadInstances {
 				MarcXmlReader reader = new MarcXmlReader(inputsource);
 
 				int limit = -1;
-				if ( args.length == 5 ) {
-					limit = Integer.parseInt(args[4]);
+				if ( args.length == 6 ) {
+					limit = Integer.parseInt(args[5]);
 					LU_DBLoadInstances.Log(System.out, "Only loading records for the first " + limit + " bib records", LOG_INFO);
 				}
 				counter = 0;
@@ -357,8 +373,45 @@ public class LU_DBLoadInstances {
 						ole_tx.begin();
 					}
 				} while (nextrecord != null && (limit < 0 || counter < limit) );
+				ole_tx.commit();
 				LU_DBLoadInstances.Log(System.out, 
 		                "Done loading instances, time is: " + df.format(Calendar.getInstance().getTime()), 
+		                LOG_INFO);
+
+				LU_DBLoadInstances.Log(System.out, 
+		                "Now that all bibs and holdings are created, loading bound-withs, time is: " + df.format(Calendar.getInstance().getTime()), 
+		                LOG_INFO);
+				
+				TypedQuery<SirsiCallNumber> query = LU_DBLoadInstances.migration_em.createQuery("select scn from SirsiCallNumber scn where scn.level='CHILD'", SirsiCallNumber.class);
+				query.setHint("org.hibernate.cacheable", true);
+				List<SirsiCallNumber> results = query.getResultList();
+				Iterator it = results.iterator();
+				while ( it.hasNext() ) {
+					SirsiCallNumber scn = (SirsiCallNumber) it.next();
+					// Check if this is a child record, and if so, create a bound-with
+					if ( scn.getLevel().equals("CHILD") ) {
+						// bib id will be the cat key for the parent, holdings id we'll have to retrieve
+						// though using 
+						TypedQuery<OLEHoldings> holdings_query = LU_DBLoadInstances.ole_em.createQuery("select oh from OLEHoldings oh where oh.formerId='" + scn.getParent_cat_key() + "|" + scn.getParent_callnum_key() + "'", OLEHoldings.class);
+						List<OLEHoldings> holdings_results = holdings_query.getResultList();
+						if ( holdings_results.size() > 0 ) {
+							ole_tx.begin();
+							BoundWith bw = new BoundWith();
+							bw.setBibId((long)scn.getParent_cat_key());
+							OLEHoldings oh = holdings_results.get(0);
+							bw.setHoldingsId(oh.getHoldingsIdentifier());
+							ole_em.persist(bw);
+							ole_tx.commit();
+						} else {
+							LU_DBLoadInstances.Log(System.err, "No holdings record found for former ID " + scn.getParent_cat_key() + "|" + scn.getParent_callnum_key(),
+									LU_DBLoadInstances.LOG_WARN);
+						}
+					}
+				}
+				
+				
+				LU_DBLoadInstances.Log(System.out, 
+		                "Bound-withs loaded, time is: " + df.format(Calendar.getInstance().getTime()), 
 		                LOG_INFO);
 
 				System.exit(0);
