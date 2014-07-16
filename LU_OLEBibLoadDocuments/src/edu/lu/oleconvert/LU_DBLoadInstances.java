@@ -5,9 +5,12 @@ package edu.lu.oleconvert;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
@@ -39,6 +42,8 @@ import migration.SirsiCallNumber;
 
 import org.apache.xml.serialize.OutputFormat;
 import org.apache.xml.serialize.XMLSerializer;
+import org.marc4j.MarcReader;
+import org.marc4j.MarcStreamReader;
 import org.marc4j.MarcWriter;
 import org.marc4j.MarcXmlReader;
 import org.marc4j.MarcXmlWriter;
@@ -144,8 +149,10 @@ public class LU_DBLoadInstances {
 		Properties instanceprops;
 
 		String dumpdir = args[0];
-		String lehighDataDir = args[1];
-		boolean dostage = args[4].equals("Y");
+		String datestamp = args[1];
+		//dumpdir = dumpdir + "/" + datestamp;
+		String lehighDataDir = args[2];
+		boolean dostage = args[6].equals("Y");
 		
 		try {
 
@@ -181,11 +188,13 @@ public class LU_DBLoadInstances {
 			/*
 			 * arguments
 			 * 0 - Sirsi dump directory
-			 * 1 - Lehigh Data directory
-			 * 2 - map of catalog keys to dates/shadowed values/statuses
-			 * 3 - MarcXML input file of bibs/items data
-			 * 4 - stage Sirsi data in migration database(Y or N)
-			 * 5 (optional) - number of records to create
+			 * 1 - datestamp of Sirsi dump in format YYYYMMDD
+			 * 2 - Lehigh Data directory
+			 * 3 - map of catalog keys to dates/shadowed values/statuses
+			 * 4 - MarcXML input file of bibs/items data
+			 * 5 - MARC file containing export with default key in 001 (no other known way to export this key)
+			 * 6 - stage Sirsi data in migration database(Y or N)
+			 * 7 (optional) - number of records to create
 			 */
 			LU_DBLoadInstances.Log("Args: " + args.length + " of them, ");
 			for ( int i = 0; i < args.length; i++ ) {
@@ -222,7 +231,7 @@ public class LU_DBLoadInstances {
 
 				String line, key;
 				String parts[];
-				inFile = new BufferedReader(new FileReader(dumpdir + "/" + args[2]));
+				inFile = new BufferedReader(new FileReader(dumpdir + "/" + args[3]));
 				LU_DBLoadInstances.Log("Reading in map of catalog keys to dates, shadowed values, statuses ...");
 				counter = 0;
 				while(inFile.ready()) {
@@ -254,7 +263,7 @@ public class LU_DBLoadInstances {
 
 				//   PrintStream outputprintstream = new PrintStream(output);
 
-				Reader input = new FileReader(dumpdir + "/" + args[3]);
+				Reader input = new FileReader(dumpdir + "/" + args[4]);
 				InputSource inputsource = new InputSource(input);
 				//inputsource.setEncoding("ISO-8859-1");
 				inputsource.setEncoding("UTF-8");
@@ -262,15 +271,19 @@ public class LU_DBLoadInstances {
 				//MarcXmlReader reader = new MarcXmlReader(new FileInputStream(dumpdir + "/" + args[2]), "UTF-8");
 				MarcXmlReader reader = new MarcXmlReader(inputsource);
 
+				InputStream defaultkeysInput = new FileInputStream(dumpdir + "/" + datestamp + "/" + args[5]);
+				MarcStreamReader defaultkeysReader = new MarcStreamReader(defaultkeysInput);
+				
 				int limit = -1;
-				if ( args.length == 6 ) {
-					limit = Integer.parseInt(args[5]);
+				if ( args.length == 8 ) {
+					limit = Integer.parseInt(args[7]);
 					LU_DBLoadInstances.Log(System.out, "Only loading records for the first " + limit + " bib records", LOG_INFO);
 				}
 				counter = 0;
 				List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
-				Record xmlrecord, nextrecord;
+				Record xmlrecord, nextrecord, defaultkeysrecord, dfknextrecord;
 				nextrecord = reader.next();
+				dfknextrecord = defaultkeysReader.next();
 				List<Record> assocMFHDRecords = new ArrayList<Record>();
 
 				DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -286,10 +299,13 @@ public class LU_DBLoadInstances {
 					
 					assocMFHDRecords.clear();
 					xmlrecord = nextrecord;
-					
+					defaultkeysrecord = dfknextrecord;
 					LU_BuildInstance.fixISBN(xmlrecord);
 					
 					nextrecord = reader.next();
+					if ( nextrecord != null ) {
+						dfknextrecord = defaultkeysReader.next();
+					}
 					// The associated holdings records for a bib record should always come right after it
 					// So we keep looping and adding them to an ArrayList as we go
 					while ( nextrecord != null && 
@@ -306,6 +322,9 @@ public class LU_DBLoadInstances {
 						}
 						*/						
 						nextrecord = reader.next();
+						if ( nextrecord != null ) {
+							dfknextrecord = defaultkeysReader.next();
+						}
 					}
 					// If subsequent records have the same bib ID in the 001 field,
 					// then we're going to append all the 999 fields of those records to xmlrecord, 
@@ -321,10 +340,13 @@ public class LU_DBLoadInstances {
 						LU_DBLoadInstances.Log(System.out, "First record is now: ", LOG_INFO);
 						LU_DBLoadInstances.Log(System.out, xmlrecord.toString(), LOG_INFO);
 						nextrecord = reader.next();
+						if ( nextrecord != null ) {
+							dfknextrecord = defaultkeysReader.next();
+						}
 					}
 					
 					// Build a bib record from the xmlrecord
-					bib = buildBib(xmlrecord);
+					bib = buildBib(xmlrecord, defaultkeysrecord);
 					if ( bib != null ) {
 						ole_em.persist(bib);
 					} else {
@@ -342,7 +364,15 @@ public class LU_DBLoadInstances {
 					// this method will check if the former ID of the bib record matches one
 					// in the serials table of the olemigration database, then if it does it
 					// will fill in ole serials receiving tables
-					instanceBuilder.buildSerialsData(xmlrecord, bib, assocMFHDRecords);
+					//instanceBuilder.buildSerialsData(xmlrecord, bib, assocMFHDRecords);
+					// ^^^ This loader filled in ole_ser_rcv_rec, ole_ser_rcv_rec_typ_t, and
+					// ole_ser_rcv_his_rec with data, as well as several RICE tables.  This caused
+					// problems because the RICE tables weren't properly filled out.  After much
+					// flailing trying to get RICE to be happy, we just decided to
+					// use the same CSV loader that HTC wrote for UChicago.
+					// This loading code did still get used to convert Sirsi data and populate
+					// the tables once, though.  From then on, serials are imported from 
+					// .CSV files exported from the database after running this loading code.
 					
 					// now we don't loop over instances, we just let the bib cascade persisting all of its holdings,
 					// which cascades to items, etc.
@@ -432,9 +462,14 @@ public class LU_DBLoadInstances {
 		}
 	}
 	
-	public static Bib buildBib(Record record) {
+	public static Bib buildBib(Record record, Record defaultkeysrecord) {
 		String catkey = LU_DBLoadInstances.formatCatKey(record.getControlNumber()); // need to set this to what's in 001 of the bib to link them
 		Bib bib = new Bib(catkey);
+		Log(System.out, "Building bib, defaultkeys rec: " + defaultkeysrecord.toString(), LOG_DEBUG);
+		Log(System.out, "defaultkeys rec tcn: " + defaultkeysrecord.getControlNumber(), LOG_DEBUG);
+		String defaultKey = defaultkeysrecord.getControlNumber();
+        LU_BuildInstance.checkTitleControlNumbers(record, defaultKey);
+        LU_BuildInstance.removeUnauthorizedFields(record);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
     	OutputFormat of = new OutputFormat("xml", "UTF-8", true);
     	of.setOmitXMLDeclaration(true);
@@ -500,8 +535,8 @@ public class LU_DBLoadInstances {
         		} else {
         			dateModified = dateParts[6];
         		}
-        		titleControlNumber = dateParts[7];
-        		LU_BuildInstance.checkTitleControlNumbers(record, titleControlNumber);
+        		// Not going to use this anymore, I think
+        		//titleControlNumber = dateParts[7]; 
         	}
         }
         

@@ -1,6 +1,8 @@
 package edu.lu.oleconvert.ole;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -13,10 +15,39 @@ import javax.persistence.OneToOne;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+import edu.lu.oleconvert.LU_DBLoadInstances;
+
 @Embeddable
 @XmlType(name="callNumber", propOrder={"type", "prefix", "number", "classificationPart", "itemPart", "shelvingScheme", "shelvingOrder"})
 public class CallNumber implements Serializable {
 
+	public static List<String> SCprefixes = new ArrayList<String>() {{
+		// order is important here, or else SC F will match SC F08 before SC F08 is encountered in loop later on
+		add("SC F08");
+		add("SC F");
+		add("SC N");
+		add("SC Office");
+		add("SC ORef");
+		add("SC O"); 
+		add("SC Pp");
+		add("SC P");
+		add("SC Qq");
+		add("SC Q");
+		add("SC Ref");
+		add("SC R");
+		add("SC S");
+	}};
+	
+	public static List<String> specialShelvingLocations  = new ArrayList<String>() {{
+		add("L-SPCOLL-A");
+		add("L-SPCOLL-B");
+		add("L-SPCOLL-C");
+		add("L-SPCOLL-D");
+		add("L-SPCOLL-E");
+		add("L-SPCOLL-F");
+		add("L-SPCOLL-G"); 
+	}};
+	
 	/**
 	 * 
 	 */
@@ -89,7 +120,24 @@ public class CallNumber implements Serializable {
 		return number;
 	}
 
+	public boolean inRightLocation(FlatLocation loc) {
+		if ( loc.getLocCodeString().startsWith("LEHIGH/LIND/SPCOLL")) {
+			return true;
+		} else {
+			for ( String shelvingLoc : specialShelvingLocations ) {
+				if ( loc.getLocCodeString().contains(shelvingLoc) ) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
 	public void setNumber(String number) {
+		this.number = number;
+	}
+	
+	public void setNumber(String number, FlatLocation loc) {
 		/* I couldn't figure out what code was still setting the wrong call number, so I put this here to find it
 		StackTraceElement[] stack = Thread.currentThread().getStackTrace();
 		System.err.println("Setting call number to " + number);
@@ -98,7 +146,21 @@ public class CallNumber implements Serializable {
 		}
 		System.err.println();
 		*/
-		// TODO: normalize the call number and set the shelving order string to the normalized version
+		// Save a little time by only looping over the SC prefixes
+		// if the number starts what they all have in common
+		LU_DBLoadInstances.Log(System.out, "Setting call number, input: " + number + ", location: " + loc.getLocCodeString(), 
+				               LU_DBLoadInstances.LOG_DEBUG);
+		if ( number.startsWith("SC ") && inRightLocation(loc) ) {
+			for ( String prefix : CallNumber.SCprefixes ) {
+				if ( number.startsWith(prefix) ) {
+					number = number.replaceFirst(prefix, "");
+					number = number.trim();
+					this.setPrefix(prefix);
+					this.number = number;
+					return;
+				}
+			}
+		}
 		this.number = number;
 	}
 

@@ -2,10 +2,12 @@ package edu.lu.oleconvert;
 
 import java.io.BufferedWriter;
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -38,6 +40,7 @@ import migration.SirsiCallNumber;
 
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.time.DateUtils;
+import org.marc4j.MarcStreamReader;
 import org.marc4j.MarcXmlReader;
 import org.marc4j.marc.DataField;
 import org.marc4j.marc.MarcFactory;
@@ -94,9 +97,187 @@ public class test2 {
 		*/
 		//testNormalizeCallNumbers();
 		//testSplit();
-		testBWLoad();
+		//testBWLoad();
+		
+		/*
+		try {
+			testRead2();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}*/
+		
+		try {
+			checkCallNumberPattern();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
+	public static void checkCallNumberPattern() throws FileNotFoundException {
+		Reader input = new FileReader("/mnt/bigdrive/bibdata/sirsidump/20140712/mod.catalog.marcxml");
+		InputSource inputsource = new InputSource(input);
+		//inputsource.setEncoding("ISO-8859-1");
+		inputsource.setEncoding("UTF-8");
+		//MarcReader reader = new MarcStreamReader(input, "ISO-8859-1");
+		//MarcXmlReader reader = new MarcXmlReader(new FileInputStream(dumpdir + "/" + args[2]), "UTF-8");
+		MarcXmlReader reader = new MarcXmlReader(inputsource);
+		Record record;
+		Pattern vol_pattern = Pattern.compile(".*\\w+([A-Za-z]{1,2}\\.\\d+)$");
+		Matcher m;
+		do {
+			record = reader.next();
+			List<DataField> datafields = record.getDataFields();
+			for ( DataField df : datafields ) {
+				if ( df.getTag().equals("999") ) {
+					String callnum = df.getSubfield('a').getData().trim();
+					System.out.println("Testing callnumber " + callnum);
+					m = vol_pattern.matcher(callnum);
+					if ( m.find() ) {
+						System.out.println("Callnumber matching pattern: " + callnum);
+					}
+				}
+			}
+		} while (reader.hasNext());
+	}
+	public static void testRead2() throws FileNotFoundException {
+		Reader input = new FileReader("/mnt/bigdrive/bibdata/sirsidump/20140710/mod.catalog.marcxml");
+		InputSource inputsource = new InputSource(input);
+		//inputsource.setEncoding("ISO-8859-1");
+		inputsource.setEncoding("UTF-8");
+		//MarcReader reader = new MarcStreamReader(input, "ISO-8859-1");
+		//MarcXmlReader reader = new MarcXmlReader(new FileInputStream(dumpdir + "/" + args[2]), "UTF-8");
+		MarcXmlReader reader = new MarcXmlReader(inputsource);
+		InputStream defaultkeysInput = new FileInputStream("/mnt/bigdrive/bibdata/sirsidump/20140710/20140710/catalog.defaultkey.mrc");
+		MarcStreamReader defaultkeysReader = new MarcStreamReader(defaultkeysInput);
+				
+		int limit = -1;
+		int counter = 0;
+		List<Character> holdingsTypes = Arrays.asList('u', 'v', 'x', 'y');
+		Record xmlrecord, nextrecord, defaultkeysrecord, dfknextrecord;
+		nextrecord = reader.next();
+		dfknextrecord = defaultkeysReader.next();
+		List<Record> assocMFHDRecords = new ArrayList<Record>();
+
+		DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+		do {
+			
+			assocMFHDRecords.clear();
+			xmlrecord = nextrecord;
+			defaultkeysrecord = dfknextrecord;
+			LU_BuildInstance.fixISBN(xmlrecord);
+			
+			nextrecord = reader.next();
+			if ( nextrecord != null ) {
+				dfknextrecord = defaultkeysReader.next();
+			}
+			// The associated holdings records for a bib record should always come right after it
+			// So we keep looping and adding them to an ArrayList as we go
+			while ( nextrecord != null && 
+					holdingsTypes.contains(nextrecord.getLeader().getTypeOfRecord()) ) {
+
+				assocMFHDRecords.add(nextrecord);
+				nextrecord = reader.next();
+				if ( nextrecord != null ) {
+					dfknextrecord = defaultkeysReader.next();
+				}
+			}
+			// If subsequent records have the same bib ID in the 001 field,
+			// then we're going to append all the 999 fields of those records to xmlrecord, 
+			// and skip the records with the same bib ID
+			while ( nextrecord != null &&
+					nextrecord.getControlNumber().equals(xmlrecord.getControlNumber())) {
+				LU_DBLoadInstances.Log(System.out, "Two record with same control number, first: ", LU_DBLoadInstances.LOG_INFO);
+				LU_DBLoadInstances.Log(System.out, xmlrecord.toString(), LU_DBLoadInstances.LOG_INFO);
+				LU_DBLoadInstances.Log(System.out, "Second: ", LU_DBLoadInstances.LOG_INFO);
+				LU_DBLoadInstances.Log(System.out, nextrecord.toString(), LU_DBLoadInstances.LOG_INFO);
+				LU_DBLoadInstances.Log(System.out, "Appending 999s from second record to first", LU_DBLoadInstances.LOG_INFO);
+				LU_BuildInstance.append999fields(xmlrecord, nextrecord);
+				LU_DBLoadInstances.Log(System.out, "First record is now: ", LU_DBLoadInstances.LOG_INFO);
+				LU_DBLoadInstances.Log(System.out, xmlrecord.toString(), LU_DBLoadInstances.LOG_INFO);
+				nextrecord = reader.next();
+				if ( nextrecord != null ) {
+					dfknextrecord = defaultkeysReader.next();
+				}
+			}
+			
+
+
+			counter++;
+			if ( counter % 50000 == 0 || ( limit > 0 && counter >= limit )) {
+				LU_DBLoadInstances.Log(System.out, counter + " records loaded ...", LU_DBLoadInstances.LOG_INFO);
+				LU_DBLoadInstances.Log(System.out, "XML record: " + xmlrecord.toString(), LU_DBLoadInstances.LOG_INFO);
+				LU_DBLoadInstances.Log(System.out, "Default keys record: " + defaultkeysrecord.toString(), LU_DBLoadInstances.LOG_INFO);
+			}
+		} while (nextrecord != null && (limit < 0 || counter < limit) );
+		LU_DBLoadInstances.Log(System.out, "Last XML record: " + xmlrecord.toString(), LU_DBLoadInstances.LOG_INFO);
+		LU_DBLoadInstances.Log(System.out, "Last default keys record: " + defaultkeysrecord.toString(), LU_DBLoadInstances.LOG_INFO);
+
+	}
+	
+	public static void testRead() throws FileNotFoundException {
+
+		Reader input = new FileReader("/mnt/bigdrive/bibdata/sirsidump/20140710/mod.catalog.marcxml");
+		InputSource inputsource = new InputSource(input);
+		//inputsource.setEncoding("ISO-8859-1");
+		inputsource.setEncoding("UTF-8");
+		//MarcReader reader = new MarcStreamReader(input, "ISO-8859-1");
+		//MarcXmlReader reader = new MarcXmlReader(new FileInputStream(dumpdir + "/" + args[2]), "UTF-8");
+		MarcXmlReader reader = new MarcXmlReader(inputsource);
+		InputStream defaultkeysInput = new FileInputStream("/mnt/bigdrive/bibdata/sirsidump/20140710/20140710/catalog.defaultkey.mrc");
+		MarcStreamReader defaultkeysReader = new MarcStreamReader(defaultkeysInput);
+
+		Record record, dfkrecord;
+		int count = 0;
+		record = reader.next();
+		dfkrecord = defaultkeysReader.next();
+		do  {
+			count++;
+			if ( count % 50000 == 0 ) {
+				System.out.println("Processed " + count + " record: " + record.toString());
+			}
+			record = reader.next();
+			dfkrecord = defaultkeysReader.next();
+		} while ( reader.hasNext() );
+		System.out.println("Count is: " + count + ", last record: " + record.toString());		
+	}
+	
+	public static void countRecs() throws FileNotFoundException {
+
+		Reader input = new FileReader("/mnt/bigdrive/bibdata/sirsidump/20140710/mod.catalog.marcxml");
+		InputSource inputsource = new InputSource(input);
+		//inputsource.setEncoding("ISO-8859-1");
+		inputsource.setEncoding("UTF-8");
+		//MarcReader reader = new MarcStreamReader(input, "ISO-8859-1");
+		//MarcXmlReader reader = new MarcXmlReader(new FileInputStream(dumpdir + "/" + args[2]), "UTF-8");
+		MarcXmlReader reader = new MarcXmlReader(inputsource);
+		Record record;
+		int count = 0;
+		record = reader.next();
+		do  {
+			count++;
+			if ( count % 50000 == 0 ) {
+				System.out.println("Processed " + count + " record: " + record.toString());
+			}
+			record = reader.next();
+		} while ( reader.hasNext() );
+		System.out.println("Count is: " + count + ", last record: " + record.toString());
+		InputStream defaultkeysInput = new FileInputStream("/mnt/bigdrive/bibdata/sirsidump/20140710/20140710/catalog.defaultkey.mrc");
+		MarcStreamReader defaultkeysReader = new MarcStreamReader(defaultkeysInput);
+		count = 0;
+		record = defaultkeysReader.next();
+		do {
+			count++;
+			if ( count % 50000 == 0 ) {
+				System.out.println("Processed " + count + " record: " + record.toString());
+			}		
+			record = defaultkeysReader.next();
+
+		} while ( defaultkeysReader.hasNext() );
+		System.out.println("Count is: " + count + ", last record: " + record.toString());
+	}
 	public static void testBWLoad() {
 
 		EntityManagerFactory ole_emf;

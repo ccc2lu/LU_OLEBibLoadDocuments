@@ -116,8 +116,8 @@ public class Item implements Serializable {
 	public Item() {
 		super();
 		this.barcodeARSL = "";
-		this.vendorLineItemIdentifier = "";
-		this.purchaseOrderLineItemIdentifier = "";
+		//this.vendorLineItemIdentifier = "";
+		//this.purchaseOrderLineItemIdentifier = "";
 		this.statSearches = new ArrayList<ItemStatSearch>();
 		this.formerIdentifiers = new ArrayList<FormerIdentifier>();
 		// We don't want to make new instances of these objects or they'll
@@ -142,7 +142,8 @@ public class Item implements Serializable {
 		//itemStatus = itemStatusEffectiveDate = "";
 		itemStatusDateUpdated = "";
 		//this.itemStatus = new ItemStatus();
-		checkinNote = staffOnlyFlag = fastAddFlag = "";
+		checkinNote = "";
+		staffOnlyFlag = fastAddFlag = "N";
 		//this.itemHoldings = new OLEHoldings();
 		//itemStatus = new ItemStatus();
 		DateFormat df = new SimpleDateFormat("yyyy-MM-dd");

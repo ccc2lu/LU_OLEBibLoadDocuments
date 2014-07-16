@@ -83,6 +83,8 @@ public class LU_BuildInstance {
 	private Map<String, List<Map<String, String>>> sfxdata_by_lccn;
     private Map<String, String> callNumberTypeCodes;
     private Map<String, String> callNumberTypeNames;
+    private static List<String> alphaNumCallNums = new ArrayList<String>();
+    private static List<String> alphaNumCallNumPrefixes = new ArrayList<String>();
 	private Map<String, String> itemReservedStatusCodeMap;
 	private Map<String, String> itemReservedStatusNameMap;
 	private static Pattern oclctcnpattern = Pattern.compile("\\(OCoLC\\)\\s*(\\d+)");
@@ -117,6 +119,11 @@ public class LU_BuildInstance {
 		put("LMC1ALCOVE", "LMC-F");
 		put("LMC_GOVDOC", "LMC-G");
 		put("NEWBOOKS_F", "FM-NEWBKS");
+	}};
+	
+	public static Map<String, String> subscriptionStatusMap = new HashMap<String, String>(){{
+		put("ACTIVE", "6");
+		put("CANCELLED", "4");
 	}};
 	
 	public static List<String> removedLocations = new ArrayList<String>(){{
@@ -211,6 +218,62 @@ public class LU_BuildInstance {
 	    callNumberTypeCodes.put("AUTO", "OTHER");
 	    callNumberTypeNames.put("AUTO", "Other schema");
 	 
+	    alphaNumCallNums.add("Current periodical");
+	    alphaNumCallNums.add("Current periodicals");
+	    alphaNumCallNums.add("Current Periodical");
+	    alphaNumCallNums.add("Current Periodicals");
+	    alphaNumCallNums.add("FILM");
+	    alphaNumCallNums.add("MICROFICHE");
+	    alphaNumCallNums.add("MICROCARD");
+	    alphaNumCallNums.add("Electronic Book");
+	    alphaNumCallNums.add("Electronic book");
+	    
+	    alphaNumCallNumPrefixes.add("DISS");
+	    alphaNumCallNumPrefixes.add("THESIS");
+	    alphaNumCallNumPrefixes.add("SC Asteroid");
+	    alphaNumCallNumPrefixes.add("SC ALS");
+	    alphaNumCallNumPrefixes.add("SC B878");
+	    alphaNumCallNumPrefixes.add("SC Bas");
+	    alphaNumCallNumPrefixes.add("SC Bay");
+	    alphaNumCallNumPrefixes.add("SC Berman");
+	    alphaNumCallNumPrefixes.add("SC Bir");
+	    alphaNumCallNumPrefixes.add("SC CD");
+	    alphaNumCallNumPrefixes.add("SC Col");
+	    alphaNumCallNumPrefixes.add("SC Cowper");
+	    alphaNumCallNumPrefixes.add("SC FF");
+	    alphaNumCallNumPrefixes.add("SC FI");
+	    alphaNumCallNumPrefixes.add("SC Flat case");
+	    alphaNumCallNumPrefixes.add("SC FR xxx");
+	    alphaNumCallNumPrefixes.add("SC GI"); 
+	    alphaNumCallNumPrefixes.add("SC GSP 2SER");                                                                                                                                                                                                                                                          
+	    alphaNumCallNumPrefixes.add("SC Hen");
+	    alphaNumCallNumPrefixes.add("SC Hom");
+	    alphaNumCallNumPrefixes.add("SC Ize");
+	    alphaNumCallNumPrefixes.add("SC LEC");
+	    alphaNumCallNumPrefixes.add("SC Lehigh Photos");
+	    alphaNumCallNumPrefixes.add("SC LETTER");
+	    alphaNumCallNumPrefixes.add("SC Letter DG");
+	    alphaNumCallNumPrefixes.add("SC Linz");
+	    alphaNumCallNumPrefixes.add("SC LPub");
+	    alphaNumCallNumPrefixes.add("SC LSer");
+	    alphaNumCallNumPrefixes.add("SC LUP");
+	    alphaNumCallNumPrefixes.add("SC LVF");
+	    alphaNumCallNumPrefixes.add("SC Min");
+	    alphaNumCallNumPrefixes.add("SC MS");
+	    alphaNumCallNumPrefixes.add("SC Pam");
+	    alphaNumCallNumPrefixes.add("SC Photo");
+	    alphaNumCallNumPrefixes.add("SC Stereo 001");
+	    alphaNumCallNumPrefixes.add("SC Storage Office");
+	    alphaNumCallNumPrefixes.add("SC T Galleria");
+	    alphaNumCallNumPrefixes.add("SC T"); 
+	    alphaNumCallNumPrefixes.add("SC TechPhoto");
+	    alphaNumCallNumPrefixes.add("SC Text");
+	    alphaNumCallNumPrefixes.add("SC Trx");
+	    alphaNumCallNumPrefixes.add("SC TVF");
+	    alphaNumCallNumPrefixes.add("SC VKm");
+	    alphaNumCallNumPrefixes.add("SC Wyl");
+
+
 	    // We only ever use the ON_RESERVE status to mark items
 	    // that are on course reserve as ONHOLD
 	    // If an item isn't on course reserve, we derive its status
@@ -514,18 +577,34 @@ public class LU_BuildInstance {
 		return newisbn;
 	}
 	
-	public static String formatOCLCControlNumber(String tcn) {
+	public static String formatTitleControlNumber(String tcn) {
 		//tcn = tcn.replaceAll("(Sirsi)", "");
-		tcn = tcn.trim();
-		if ( tcn.length() > 0 ) {
-			if ( tcn.substring(0, 1).equals("o") ) {
-				tcn = tcn.substring(1);
+		if ( tcn != null ) { 
+			LU_DBLoadInstances.Log(System.out, "Formatting title control number: " + tcn,
+					LU_DBLoadInstances.LOG_DEBUG);
+			tcn = tcn.trim();
+			if ( tcn.length() >= 3 ) {
+				String pref = tcn.substring(0, 3);
+				String rest = tcn.substring(3);
+				if ( pref.equals("ocm") ||
+						pref.equals("ocn") ) {
+					tcn = "(OCoLC)" + StringUtils.leftPad(rest, 8, "0");
+				} else if ( pref.equals("ebr") ) {
+					tcn = "(CaPaEBR)" + rest;
+				} else if ( pref.equals("aas") || 
+						tcn.substring(0, 1).equals("i") ) { 
+					tcn = "(Sirsi)" + tcn;
+				} else if ( pref.equals("tmp") ) {
+					// do nothing, just return tcn unmodified
+				} else if ( pref.equals("999") ) {
+					tcn = "(Sirsi)sc" + tcn;
+				} 
 			}
-			if ( tcn.length() >= 3 && tcn.substring(0, 2).equals("aas") ) {
-				tcn = "(Sirsi)" + tcn;
-			} else {
-				tcn = "(OCoLC)" + tcn;
-			}
+			LU_DBLoadInstances.Log(System.out, "Formatted to: " + tcn,
+					LU_DBLoadInstances.LOG_DEBUG);
+		} else {
+			LU_DBLoadInstances.Log(System.out, "Not formatting null  title control number",
+					LU_DBLoadInstances.LOG_DEBUG);
 		}
 		return tcn;
 	}
@@ -548,129 +627,153 @@ public class LU_BuildInstance {
 		return i;
 	}
 	
+	// Subfields with tag "?" and data "UNAUTHORIZED" appear all over 
+	// in Sirsi's bib export.  OLE complains about them, so we remove
+	// them all here.
+	public static void removeUnauthorizedFields(Record record) {
+		List<DataField> datafields = record.getDataFields();
+		Subfield s;
+		for ( DataField df : datafields ) {
+			do {
+				s = df.getSubfield('?');
+				if ( s != null && s.getData().trim().equals("UNAUTHORIZED") ) {
+					df.removeSubfield(s);
+				}
+			} while ( s!= null );
+		}
+	}
+	
 	public static void checkTitleControlNumbers(Record record, String titleControlNumber) {
 	    MarcFactory factory = MarcFactory.newInstance();
 	    int first035 = getFirstFieldIndex(record, "035");
+	    boolean oclctcnfound = false;
 	    List<VariableField> controlnumbers = record.getVariableFields("035");
-    	Matcher m;
-    	List<String> existingTCNs = new ArrayList<String>();
-		//Map<String, List<String>> subfields;		
+	    String tcnPrefix = null, tcnNum = null;
+	    Matcher m;
+	    List<String> existingTCNs = new ArrayList<String>();
+	    //Map<String, List<String>> subfields;
 	    DataField newtcn;
-	    if ( controlnumbers.size() == 0 ) {
+	    String oclcnum = "";
+	    String sirsinum = "";
+	    int oclcnumindex = 0, sirsinumindex = 0;
+	    if ( titleControlNumber != null && titleControlNumber.length() > 3 ) {
+	    	tcnPrefix = titleControlNumber.substring(0, 3);
+	    	tcnNum = titleControlNumber.substring(3);
 	    	// No 035's, add the titleControlNumber
-	    	LU_DBLoadInstances.Log(System.out, "No title control number fields, adding one at index " + first035, LU_DBLoadInstances.LOG_DEBUG);
+	    	LU_DBLoadInstances.Log(System.out, "Adding title control number at index " + first035, LU_DBLoadInstances.LOG_DEBUG);
 	    	newtcn = factory.newDataField("035", ' ', ' ');
-	    	titleControlNumber = formatOCLCControlNumber(titleControlNumber);
+	    	titleControlNumber = formatTitleControlNumber(titleControlNumber);
 	    	newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
 	    	record.getDataFields().add(first035, newtcn);
-	    } else {
-	    	// There could be multiple 035 fields.  One of them may already be in the form "(OCoLC)<number>"
-	    	// If so, swap that one in to be first.
-	    	// If there isn't one like that, but there is one of the form 
-	    	// (\(.*\))\s*?o(\d+)
-	    	// Then make that one first and change it to be
-	    	// (OCoLC)$2
-	    	
-	    	// First we'll look for one that starts with (OCoLC)
-	    	String oclcnum = "";
-	    	String sirsinum = "";
-	    	int oclcnumindex = 0, sirsinumindex = 0;
-	    	for ( int i = 0; i < record.getDataFields().size(); i++ ) {
-	    		DataField tcn_df = record.getDataFields().get(i); 
-	    		if ( tcn_df.getTag().equals("035")) {
-	    			
-	    			if ( existingTCNs.contains(tcn_df.toString().trim()) ) {
-	    				LU_DBLoadInstances.Log(System.out, "Removing 035 with only duplicate TCN data " + 
-	    			                           tcn_df.toString().trim() + " at index " + i, 
-	    			                           LU_DBLoadInstances.LOG_DEBUG);
-						record.getDataFields().remove(i);
-						i--; // Everything past this in the array has been left-shifted one now, so we decrement i
-						continue;
-	    			} else {
-	    				existingTCNs.add(tcn_df.toString().trim());
-	    				LU_DBLoadInstances.Log(System.out, "Added data to existing TCNs: " + tcn_df.toString(),
-	    						LU_DBLoadInstances.LOG_DEBUG);
-
-	    				List<Subfield> subfields = tcn_df.getSubfields('a');
-	    				LU_DBLoadInstances.Log(System.out, "TCN found at index " + i, 
-	    						LU_DBLoadInstances.LOG_DEBUG);
-	    				if ( (oclcnum.length() > 0 || sirsinum.length() > 0) ) {
-	    					if ( tcn_df.getSubfields().size() == 1 ) {
-	    						// We already found a TCN for this record, and this 035 only has
-	    						// a single subfield.  If the number matches, remove this field
-	    						String data = tcn_df.getSubfields().get(0).getData().trim();
-	    						LU_DBLoadInstances.Log(System.out, "Checking for data in existing OCLC and Sirsi TCNs: " + data,
-	    											   LU_DBLoadInstances.LOG_DEBUG);
-	    						if ( (oclcnum.length() > 0 && data.contains(oclcnum)) || // just the number part of OCLC TCN matches
-	    								(sirsinum.length()> 0 && data.contains(sirsinum)) ) { // exact match for any other TCN type
-	    							LU_DBLoadInstances.Log(System.out, "Removing 035 with only duplicate TCN data " + data + " at index " + i, 
-	    									LU_DBLoadInstances.LOG_DEBUG);
-	    							record.getDataFields().remove(i);
-	    							i--; // Everything past this in the array has been left-shifted one now, so we decrement i
-	    							continue;
-	    						}
-	    					}
-	    				}
-	    				for ( Subfield sub : subfields ) {
-	    					String data = sub.getData().trim();
-	    					m = oclctcnpattern.matcher(data);
-	    					if ( m.find() ) {
-	    						// There already is an OCoLC number, make it first and remove any dups
-	    						oclcnum = m.group(1);
-	    						oclcnumindex = i;
-	    					}
-	    					m = sirsitcnpattern.matcher(data);
-	    					if ( m.find() ) {
-	    						// May want to remove this one, if there is also an
-	    						// OCoLCtcnstr and the value of the number matched by \\d+ is the same 
-	    						sirsinum = m.group(1);
-	    						sirsinumindex = i;
-	    					}
-	    				}
-	    			}
-	    		} else {
-	    			LU_DBLoadInstances.Log(System.out, "Skipping data field with tag " + tcn_df.getTag(), 
-			                LU_DBLoadInstances.LOG_DEBUG);
-	    		}
-	    	}
-	    	LU_DBLoadInstances.Log(System.out, "Existing OCLC num: " + oclcnum + " at index " + oclcnumindex + 
-	    			                ", existing sirsi num: " + sirsinum + " at index " + sirsinumindex, 
-	    			                LU_DBLoadInstances.LOG_DEBUG);
-	    	if ( oclcnum.length() > 0 ) {
-	    		// Find and remove the OCoLC 035 entry, and insert it to be the first 035 entry
-	    		if ( sirsinum.length() > 0 && sirsinum.equals(oclcnum)) {
-	    			// There's an identical Sirsi number, remove it
-	    			if ( oclcnumindex > sirsinumindex ) {
-	    				oclcnumindex--;
-	    			}
-	    			record.getDataFields().remove(sirsinumindex);
-	    		}
-	    		LU_DBLoadInstances.Log(System.out, "Moving OCLC control number to index " + first035, LU_DBLoadInstances.LOG_DEBUG);
-	    		DataField oclcnumfield = record.getDataFields().get(oclcnumindex);
-	    		record.getDataFields().remove(oclcnumindex);
-	    		record.getDataFields().add(first035, oclcnumfield);
-	    	} else if ( sirsinum.length() > 0 ) {
-		    	LU_DBLoadInstances.Log(System.out, "Existing sirsi num: " + sirsinum + " at index " + sirsinumindex, 
-		                LU_DBLoadInstances.LOG_DEBUG);
-
-	    		// No OCLC number, but there is a Sirsi number.  Remove it
-	    		record.getDataFields().remove(sirsinumindex);
-
-	    		// Then add the formatted 035 from the Sirsi number
-		    	newtcn = factory.newDataField("035", ' ', ' ');
-		    	titleControlNumber = formatOCLCControlNumber(sirsinum);
-		    	newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
-		    	record.getDataFields().add(first035, newtcn);
-	    	} else {
-	    		LU_DBLoadInstances.Log(System.out, "No existing OCLC or Sirsi TCN, adding new one at index " + first035, 
-		                LU_DBLoadInstances.LOG_DEBUG);
-		    	newtcn = factory.newDataField("035", ' ', ' ');
-		    	titleControlNumber = formatOCLCControlNumber(titleControlNumber);
-		    	newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
-		    	record.getDataFields().add(first035, newtcn);
-	    		
+	    	//existingTCNs.add(newtcn.toString().trim());
+	    	oclctcnfound = ( tcnPrefix.equals("ocm") || tcnPrefix.equals("ocn") );
+	    	if ( oclctcnfound ) {
+	    		oclcnum = tcnNum;
 	    	}
 	    }
+	    // There could be multiple 035 fields.  One of them may already be in the form "(OCoLC)<number>"
+	    // If so, swap that one in to be first.
+	    // If there isn't one like that, but there is one of the form 
+	    // (\(.*\))\s*?o(\d+)
+	    // Then make that one first and change it to be
+	    // (OCoLC)$2
+	    // First we'll look for one that starts with (OCoLC)
+	    
+	    for ( int i = 0; i < record.getDataFields().size(); i++ ) {
+	    	DataField tcn_df = record.getDataFields().get(i); 
+	    	if ( tcn_df.getTag().equals("035")) {
+	    		if ( existingTCNs.contains(tcn_df.toString().trim()) ) {
+	    			LU_DBLoadInstances.Log(System.out, "Removing 035 with only duplicate TCN data " + 
+	    					tcn_df.toString().trim() + " at index " + i, 
+	    					LU_DBLoadInstances.LOG_DEBUG);
+	    			record.getDataFields().remove(i);
+	    			i--; // Everything past this in the array has been left-shifted one now, so we decrement i
+	    			continue;
+	    		} else {
+	    			existingTCNs.add(tcn_df.toString().trim());
+	    			LU_DBLoadInstances.Log(System.out, "Added data to existing TCNs: " + tcn_df.toString(),
+	    					LU_DBLoadInstances.LOG_DEBUG);
+
+	    			List<Subfield> subfields = tcn_df.getSubfields('a');
+	    			LU_DBLoadInstances.Log(System.out, "TCN found at index " + i, 
+	    					LU_DBLoadInstances.LOG_DEBUG);
+	    			if ( (oclcnum.length() > 0 || sirsinum.length() > 0) ) {
+	    				if ( tcn_df.getSubfields().size() == 1 ) {
+	    					// We already found a TCN for this record, and this 035 only has
+	    					// a single subfield.  If the number matches, remove this field
+	    					String data = tcn_df.getSubfields().get(0).getData().trim();
+	    					LU_DBLoadInstances.Log(System.out, "Checking for data in existing OCLC and Sirsi TCNs: " + data,
+	    							LU_DBLoadInstances.LOG_DEBUG);
+	    					if ( (oclcnum.length() > 0 && data.contains(oclcnum)) || // just the number part of OCLC TCN matches
+	    							(sirsinum.length()> 0 && data.contains(sirsinum)) ) { // exact match for any other TCN type
+	    						LU_DBLoadInstances.Log(System.out, "Removing 035 with only duplicate TCN data " + data + " at index " + i, 
+	    								LU_DBLoadInstances.LOG_DEBUG);
+	    						record.getDataFields().remove(i);
+	    						i--; // Everything past this in the array has been left-shifted one now, so we decrement i
+	    						continue;
+	    					}
+	    				}
+	    			}
+	    			for ( Subfield sub : subfields ) {
+	    				String data = sub.getData().trim();
+	    				m = oclctcnpattern.matcher(data);
+	    				if ( m.find() ) {
+	    					// There already is an OCoLC number, make it first and remove any dups
+	    					oclcnum = m.group(1);
+	    					oclcnumindex = i;
+	    				}
+	    				m = sirsitcnpattern.matcher(data);
+	    				if ( m.find() ) {
+	    					// May want to remove this one, if there is also an
+	    					// OCoLCtcnstr and the value of the number matched by \\d+ is the same 
+	    					sirsinum = m.group(1);
+	    					sirsinumindex = i;
+	    				}
+	    			}
+	    		}
+	    	} else {
+	    		LU_DBLoadInstances.Log(System.out, "Skipping data field with tag " + tcn_df.getTag(), 
+	    				LU_DBLoadInstances.LOG_DEBUG);
+	    	}
+	    }
+	    LU_DBLoadInstances.Log(System.out, "Existing OCLC num: " + oclcnum + " at index " + oclcnumindex + 
+	    		", existing sirsi num: " + sirsinum + " at index " + sirsinumindex, 
+	    		LU_DBLoadInstances.LOG_DEBUG);
+	    if ( oclcnum.length() > 0 ) {
+	    	// Find and remove the OCoLC 035 entry, and insert it to be the first 035 entry
+	    	if ( sirsinum.length() > 0 && sirsinum.equals(oclcnum)) {
+	    		// There's an identical Sirsi number, remove it
+	    		if ( oclcnumindex > sirsinumindex ) {
+	    			oclcnumindex--;
+	    		}
+	    		record.getDataFields().remove(sirsinumindex);
+	    	}
+	    	LU_DBLoadInstances.Log(System.out, "Moving OCLC control number to index " + first035, LU_DBLoadInstances.LOG_DEBUG);
+	    	DataField oclcnumfield = record.getDataFields().get(oclcnumindex);
+	    	record.getDataFields().remove(oclcnumindex);
+	    	record.getDataFields().add(first035, oclcnumfield);
+	    } else if ( sirsinum.length() > 0 && titleControlNumber != null ) {
+	    	LU_DBLoadInstances.Log(System.out, "Existing sirsi num: " + sirsinum + " at index " + sirsinumindex, 
+	    			LU_DBLoadInstances.LOG_DEBUG);
+
+	    	// No OCLC number, but there is a Sirsi number.  Remove it
+	    	record.getDataFields().remove(sirsinumindex);
+
+	    	// Then add the formatted 035 from the Sirsi number
+	    	newtcn = factory.newDataField("035", ' ', ' ');
+	    	titleControlNumber = formatTitleControlNumber(sirsinum);
+	    	newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
+	    	record.getDataFields().add(first035, newtcn);
+	    } else if ( titleControlNumber != null ) {
+	    	LU_DBLoadInstances.Log(System.out, "No existing OCLC or Sirsi TCN, adding new one at index " + first035, 
+	    			LU_DBLoadInstances.LOG_DEBUG);
+	    	newtcn = factory.newDataField("035", ' ', ' ');
+	    	titleControlNumber = formatTitleControlNumber(titleControlNumber);
+	    	newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
+	    	record.getDataFields().add(first035, newtcn);
+
+	    }
+	    
 	}
 	
 	public static void append999fields(Record destrec, Record sourcerec) {
@@ -1309,110 +1412,126 @@ public class LU_BuildInstance {
 		for ( Serial s : results ) {
 
 			LU_DBLoadInstances.Log(System.out, "Creating serials receiving control record in OLE for serial with migration ID " + 
-		                           s.getId() + " and Sirsi bib ID " + s.getBibid(), LU_DBLoadInstances.LOG_INFO);
+					s.getId() + " and Sirsi bib ID " + s.getBibid(), LU_DBLoadInstances.LOG_INFO);
 			for ( OLEHoldings oh : bib.getHoldings() ) {
 				//if ( !ole_tx.isActive() ) {
 				//	ole_tx.begin();
 				//}
-				SerialsReceiving sr = new SerialsReceiving(s.getSerialControlId());
-				sr.setBibId(bib.getUniqueIdPrefix() + "-" + bib.getId());
-				sr.setInstanceId(oh.getUniqueIdPrefix() + "-" + oh.getHoldingsIdentifier());
-				//sr.setRecType(s.getCategory1()+":"+s.getCategory2());
-				sr.setCreateDate(s.getDateCreated());
-				sr.setRecType("Main");
-				String notestr = "Publication cycle definition: " + s.getPublicationCycleDefinition();
-				if ( s.getSerial_notes() != null && s.getSerial_notes().size() > 0 ) {
-					notestr += ", Notes: ";
-					for ( SerialNote note : s.getSerial_notes()) { 
-						notestr += note.getNote() + " ";
+				if ( !oh.getHoldingsType().equals("electronic") ) {
+					SerialsReceiving sr = new SerialsReceiving(s.getSerialControlId());
+					sr.setBibId(bib.getUniqueIdPrefix() + "-" + bib.getId());
+					sr.setInstanceId(oh.getUniqueIdPrefix() + "-" + oh.getHoldingsIdentifier());
+					//sr.setRecType(s.getCategory1()+":"+s.getCategory2());
+					sr.setCreateDate(s.getDateCreated());
+					sr.setRecType("Main");
+					String notestr = "Publication cycle definition: " + s.getPublicationCycleDefinition();
+					if ( s.getSerial_notes() != null && s.getSerial_notes().size() > 0 ) {
+						notestr += ", Notes: ";
+						for ( SerialNote note : s.getSerial_notes()) { 
+							notestr += note.getNote() + " ";
+						}
 					}
-				}
-				if ( s.getSerial_names() != null && s.getSerial_names().size() > 0 ) {
-					if ( notestr.length() > 0 ) {
-						notestr += ", ";
+					if ( s.getSerial_names() != null && s.getSerial_names().size() > 0 ) {
+						if ( notestr.length() > 0 ) {
+							notestr += ", ";
+						}
+						notestr += ", Names: ";
+						for ( SerialName name : s.getSerial_names() ) {
+							notestr += name + " ";
+						}
 					}
-					notestr += ", Names: ";
-					for ( SerialName name : s.getSerial_names() ) {
-						notestr += name + " ";
+					if ( s.getCategory1() != null && s.getCategory1().length() > 0 ) {
+						notestr += ", Category 1: " +  s.getCategory1();
 					}
-				}
-				if ( s.getCategory1() != null && s.getCategory1().length() > 0 ) {
-					notestr += ", Category 1: " +  s.getCategory1();
-				}
-				if( s.getCategory2() != null && s.getCategory2().length() > 0 ) {
-					notestr += ", Category 2: " + s.getCategory2();
-				}
-				sr.setGenReceivedNote(notestr.substring(0, Math.min(notestr.length(), 499)));
-				if ( s.getSerial_physforms() != null && s.getSerial_physforms().size() > 0 ) {
-					notestr = "";
-					//notestr += "Physforms: ";
-					for ( SerialPhysform form : s.getSerial_physforms() ) {
-						notestr += form.getPhysform() + ", ";
+					if( s.getCategory2() != null && s.getCategory2().length() > 0 ) {
+						notestr += ", Category 2: " + s.getCategory2();
 					}
-					sr.setTreatmentInstrNote(notestr);
-				}
-				
-				sr.setPublicDisplay("Y");
-				sr.setActive("Y");
-				sr.setPrintLabel("Y");
-				sr.setCreateItem("N");
-				//sr.setSubscriptionStatus("4"); // not sure what to put here
-				sr.setReceiptLocation(s.getLibrary());
-				if ( oh.getFlatLocation() != null ) {
-					sr.setUnboundLocation(oh.getFlatLocation().getLocCodeString());
-				} else {
-					sr.setUnboundLocation("");
-				}
-				sr.setSubscriptionStatus(s.getSubscriptionStatus());
-				sr.setVendor(s.getLinkedVendorId());
+					sr.setGenReceivedNote(notestr.substring(0, Math.min(notestr.length(), 499)));
+					if ( s.getSerial_physforms() != null && s.getSerial_physforms().size() > 0 ) {
+						notestr = "";
+						//notestr += "Physforms: ";
+						for ( SerialPhysform form : s.getSerial_physforms() ) {
+							notestr += form.getPhysform() + ", ";
+						}
+						sr.setTreatmentInstrNote(notestr);
+					}
 
-				LU_DBLoadInstances.ole_em.persist(sr);
+					sr.setPublicDisplay("Y");
+					sr.setActive("Y");
+					sr.setPrintLabel("Y");
+					sr.setCreateItem("N");
+					//sr.setSubscriptionStatus("4"); // not sure what to put here
+					sr.setReceiptLocation(s.getLibrary());
+					if ( oh.getFlatLocation() != null ) {
+						sr.setUnboundLocation(oh.getFlatLocation().getLocCodeString());
+					} else {
+						sr.setUnboundLocation("");
+					}
+					if ( s.getSubscriptionStatus() == null ||
+						 s.getSubscriptionStatus().trim() == "" ||
+						 subscriptionStatusMap.get(s.getSubscriptionStatus().trim()) == null ) {
+						sr.setSubscriptionStatus("0"); // For subscription status "unknown"
+					} else {
+						sr.setSubscriptionStatus(subscriptionStatusMap.get(s.getSubscriptionStatus().trim()));
+					}
+					sr.setVendor(s.getLinkedVendorId());
 
-				SerialsReceivingRecType srtype = new SerialsReceivingRecType();
-				srtype.setSerialsReceiving(sr);
-				srtype.setRecType("Main");
-				//srtype.setRecType(s.getCategory1() + ":" + s.getCategory2());
-				srtype.setActionInterval(s.getClaimPeriod());
-				if ( s.getNameType().equals("CUSTOM") ) {
-					srtype.setChronCaptionLvl1(s.getCustomIssueNames().substring(0, Math.min(s.getCustomIssueNames().length(), 39)));
-				} else {
-					srtype.setChronCaptionLvl1(s.getNameType().substring(0, Math.min(s.getNameType().length(), 39)));
-				}
+					LU_DBLoadInstances.ole_em.persist(sr);
+
+					SerialsReceivingRecType srtype = new SerialsReceivingRecType();
+					srtype.setSerialsReceiving(sr);
+					srtype.setRecType("Main");
+					//srtype.setRecType(s.getCategory1() + ":" + s.getCategory2());
+					srtype.setActionInterval(s.getClaimPeriod());
+					if ( s.getNameType().equals("CUSTOM") ) {
+						srtype.setChronCaptionLvl1(s.getCustomIssueNames().substring(0, Math.min(s.getCustomIssueNames().length(), 39)));
+					} else {
+						srtype.setChronCaptionLvl1(s.getNameType().substring(0, Math.min(s.getNameType().length(), 39)));
+					}
+					srtype.setChronCaptionLvl2(s.getFormSubdiv1());
+					srtype.setChronCaptionLvl3(s.getFormSubdiv2());
+					srtype.setChronCaptionLvl4(s.getFormSubdiv3());
+					srtype.setEnumCaptionLvl1(s.getLabelSubdiv1());
+					srtype.setEnumCaptionLvl2(s.getLabelSubdiv2());
+					srtype.setEnumCaptionLvl3(s.getLabelSubdiv3());
+
+					/*
 				srtype.setChronCaptionLvl2(s.getLabelSubdiv1());
 				srtype.setChronCaptionLvl3(s.getLabelSubdiv2());
 				srtype.setChronCaptionLvl4(s.getLabelSubdiv3());
 				srtype.setEnumCaptionLvl1(s.getFormSubdiv1());
 				srtype.setEnumCaptionLvl2(s.getFormSubdiv2());
 				srtype.setEnumCaptionLvl3(s.getFormSubdiv3());
-				
-				LU_DBLoadInstances.ole_em.persist(srtype);
-				
-				TypedQuery<Issue> query2 = LU_DBLoadInstances.migration_em.createQuery("SELECT i FROM Issue i where i.serialControlId='" + s.getSerialControlId() + "'", Issue.class);
-				query.setHint("org.hibernate.cacheable", true);
-				List<Issue> results2 = query2.getResultList();
-				for ( Issue i : results2 ) {
-					// Fill in ole_ser_rcv_his_rec from issue data
-					SerialsReceivingHisRec srhr = new SerialsReceivingHisRec(sr);
-					// put PRED_NAME into hisrec's CHRON_LVL_1
-					srhr.setRecType("Main");
-					srhr.setChronLvl1(i.getPredictionName().substring(0, Math.min(i.getPredictionName().length(), 39)));
-					srhr.setEnumLvl1(i.getPredictionNumeration().substring(0, Math.min(i.getPredictionNumeration().length(),  39)));
-					srhr.setClaimCount(i.getClaimNumber());
-					srhr.setClaimDate(i.getClaimDateCreated());
-					srhr.setClaimType(i.getClaimReason());
-					
-					LU_DBLoadInstances.ole_em.persist(srhr);
-				}
-				//System.err.println("Committing serials receiving record");
-				//ole_tx.commit(); // commit after every serials receiving rec
+					 */
+					LU_DBLoadInstances.ole_em.persist(srtype);
 
-			// Need to transform that bib id from Sirsi into an OLE bib id
-			// docstore SOLR search, maybe?
-			// Probably better to look in olemigration database while filling in bib records
-			// to see if former id of bib matches bib id of any serials
-			// Then fill in serial information ...
+					TypedQuery<Issue> query2 = LU_DBLoadInstances.migration_em.createQuery("SELECT i FROM Issue i where i.serialControlId='" + s.getSerialControlId() + "'", Issue.class);
+					query.setHint("org.hibernate.cacheable", true);
+					List<Issue> results2 = query2.getResultList();
+					for ( Issue i : results2 ) {
+						// Fill in ole_ser_rcv_his_rec from issue data
+						SerialsReceivingHisRec srhr = new SerialsReceivingHisRec(sr);
+						// put PRED_NAME into hisrec's CHRON_LVL_1
+						srhr.setRecType("Main");
+						srhr.setChronLvl1(i.getPredictionName().substring(0, Math.min(i.getPredictionName().length(), 39)));
+						srhr.setEnumLvl1(i.getPredictionNumeration().substring(0, Math.min(i.getPredictionNumeration().length(),  39)));
+						srhr.setClaimCount(i.getClaimNumber());
+						srhr.setClaimDate(i.getClaimDateCreated());
+						srhr.setClaimType(i.getClaimReason());
+
+						LU_DBLoadInstances.ole_em.persist(srhr);
+					}
+					//System.err.println("Committing serials receiving record");
+					//ole_tx.commit(); // commit after every serials receiving rec
+
+					// Need to transform that bib id from Sirsi into an OLE bib id
+					// docstore SOLR search, maybe?
+					// Probably better to look in olemigration database while filling in bib records
+					// to see if former id of bib matches bib id of any serials
+					// Then fill in serial information ...
+				}
 			}
-			
+
 		}
 		//if ( !ole_tx.isActive() ) {
 		//	ole_tx.begin();
@@ -1597,6 +1716,15 @@ public class LU_BuildInstance {
 
 	}
 	
+	public boolean startsWithAlphaNumPrefix(String callnum) {
+		for ( String prefix : alphaNumCallNumPrefixes ) {
+			if ( callnum.startsWith(prefix) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	public void buildCommonHoldingsData(Record rec, Bib bib, VariableField holding, Map<String, List<String>> subfields, Record assocMFHDRec, OLEHoldings oh) {
 		String callnumberstr = subfields.get("$a").get(0).trim();
 		Map<String, List<String>> tmpsubfields;
@@ -1640,7 +1768,7 @@ public class LU_BuildInstance {
 	    //cn.setPrefix(subfields.get("$a").get(0));
 	    //cn.setNumber(subfields.get("$i").get(0));
 	    cn.setPrefix("");
-	    cn.setNumber(subfields.get("$a").get(0));
+	    cn.setNumber(subfields.get("$a").get(0), oh.getFlatLocation());
 
 	    
 	    // Not used: callNumberType, callNumberPrefix, itemPart,
@@ -1657,6 +1785,12 @@ public class LU_BuildInstance {
 		if ( cntypename == null || cntypename.length() == 0) {
 			LU_DBLoadInstances.Log(System.out, "Unrecognized cntype: " + cntype + ", unable to set cntypename", LU_DBLoadInstances.LOG_WARN);
 			cntypename = "N/A";
+		}
+		if ( alphaNumCallNums.contains(cn.getNumber()) ||
+			 ( oh.getFlatLocation().getLocCodeString().startsWith("LEHIGH/LIND/SPCOLL") &&
+			   startsWithAlphaNumPrefix(cn.getNumber()) ) ) {
+			cntypecode = "OTHER";
+			cntypename = "Other schema";
 		}
 		oh.setCallNumberType(cntypecode, cntypename);
 
@@ -2196,6 +2330,8 @@ public class LU_BuildInstance {
 				MFHD_to_printholdings.put(MFHDRec, printholdings);
 
 			}
+			
+			// TODO: rather than one holdings per 999 field, use the Schema described by Lisa:
 			for ( Record MFHDRec : MFHD_to_printholdings.keySet() ) {
 				List<VariableField> assocPrintHoldings = MFHD_to_printholdings.get(MFHDRec);
 				for ( VariableField printholding : assocPrintHoldings ) {
@@ -2204,13 +2340,15 @@ public class LU_BuildInstance {
 					
 					subfields = LU_BuildInstance.getSubfields(printholding);
 					
+					String locStr = subfields.get("$l").get(0);
+					oh.setFlatLocation(this.getFlatLocation(locStr));
+					
 					// Callnumber and type setting code used to be here, moved into 
 					// buildCommonHoldingsData since e-holdings will use the same info now
 				    
 					this.buildCommonHoldingsData(record, bib, printholding, subfields, MFHDRec, oh);
 					// print holdings get a location and "access location"
-					String locStr = subfields.get("$l").get(0);
-					oh.setFlatLocation(this.getFlatLocation(locStr));
+
 					
 					// changed on 2014-04-23 -- ccc2
 					//oh.setLocationStr(getLocationName(locStr));
@@ -2230,6 +2368,12 @@ public class LU_BuildInstance {
 				oh.setHoldingsType("print");
 				subfields = LU_BuildInstance.getSubfields(printholding);
 				
+				// print holdings get a location and "access location"
+				String locStr = subfields.get("$l").get(0);
+				oh.setFlatLocation(this.getFlatLocation(locStr));
+				//oh.setLocationStr(getLocationName(locStr));
+				//oh.setLocationLevelStr("SHELVING");
+				
 				// Callnumber and type setting code used to be here, moved into
 			    // buildCommonHoldingsData since electronic holdings now use the
 			    // same info
@@ -2241,11 +2385,7 @@ public class LU_BuildInstance {
 			    // Also not used currently: shelving scheme
 			   			    
 				this.buildCommonHoldingsData(record, bib, printholding, subfields, null, oh);
-				// print holdings get a location and "access location"
-				String locStr = subfields.get("$l").get(0);
-				oh.setFlatLocation(this.getFlatLocation(locStr));
-				//oh.setLocationStr(getLocationName(locStr));
-				//oh.setLocationLevelStr("SHELVING");
+
 
 				oh.setBib(bib);
 				bib.getHoldings().add(oh);
