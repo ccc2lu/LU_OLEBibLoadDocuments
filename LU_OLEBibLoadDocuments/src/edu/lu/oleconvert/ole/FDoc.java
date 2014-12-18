@@ -88,7 +88,7 @@ public class FDoc implements Serializable {
 		// and when one is actually being built by the loader, which calls this constructor
 		/*
 		try {
-			FDoc doc = (FDoc) LU_DBLoadInstances.ole_em.createNativeQuery("select * from krew_doc_hdr_t where doc_hdr_id=(select max(doc_hdr_id) from krew_doc_hdr_t)", FDoc.class).getSingleResult();
+			FDoc doc = (FDoc) LU_BuildInstance.ole_em.createNativeQuery("select * from krew_doc_hdr_t where doc_hdr_id=(select max(doc_hdr_id) from krew_doc_hdr_t)", FDoc.class).getSingleResult();
 			if ( doc == null ) {
 				this.Id = "1";
 			} else {
@@ -100,8 +100,8 @@ public class FDoc implements Serializable {
 		}
 		*/
 		// shouldn't be necessary to manually persist these, should cascade
-		//LU_DBLoadInstances.ole_em.persist(this.content);
-		//LU_DBLoadInstances.ole_em.persist(this.krnsDoc);
+		//LU_BuildInstance.ole_em.persist(this.content);
+		//LU_BuildInstance.ole_em.persist(this.krnsDoc);
 		this.setType("999999"); // Serials receiving type code, drawn from one Sharon create manually
 		this.setStatCode("S"); // same
 		this.setRouteLevel(0); // same

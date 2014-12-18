@@ -15,9 +15,11 @@ import javax.persistence.Table;
 public class ItemDonor implements Serializable {
 
 	private Long id;
+	/*
 	private String donorCode;
 	private String donorPublicDisplay;
 	private String donorNote;
+	*/
 	private Item item;
 	
 	public ItemDonor() {
@@ -35,6 +37,7 @@ public class ItemDonor implements Serializable {
 		this.id = id;
 	}
 
+	/*
 	@Column(name="DONOR_CODE")
 	public String getDonorCode() {
 		return donorCode;
@@ -61,7 +64,8 @@ public class ItemDonor implements Serializable {
 	public void setDonorNote(String donorNote) {
 		this.donorNote = donorNote;
 	}
-
+	*/
+	
 	@OneToOne
 	@JoinColumn(name="ITEM_ID")
 	public Item getItem() {

@@ -19,6 +19,7 @@ import javax.persistence.TypedQuery;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+import edu.lu.oleconvert.LU_BuildInstance;
 import edu.lu.oleconvert.LU_DBLoadInstances;
 
 @Entity
@@ -83,7 +84,7 @@ public class ExtentOfOwnership implements Serializable {
 	}
 	public void setType(String code, String name) {
 		ExtentOfOwnershipType type;
-		TypedQuery<ExtentOfOwnershipType> query = LU_DBLoadInstances.ole_em.createQuery("SELECT t FROM ExtentOfOwnershipType t WHERE t.code='" + code + "'", ExtentOfOwnershipType.class);
+		TypedQuery<ExtentOfOwnershipType> query = LU_BuildInstance.ole_em.createQuery("SELECT t FROM ExtentOfOwnershipType t WHERE t.code='" + code + "'", ExtentOfOwnershipType.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<ExtentOfOwnershipType> results = query.getResultList();
 		if ( results.size() == 0 ) {

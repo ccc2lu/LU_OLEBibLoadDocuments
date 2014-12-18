@@ -65,63 +65,63 @@ public class LU_DBLoadInstances {
 	public static EntityManager ole_em;
 	public static EntityManagerFactory migration_emf;
 	public static EntityManager migration_em;
-	
-    static String[] booleanValues = {"false","true"};
-    static HashMap<String, String> KeyToDate = new HashMap<String, String>();
-    // Silly, dirty trick to initialize a map inline using an anonymous block
-    static HashMap<String, String> StatusLookup = new HashMap<String, String>() {{ put("0", "NOTEXT"); put("1", "INTEXT"); put("4", "UPDTEXT"); 
-                                                                                put("6", "LOCKTEXT"); put("1000", "USERLOCK");
-    																	     }};
-    																	     
+
+	static String[] booleanValues = {"false","true"};
+	static HashMap<String, String> KeyToDate = new HashMap<String, String>();
+	// Silly, dirty trick to initialize a map inline using an anonymous block
+	static HashMap<String, String> StatusLookup = new HashMap<String, String>() {{ put("0", "NOTEXT"); put("1", "INTEXT"); put("4", "UPDTEXT"); 
+	put("6", "LOCKTEXT"); put("1000", "USERLOCK");
+	}};
+
 	public static final String BIBLIOGRAPHIC = "bibliographic";
 	public static final String INSTANCE = "instance";
 	public static final String MARC_FORMAT = "marc";
 	public static final String OLEML_FORMAT = "oleml";
 	public static final String CATEGORY_WORK = "work";
-	
-    public static final int LOG_DEBUG = 0, LOG_INFO = 1, LOG_WARN = 2;
+
+	public static final int LOG_DEBUG = 0, LOG_INFO = 1, LOG_WARN = 2;
 	public static final int LOG_ERROR = 3; 
-    private static int currentLogLevel = LOG_INFO;
-    private static int defaultLogLevel = LOG_INFO;
+	private static int currentLogLevel = LOG_INFO;
+	private static int defaultLogLevel = LOG_INFO;
 
-    public static void Log(PrintStream out, String message, int level) {
-    	if ( level >= currentLogLevel ) {
-    		out.println(message);
-    	}
-    }
+	public static void Log(PrintStream out, String message, int level) {
+		if ( level >= currentLogLevel ) {
+			out.println(message);
+		}
+	}
 
-    public static void Log(PrintWriter out, String message, int level) {
-    	if ( level >= currentLogLevel ) {
-    		out.println(message);
-    	}
-    }
+	public static void Log(PrintWriter out, String message, int level) {
+		if ( level >= currentLogLevel ) {
+			out.println(message);
+		}
+	}
 
-    public static void Log(PrintWriter out, String message) {
-    	Log(out, message, defaultLogLevel);
-    }
-    
-    public static void Log(PrintStream out, String message) {
-    	Log(out, message, defaultLogLevel);
-    }
-    
-    public static void Log(String message) {
-    	Log(System.out, message);
-    }
-    
-    public static String formatCatKey(String key) {
-    	// If there's an "a" at the beginning of what should be a numeric key,
-    	// get rid of it.  Sirsi's MARC export put the "a" before the catalog
-    	// keys in the MARC record's 001 fields.  luconvert.java should be
-    	// removing that from the only place it ends up, but just in case, we 
-    	// get rid of it here too
-    	String newkey = key;
-    	if ( key.substring(0, 1).equals("a") ) {
-    		newkey = key.substring(1);
-    	} 
-    	// Then pad the key out to 11 characters with leading zeros -- that's how
-    	// it will be in the MarcXML, and how OLE wants it in the database
-    	//return StringUtils.leftPad(key, 11, "0");
-    	/*
+	public static void Log(PrintWriter out, String message) {
+		Log(out, message, defaultLogLevel);
+	}
+
+	public static void Log(PrintStream out, String message) {
+		Log(out, message, defaultLogLevel);
+	}
+
+	public static void Log(String message) {
+		Log(System.out, message);
+	}
+
+	public static String formatCatKey(String key) {
+		// If there's an "a" at the beginning of what should be a numeric key,
+		// get rid of it.  Sirsi's MARC export put the "a" before the catalog
+		// keys in the MARC record's 001 fields.  luconvert.java should be
+		// removing that from the only place it ends up, but just in case, we 
+		// get rid of it here too
+		String newkey = key;
+		if ( key.substring(0, 1).equals("a") ) {
+			newkey = key.substring(1);
+		} 
+		// Then pad the key out to 11 characters with leading zeros -- that's how
+		// it will be in the MarcXML, and how OLE wants it in the database
+		//return StringUtils.leftPad(key, 11, "0");
+		/*
     	int startId = 10000000;
     	int keynum = 0;
     	try {
@@ -131,19 +131,19 @@ public class LU_DBLoadInstances {
     		Log(System.err, "Unable to format catalog key: " + key);
     		newkey = key;
     	}
-    	*/
-    	return newkey;
-    }
-    
+		 */
+		return newkey;
+	}
+
 	public static void main(String args[]) {
 		ole_emf = Persistence.createEntityManagerFactory("ole");
 		ole_em = ole_emf.createEntityManager();
 		EntityTransaction ole_tx = ole_em.getTransaction();
-		
+
 		migration_emf = Persistence.createEntityManagerFactory("olemigration");
 		migration_em = migration_emf.createEntityManager();
-		
-        BufferedReader inFile = null;
+
+		BufferedReader inFile = null;
 		Properties loadprops;
 		Properties oracleprops;
 		Properties instanceprops;
@@ -153,7 +153,7 @@ public class LU_DBLoadInstances {
 		//dumpdir = dumpdir + "/" + datestamp;
 		String lehighDataDir = args[2];
 		boolean dostage = args[6].equals("Y");
-		
+
 		try {
 
 
@@ -164,7 +164,7 @@ public class LU_DBLoadInstances {
 					dumpdir + "/mod.allitems.txt",
 					lehighDataDir + "/Lehigh Locations.csv",
 					lehighDataDir + "/sfx_export_portfolios.csv");
-					*/
+			 */
 			LU_BuildInstance instanceBuilder = new LU_BuildInstance(dostage, dumpdir + "/mod.allcallnums.txt", 
 					dumpdir + "/mod.allcallnumsshelvingkeys.txt",
 					dumpdir + "/mod.boundwiths.txt",
@@ -273,7 +273,7 @@ public class LU_DBLoadInstances {
 
 				InputStream defaultkeysInput = new FileInputStream(dumpdir + "/" + datestamp + "/" + args[5]);
 				MarcStreamReader defaultkeysReader = new MarcStreamReader(defaultkeysInput);
-				
+
 				int limit = -1;
 				if ( args.length == 8 ) {
 					limit = Integer.parseInt(args[7]);
@@ -289,19 +289,19 @@ public class LU_DBLoadInstances {
 				DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 				LU_DBLoadInstances.Log(System.out, 
-						                "Beginning load, time is: " + df.format(Calendar.getInstance().getTime()), 
-						                LOG_INFO);
-                Bib bib;
-                
+						"Beginning load, time is: " + df.format(Calendar.getInstance().getTime()), 
+						LOG_INFO);
+				Bib bib;
+
 				ole_tx.begin();
 
 				do {
-					
+
 					assocMFHDRecords.clear();
 					xmlrecord = nextrecord;
 					defaultkeysrecord = dfknextrecord;
 					LU_BuildInstance.fixISBN(xmlrecord);
-					
+
 					nextrecord = reader.next();
 					if ( nextrecord != null ) {
 						dfknextrecord = defaultkeysReader.next();
@@ -320,7 +320,7 @@ public class LU_DBLoadInstances {
 						} else {
 							LU_DBLoadInstances.Log(System.err, "Unable to persist bib for record " + nextrecord.getControlNumber(), LOG_ERROR);							
 						}
-						*/						
+						 */						
 						nextrecord = reader.next();
 						if ( nextrecord != null ) {
 							dfknextrecord = defaultkeysReader.next();
@@ -344,56 +344,59 @@ public class LU_DBLoadInstances {
 							dfknextrecord = defaultkeysReader.next();
 						}
 					}
-					
+
 					// Build a bib record from the xmlrecord
 					bib = buildBib(xmlrecord, defaultkeysrecord);
-					if ( bib != null ) {
-						ole_em.persist(bib);
-					} else {
-						LU_DBLoadInstances.Log(System.err, "Unable to persist bib for record " + xmlrecord.getControlNumber(), LOG_ERROR);						
-					}
+					if ( bib.getStaffOnly() == null || bib.getStaffOnly().equals("N") ) {
+						if ( bib != null ) {
+							ole_em.persist(bib);
+						} else {
+							LU_DBLoadInstances.Log(System.err, "Unable to persist bib for record " + xmlrecord.getControlNumber(), LOG_ERROR);						
+						}
 
-					//request=BuildRequestDocument.buildRequest(loadprops.getProperty("load.user"));
+						//request=BuildRequestDocument.buildRequest(loadprops.getProperty("load.user"));
 
-					//request=BuildRequestDocument.buildIngestDocument(request,Integer.toString(catalog.getCatalogKey()),BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,xmlrecord,catalog);
+						//request=BuildRequestDocument.buildIngestDocument(request,Integer.toString(catalog.getCatalogKey()),BIBLIOGRAPHIC,MARC_FORMAT,CATEGORY_WORK,xmlrecord,catalog);
 
-					// Build the instance data first, because we might be adding
-					//instanceBuilder.buildInstanceCollection(xmlrecord, bib, assocMFHDRecords);
-					instanceBuilder.buildBibHoldingsData(xmlrecord, bib, assocMFHDRecords);
-					
-					// this method will check if the former ID of the bib record matches one
-					// in the serials table of the olemigration database, then if it does it
-					// will fill in ole serials receiving tables
-					//instanceBuilder.buildSerialsData(xmlrecord, bib, assocMFHDRecords);
-					// ^^^ This loader filled in ole_ser_rcv_rec, ole_ser_rcv_rec_typ_t, and
-					// ole_ser_rcv_his_rec with data, as well as several RICE tables.  This caused
-					// problems because the RICE tables weren't properly filled out.  After much
-					// flailing trying to get RICE to be happy, we just decided to
-					// use the same CSV loader that HTC wrote for UChicago.
-					// This loading code did still get used to convert Sirsi data and populate
-					// the tables once, though.  From then on, serials are imported from 
-					// .CSV files exported from the database after running this loading code.
-					
-					// now we don't loop over instances, we just let the bib cascade persisting all of its holdings,
-					// which cascades to items, etc.
-					/*
+						// Build the instance data first, because we might be adding
+						//instanceBuilder.buildInstanceCollection(xmlrecord, bib, assocMFHDRecords);
+						instanceBuilder.buildBibHoldingsData(xmlrecord, bib, assocMFHDRecords);
+
+						// this method will check if the former ID of the bib record matches one
+						// in the serials table of the olemigration database, then if it does it
+						// will fill in ole serials receiving tables
+						instanceBuilder.buildSerialsData(xmlrecord, bib, assocMFHDRecords);
+						// ^^^ This loader filled in ole_ser_rcv_rec, ole_ser_rcv_rec_typ_t, and
+						// ole_ser_rcv_his_rec with data, as well as several RICE tables.  This caused
+						// problems because the RICE tables weren't properly filled out.  After much
+						// flailing trying to get RICE to be happy, we just decided to
+						// use the same CSV loader that HTC wrote for UChicago.
+						// This loading code did still get used to convert Sirsi data and populate
+						// the tables once, though.  From then on, serials are imported from 
+						// .CSV files exported from the database after running this loading code.
+
+						// now we don't loop over instances, we just let the bib cascade persisting all of its holdings,
+						// which cascades to items, etc.
+						/*
 					for ( Instance i : ic.getInstances() ) {
 						i.getOleHoldings().setBib(bib); // TODO: is this always right, or do we want to set the bib for some holdings records to the MFHD rec?  not sure
 						System.err.println("Bib ID: " + i.getOleHoldings().getBib().getId() + ", former ID: " + i.getOleHoldings().getBib().getFormerId());
 						em.persist(i.getOleHoldings());
 					}
-					*/
-					
-					if ( bib != null ) {
-						//for ( OLEHoldings holdings : bib.getHoldings() ) {
-						//	LU_DBLoadInstances.Log(System.err, "ID for holdings " + holdings.getHoldingsIdentifier() + " = " + holdings.getBibId(), LOG_INFO);
-						//}
-						// Now persist bib again after creating holdings/items
-						ole_em.persist(bib);
-					} else {
-						LU_DBLoadInstances.Log(System.err, "Unable to persist bib for record " + xmlrecord.getControlNumber(), LOG_ERROR);						
-					}
+						 */
 
+						if ( bib != null ) {
+							//for ( OLEHoldings holdings : bib.getHoldings() ) {
+							//	LU_DBLoadInstances.Log(System.err, "ID for holdings " + holdings.getHoldingsIdentifier() + " = " + holdings.getBibId(), LOG_INFO);
+							//}
+							// Now persist bib again after creating holdings/items
+							ole_em.persist(bib);
+						} else {
+							LU_DBLoadInstances.Log(System.err, "Unable to persist bib for record " + xmlrecord.getControlNumber(), LOG_ERROR);						
+						}
+					} else {
+						LU_DBLoadInstances.Log(System.out, "Skipping shadowed bib " + xmlrecord.getControlNumber(), LOG_INFO);
+					}
 
 					counter++;
 					if ( counter % 10 == 0 || ( limit > 0 && counter >= limit )) {
@@ -405,44 +408,90 @@ public class LU_DBLoadInstances {
 				} while (nextrecord != null && (limit < 0 || counter < limit) );
 				ole_tx.commit();
 				LU_DBLoadInstances.Log(System.out, 
-		                "Done loading instances, time is: " + df.format(Calendar.getInstance().getTime()), 
-		                LOG_INFO);
+						"Done loading instances, time is: " + df.format(Calendar.getInstance().getTime()), 
+						LOG_INFO);
 
 				LU_DBLoadInstances.Log(System.out, 
-		                "Now that all bibs and holdings are created, loading bound-withs, time is: " + df.format(Calendar.getInstance().getTime()), 
-		                LOG_INFO);
-				
-				TypedQuery<SirsiCallNumber> query = LU_DBLoadInstances.migration_em.createQuery("select scn from SirsiCallNumber scn where scn.level='CHILD'", SirsiCallNumber.class);
+						"Now that all bibs and holdings are created, loading bound-withs, time is: " + df.format(Calendar.getInstance().getTime()), 
+						LOG_INFO);
+
+				TypedQuery<SirsiCallNumber> query = LU_DBLoadInstances.migration_em.createQuery("select scn from SirsiCallNumber scn where scn.level='CHILD' or scn.level='PARENT'", SirsiCallNumber.class);
 				query.setHint("org.hibernate.cacheable", true);
 				List<SirsiCallNumber> results = query.getResultList();
 				Iterator it = results.iterator();
 				while ( it.hasNext() ) {
 					SirsiCallNumber scn = (SirsiCallNumber) it.next();
 					// Check if this is a child record, and if so, create a bound-with
-					if ( scn.getLevel().equals("CHILD") ) {
-						// bib id will be the cat key for the parent, holdings id we'll have to retrieve
-						// though using 
-						TypedQuery<OLEHoldings> holdings_query = LU_DBLoadInstances.ole_em.createQuery("select oh from OLEHoldings oh where oh.formerId='" + scn.getParent_cat_key() + "|" + scn.getParent_callnum_key() + "'", OLEHoldings.class);
-						List<OLEHoldings> holdings_results = holdings_query.getResultList();
-						if ( holdings_results.size() > 0 ) {
-							ole_tx.begin();
-							BoundWith bw = new BoundWith();
-							bw.setBibId((long)scn.getParent_cat_key());
-							OLEHoldings oh = holdings_results.get(0);
-							bw.setHoldingsId(oh.getHoldingsIdentifier());
-							ole_em.persist(bw);
-							ole_tx.commit();
-						} else {
-							LU_DBLoadInstances.Log(System.err, "No holdings record found for former ID " + scn.getParent_cat_key() + "|" + scn.getParent_callnum_key(),
-									LU_DBLoadInstances.LOG_WARN);
+					try {
+						if ( scn.getLevel().equals("CHILD") ) {
+							// bib id will be the cat key for the parent, holdings id we'll have to retrieve
+							// though using 
+							TypedQuery<OLEHoldings> holdings_query = LU_DBLoadInstances.ole_em.createQuery("select oh from OLEHoldings oh where oh.formerId='" + scn.getParent_cat_key() + "|" + scn.getParent_callnum_key() + "'", OLEHoldings.class);
+							List<OLEHoldings> holdings_results = holdings_query.getResultList();
+							if ( holdings_results.size() > 0 ) {
+								TypedQuery<Bib> bib_query = LU_DBLoadInstances.ole_em.createQuery("select b from Bib b where b.id=" + scn.getCat_key(), Bib.class);
+								List<Bib> bib_results = bib_query.getResultList();
+								if ( bib_results.size() > 0 ) {
+									ole_tx.begin();
+									Bib b = bib_results.get(0);
+									OLEHoldings oh = holdings_results.get(0);
+									BoundWith bw = new BoundWith();
+									bw.setBibId(b.getId());
+									bw.setHoldingsId(oh.getHoldingsIdentifier());
+									LU_DBLoadInstances.ole_em.persist(bw);
+									ole_tx.commit();
+								} else {
+									LU_DBLoadInstances.Log(System.err, "No parent bib record found for ID " + scn.getParent_cat_key(),
+											LU_DBLoadInstances.LOG_WARN);
+
+								}
+							} else {
+								LU_DBLoadInstances.Log(System.err, "No parent holdings record found for former ID " + scn.getParent_cat_key() + "|" + scn.getParent_callnum_key(),
+										LU_DBLoadInstances.LOG_WARN);
+							}
+						} else if ( scn.getLevel().equals("PARENT") ) {
+							// bib id will be the cat key for the parent, holdings id we'll have to retrieve
+							// though using 
+							TypedQuery<OLEHoldings> holdings_query = LU_DBLoadInstances.ole_em.createQuery("select oh from OLEHoldings oh where oh.formerId='" + scn.getCat_key() + "|" + scn.getCallnum_key() + "'", OLEHoldings.class);
+							List<OLEHoldings> holdings_results = holdings_query.getResultList();
+							if ( holdings_results.size() > 0 ) {
+								TypedQuery<Bib> bib_query = LU_DBLoadInstances.ole_em.createQuery("select b from Bib b where b.id=" + scn.getCat_key(), Bib.class);
+								List<Bib> bib_results = bib_query.getResultList();
+								if ( bib_results.size() > 0 ) {
+									ole_tx.begin();
+									Bib b = bib_results.get(0);
+									OLEHoldings oh = holdings_results.get(0);
+									BoundWith bw = new BoundWith();
+									bw.setBibId(b.getId());
+									bw.setHoldingsId(oh.getHoldingsIdentifier());
+									LU_DBLoadInstances.ole_em.persist(bw);
+									ole_tx.commit();
+								} else {
+									LU_DBLoadInstances.Log(System.err, "No peer bib record found for ID " + scn.getCat_key(),
+											LU_DBLoadInstances.LOG_WARN);								
+								}
+
+							} else {
+								LU_DBLoadInstances.Log(System.err, "No peer-holdings record found for former ID " + scn.getCat_key() + "|" + scn.getCallnum_key(),
+										LU_DBLoadInstances.LOG_WARN);
+							}
+
 						}
+					} catch (Exception e) {
+						LU_DBLoadInstances.Log(System.err, 
+								"Unable to create bound-with for sirsi callnumber: " + scn.toString(), 
+								LOG_WARN);
+						LU_DBLoadInstances.Log(System.err, 
+								"Exception: " + e.toString(), 
+								LOG_WARN);
+						e.printStackTrace(System.err);
 					}
 				}
-				
-				
+
+
 				LU_DBLoadInstances.Log(System.out, 
-		                "Bound-withs loaded, time is: " + df.format(Calendar.getInstance().getTime()), 
-		                LOG_INFO);
+						"Bound-withs loaded, time is: " + df.format(Calendar.getInstance().getTime()), 
+						LOG_INFO);
 
 				System.exit(0);
 			} catch (IOException e) {
@@ -461,23 +510,24 @@ public class LU_DBLoadInstances {
 			ole_tx.rollback();
 		}
 	}
-	
+
 	public static Bib buildBib(Record record, Record defaultkeysrecord) {
 		String catkey = LU_DBLoadInstances.formatCatKey(record.getControlNumber()); // need to set this to what's in 001 of the bib to link them
 		Bib bib = new Bib(catkey);
 		Log(System.out, "Building bib, defaultkeys rec: " + defaultkeysrecord.toString(), LOG_DEBUG);
 		Log(System.out, "defaultkeys rec tcn: " + defaultkeysrecord.getControlNumber(), LOG_DEBUG);
 		String defaultKey = defaultkeysrecord.getControlNumber();
-        LU_BuildInstance.checkTitleControlNumbers(record, defaultKey);
-        LU_BuildInstance.removeUnauthorizedFields(record);
+		LU_BuildInstance.change003(record);
+		LU_BuildInstance.checkTitleControlNumbers(record, defaultKey);
+		LU_BuildInstance.removeUnauthorizedFields(record);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
-    	OutputFormat of = new OutputFormat("xml", "UTF-8", true);
-    	of.setOmitXMLDeclaration(true);
-    	XMLSerializer tmpserializer = new XMLSerializer(out, of);
-    	//tmpserializer.setOutputFormat(of);
-    	//tmpserializer.setOutputByteStream(out);
-    	Result result;
-    	MarcWriter writer;
+		OutputFormat of = new OutputFormat("xml", "UTF-8", true);
+		of.setOmitXMLDeclaration(true);
+		XMLSerializer tmpserializer = new XMLSerializer(out, of);
+		//tmpserializer.setOutputFormat(of);
+		//tmpserializer.setOutputByteStream(out);
+		Result result;
+		MarcWriter writer;
 		/*
     	try {
 			result = new SAXResult(tmpserializer.asContentHandler());
@@ -488,81 +538,81 @@ public class LU_DBLoadInstances {
 			e1.printStackTrace(System.err);
 			writer = new MarcXmlWriter(out, "ISO-8859-1");
 		}
-		*/
+		 */
 		//writer = new MarcXmlWriter(out, "ISO-8859-1");
-    	writer = new MarcXmlWriter(out, "UTF-8");
+		writer = new MarcXmlWriter(out, "UTF-8");
 
-        String marcXML;
-        
-        
-        // Logic stolen from LU_BuildOLELoadDocs, the addAdditionalInfo method
-        //String catkey = LU_DBLoadInstances.formatCatKey(record.getVariableField("001").toString().split(" ")[1]);
+		String marcXML;
 
-        //System.err.println("Looking for dates for record with catalog key " + catkey);
-        String dateLine = (String) KeyToDate.get(catkey);
-        
-        // dateLine string should be of the form: 
-        // <catalog key in Siris>|<MARC FIELD 008>|<shadowed>|<status>|<date catalog record created>|<date cataloged>|<date modified>|<flexible key>|
-        // 1 means shadowed, 0 means unshadowed
-        // status may be any of the following: 0 (NOTEXT), 1 (INTEXT), 4 (UPDTEXT), 6 (LOCKTEXT), 1000 (USERLOCK)
-        // MARC field 008 is "fixed length data elements and always seems to be populated
-        String shadowed, status, dateCataloged, dateModified, titleControlNumber;
-        status = "Catalogued";
-        if ( dateLine == null ) {
-        	Log(System.err, "ERROR: No mapping found for key " + catkey, LOG_ERROR);
-        	Log(System.err, "Filling in additional attributes with empty strings", LOG_ERROR);
-        	dateCataloged = dateModified = shadowed = "";
 
-        } else {
-        	String[] dateParts = dateLine.split("\\|");
-        	if ( dateParts.length < 8 ) {
-        		System.err.println("ERROR: Can't get shadowed, status, date cataloged or modified, not enough fields in line: " + dateLine);
-            	System.err.println("Filling in additional attributes with empty strings");
-        		dateCataloged = dateModified = shadowed = status = "";
-        	} else {
+		// Logic stolen from LU_BuildOLELoadDocs, the addAdditionalInfo method
+		//String catkey = LU_DBLoadInstances.formatCatKey(record.getVariableField("001").toString().split(" ")[1]);
 
-        		shadowed = dateParts[2].equals("1") ? "Y" : "N";
-        		// The bib status values set by Sirsi don't seem to mean
-        		// anything to OLE
-        		//status = StatusLookup.get(dateParts[3]); 
-        		if ( dateParts[5].equals("0") || dateParts[5].length() == 0 ) {
-        			dateCataloged = "";
-        		} else {
-        			dateCataloged = dateParts[5];
-        		}
-        		if ( dateParts[6].equals("0") || dateParts[6].length() == 0 ) {
-        			dateModified = "";
-        		} else {
-        			dateModified = dateParts[6];
-        		}
-        		// Not going to use this anymore, I think
-        		//titleControlNumber = dateParts[7]; 
-        	}
-        }
-        
+		//System.err.println("Looking for dates for record with catalog key " + catkey);
+		String dateLine = (String) KeyToDate.get(catkey);
+
+		// dateLine string should be of the form: 
+		// <catalog key in Siris>|<MARC FIELD 008>|<shadowed>|<status>|<date catalog record created>|<date cataloged>|<date modified>|<flexible key>|
+		// 1 means shadowed, 0 means unshadowed
+		// status may be any of the following: 0 (NOTEXT), 1 (INTEXT), 4 (UPDTEXT), 6 (LOCKTEXT), 1000 (USERLOCK)
+		// MARC field 008 is "fixed length data elements and always seems to be populated
+		String shadowed, status, dateCataloged, dateModified, titleControlNumber;
+		status = "Catalogued";
+		if ( dateLine == null ) {
+			Log(System.err, "ERROR: No mapping found for key " + catkey, LOG_ERROR);
+			Log(System.err, "Filling in additional attributes with empty strings", LOG_ERROR);
+			dateCataloged = dateModified = shadowed = "";
+
+		} else {
+			String[] dateParts = dateLine.split("\\|");
+			if ( dateParts.length < 8 ) {
+				System.err.println("ERROR: Can't get shadowed, status, date cataloged or modified, not enough fields in line: " + dateLine);
+				System.err.println("Filling in additional attributes with empty strings");
+				dateCataloged = dateModified = shadowed = status = "";
+			} else {
+
+				shadowed = dateParts[2].equals("1") ? "Y" : "N";
+				// The bib status values set by Sirsi don't seem to mean
+				// anything to OLE
+				//status = StatusLookup.get(dateParts[3]); 
+				if ( dateParts[5].equals("0") || dateParts[5].length() == 0 ) {
+					dateCataloged = "";
+				} else {
+					dateCataloged = dateParts[5];
+				}
+				if ( dateParts[6].equals("0") || dateParts[6].length() == 0 ) {
+					dateModified = "";
+				} else {
+					dateModified = dateParts[6];
+				}
+				// Not going to use this anymore, I think
+				//titleControlNumber = dateParts[7]; 
+			}
+		}
+
 		try {
-	        writer.write(record);
-	        //out.flush();
-	        out.close();
-	        writer.close();
+			writer.write(record);
+			//out.flush();
+			out.close();
+			writer.close();
 			//marcXML = out.toString("ISO-8859-1");
-	        marcXML = out.toString("UTF-8");
+			marcXML = out.toString("UTF-8");
 			String xmldecl = "<\\?xml version=\"1.0\" encoding=\"UTF-8\"\\?>";
 			marcXML = marcXML.replaceFirst(xmldecl, "");
-	        bib.setContent(marcXML);
-	        // We want to keep the IDs for the Bibs the same
-	        // bib.setId(Long.parseLong(catkey));
-	        if ( !dateCataloged.equals("") ) {
-	        	bib.setDateCreated(dateCataloged);
-	        }
-	        if ( !dateModified.equals("") ) {
-	        	bib.setDateUpdated(dateModified);
-	        }
-	        bib.setCreatedBy("BulkIngest-User");
-	        bib.setStatus(status);	        
-	        bib.setStaffOnly(shadowed);
-	        bib.setFastAdd("N");
-	        bib.setUniqueIdPrefix("wbm");
+			bib.setContent(marcXML);
+			// We want to keep the IDs for the Bibs the same
+			// bib.setId(Long.parseLong(catkey));
+			if ( !dateCataloged.equals("") ) {
+				bib.setDateCreated(dateCataloged);
+			}
+			if ( !dateModified.equals("") ) {
+				bib.setDateUpdated(dateModified);
+			}
+			bib.setCreatedBy("BulkIngest-User");
+			bib.setStatus(status);	        
+			bib.setStaffOnly(shadowed);
+			bib.setFastAdd("N");
+			bib.setUniqueIdPrefix("wbm");
 		} catch (UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 import javassist.bytecode.Descriptor.Iterator;
 
 import javax.management.Query;
+import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.TypedQuery;
 import javax.xml.*;
@@ -53,6 +54,7 @@ import migration.SirsiItem;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
+import org.marc4j.marc.ControlField;
 import org.marc4j.marc.DataField;
 import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Record;
@@ -81,27 +83,31 @@ public class LU_BuildInstance {
 	private Map<String, List<Map<String, String>>> sfxdata_by_issn;
 	private Map<String, List<Map<String, String>>> sfxdata_by_eissn;
 	private Map<String, List<Map<String, String>>> sfxdata_by_lccn;
-    private Map<String, String> callNumberTypeCodes;
-    private Map<String, String> callNumberTypeNames;
-    private static List<String> alphaNumCallNums = new ArrayList<String>();
-    private static List<String> alphaNumCallNumPrefixes = new ArrayList<String>();
-	private Map<String, String> itemReservedStatusCodeMap;
-	private Map<String, String> itemReservedStatusNameMap;
+	private Map<String, String> callNumberTypeCodes;
+	private Map<String, String> callNumberTypeNames;
+	private static List<String> alphaNumCallNums = new ArrayList<String>();
+	private static List<String> alphaNumCallNumPrefixes = new ArrayList<String>();
 	private static Pattern oclctcnpattern = Pattern.compile("\\(OCoLC\\)\\s*(\\d+)");
 	private static Pattern sirsitcnpattern = Pattern.compile("\\(Sirsi\\)\\s*o(\\d+)");
-	
-    private static int initSize = 2000000;
+
+	private static int initSize = 2000000;
 	private final String ELECTRONIC_RESOURCE = "WWW";
 	// Once OLE has a way to ingest e-instance documents, then set this to true
 	// and the code to generate e-instances will run
 	private boolean eInstanceReady = false;
 	private final String nonpublicStr = "nonPublic";
 	private final String publicStr = "public";
-	
+
 	private static final int LOC_INSTITUTION = 1;
 	private static final int LOC_LIBRARY = 2;
 	private static final int LOC_COLLECTION = 3;
 	private static final int LOC_SHELVING = 4;
+
+	public static EntityManager ole_em = null;
+	public static EntityManager migration_em = null;
+	
+	public Map<String, String> itemReservedStatusCodeMap;
+	public Map<String, String> itemReservedStatusNameMap;
 
 	Map<String, String> locationCodeToLibraryCode = new HashMap<String, String>();
 	Map<String, String> locationCodeToShelvingString = new HashMap<String, String>();
@@ -120,12 +126,12 @@ public class LU_BuildInstance {
 		put("LMC_GOVDOC", "LMC-G");
 		put("NEWBOOKS_F", "FM-NEWBKS");
 	}};
-	
+
 	public static Map<String, String> subscriptionStatusMap = new HashMap<String, String>(){{
 		put("ACTIVE", "6");
 		put("CANCELLED", "4");
 	}};
-	
+
 	public static List<String> removedLocations = new ArrayList<String>(){{
 		add("CHECKEDOUT");
 		add("WITHDRAWN");
@@ -138,7 +144,7 @@ public class LU_BuildInstance {
 		add("HOLDS");
 		add("LOST-CLAIM");
 	}};
-	
+
 	/*
 	Map<String, String> libraryCodeToName = new HashMap<String, String>(){{
 		put("FM", "Fairchild-Martindale");
@@ -166,8 +172,8 @@ public class LU_BuildInstance {
 		}
 		return name + " " + "Floor";
 	}
-	*/
-	
+	 */
+
 	public LU_BuildInstance() {
 		super();
 		callNumbersByCatalogKey = new TreeMap<String, List<List<String>>>();
@@ -181,104 +187,104 @@ public class LU_BuildInstance {
 		callNumberTypeNames = new HashMap<String, String>();
 		// These values for code/value of callnumber types are taken from
 		// ole-common/ole-utility/src/main/java/org/kuali/ole/utility/callnumber/CallNumberType.java
-		
-	    callNumberTypeCodes.put("DEWEYSAN", "DDC");
-	    callNumberTypeNames.put("DEWEYSAN", "DDC - Dewey Decimal classification");
-	    callNumberTypeCodes.put("DEWPERSAN", "DDC");
-	    callNumberTypeNames.put("DEWPERSAN", "DDC - Dewey Decimal classification");
-	    callNumberTypeCodes.put("ATDEWEY", "DDC");
-	    callNumberTypeNames.put("ATDEWEY", "DDC - Dewey Decimal classification");
-	    callNumberTypeCodes.put("DEWEY", "DDC");
-	    callNumberTypeNames.put("DEWEY", "DDC - Dewey Decimal classification");
-	    callNumberTypeCodes.put("DEWEYPER", "DDC");
-	    callNumberTypeNames.put("DEWEYPER", "DDC - Dewey Decimal classification");
 
-	    callNumberTypeCodes.put("LC", "LCC");
-	    callNumberTypeNames.put("LC", "LCC - Library of Congress classification");
-	    callNumberTypeCodes.put("LCPER", "LCC");
-	    callNumberTypeNames.put("LCPER", "LCC - Library of Congress classification");
+		callNumberTypeCodes.put("DEWEYSAN", "DDC");
+		callNumberTypeNames.put("DEWEYSAN", "DDC - Dewey Decimal classification");
+		callNumberTypeCodes.put("DEWPERSAN", "DDC");
+		callNumberTypeNames.put("DEWPERSAN", "DDC - Dewey Decimal classification");
+		callNumberTypeCodes.put("ATDEWEY", "DDC");
+		callNumberTypeNames.put("ATDEWEY", "DDC - Dewey Decimal classification");
+		callNumberTypeCodes.put("DEWEY", "DDC");
+		callNumberTypeNames.put("DEWEY", "DDC - Dewey Decimal classification");
+		callNumberTypeCodes.put("DEWEYPER", "DDC");
+		callNumberTypeNames.put("DEWEYPER", "DDC - Dewey Decimal classification");
 
-	    callNumberTypeCodes.put("NLM", "NLM");
-	    callNumberTypeNames.put("NLM", "National Library of Medicine Classification (NLM)");
+		callNumberTypeCodes.put("LC", "LCC");
+		callNumberTypeNames.put("LC", "LCC - Library of Congress classification");
+		callNumberTypeCodes.put("LCPER", "LCC");
+		callNumberTypeNames.put("LCPER", "LCC - Library of Congress classification");
 
-	    callNumberTypeCodes.put("SUDOC", "SUDOC");
-	    callNumberTypeNames.put("SUDOC", "Superintendent of Documents classification (SUDOC)");
-	    
-	    callNumberTypeCodes.put("SCN", "SCN");
-	    callNumberTypeNames.put("SCN", "Shelving Control Number (SCN)");
-	    
-	    callNumberTypeCodes.put(ELECTRONIC_RESOURCE, "OTHER");
-	    callNumberTypeNames.put(ELECTRONIC_RESOURCE, "Other schema");
-	    callNumberTypeCodes.put("ALPHANUM", "OTHER");
-	    callNumberTypeNames.put("ALPHANUM", "Other schema");
-	    callNumberTypeCodes.put("ASIS", "OTHER");
-	    callNumberTypeNames.put("ASIS", "Other schema");
-	    callNumberTypeCodes.put("ATDEWEYLOC", "OTHER");
-	    callNumberTypeNames.put("ATDEWEYLOC", "Other schema");
-	    callNumberTypeCodes.put("AUTO", "OTHER");
-	    callNumberTypeNames.put("AUTO", "Other schema");
-	 
-	    alphaNumCallNums.add("Current periodical");
-	    alphaNumCallNums.add("Current periodicals");
-	    alphaNumCallNums.add("Current Periodical");
-	    alphaNumCallNums.add("Current Periodicals");
-	    alphaNumCallNums.add("FILM");
-	    alphaNumCallNums.add("MICROFICHE");
-	    alphaNumCallNums.add("MICROCARD");
-	    alphaNumCallNums.add("Electronic Book");
-	    alphaNumCallNums.add("Electronic book");
-	    
-	    alphaNumCallNumPrefixes.add("DISS");
-	    alphaNumCallNumPrefixes.add("THESIS");
-	    alphaNumCallNumPrefixes.add("SC Asteroid");
-	    alphaNumCallNumPrefixes.add("SC ALS");
-	    alphaNumCallNumPrefixes.add("SC B878");
-	    alphaNumCallNumPrefixes.add("SC Bas");
-	    alphaNumCallNumPrefixes.add("SC Bay");
-	    alphaNumCallNumPrefixes.add("SC Berman");
-	    alphaNumCallNumPrefixes.add("SC Bir");
-	    alphaNumCallNumPrefixes.add("SC CD");
-	    alphaNumCallNumPrefixes.add("SC Col");
-	    alphaNumCallNumPrefixes.add("SC Cowper");
-	    alphaNumCallNumPrefixes.add("SC FF");
-	    alphaNumCallNumPrefixes.add("SC FI");
-	    alphaNumCallNumPrefixes.add("SC Flat case");
-	    alphaNumCallNumPrefixes.add("SC FR xxx");
-	    alphaNumCallNumPrefixes.add("SC GI"); 
-	    alphaNumCallNumPrefixes.add("SC GSP 2SER");                                                                                                                                                                                                                                                          
-	    alphaNumCallNumPrefixes.add("SC Hen");
-	    alphaNumCallNumPrefixes.add("SC Hom");
-	    alphaNumCallNumPrefixes.add("SC Ize");
-	    alphaNumCallNumPrefixes.add("SC LEC");
-	    alphaNumCallNumPrefixes.add("SC Lehigh Photos");
-	    alphaNumCallNumPrefixes.add("SC LETTER");
-	    alphaNumCallNumPrefixes.add("SC Letter DG");
-	    alphaNumCallNumPrefixes.add("SC Linz");
-	    alphaNumCallNumPrefixes.add("SC LPub");
-	    alphaNumCallNumPrefixes.add("SC LSer");
-	    alphaNumCallNumPrefixes.add("SC LUP");
-	    alphaNumCallNumPrefixes.add("SC LVF");
-	    alphaNumCallNumPrefixes.add("SC Min");
-	    alphaNumCallNumPrefixes.add("SC MS");
-	    alphaNumCallNumPrefixes.add("SC Pam");
-	    alphaNumCallNumPrefixes.add("SC Photo");
-	    alphaNumCallNumPrefixes.add("SC Stereo 001");
-	    alphaNumCallNumPrefixes.add("SC Storage Office");
-	    alphaNumCallNumPrefixes.add("SC T Galleria");
-	    alphaNumCallNumPrefixes.add("SC T"); 
-	    alphaNumCallNumPrefixes.add("SC TechPhoto");
-	    alphaNumCallNumPrefixes.add("SC Text");
-	    alphaNumCallNumPrefixes.add("SC Trx");
-	    alphaNumCallNumPrefixes.add("SC TVF");
-	    alphaNumCallNumPrefixes.add("SC VKm");
-	    alphaNumCallNumPrefixes.add("SC Wyl");
+		callNumberTypeCodes.put("NLM", "NLM");
+		callNumberTypeNames.put("NLM", "National Library of Medicine Classification (NLM)");
+
+		callNumberTypeCodes.put("SUDOC", "SUDOC");
+		callNumberTypeNames.put("SUDOC", "Superintendent of Documents classification (SUDOC)");
+
+		callNumberTypeCodes.put("SCN", "SCN");
+		callNumberTypeNames.put("SCN", "Shelving Control Number (SCN)");
+
+		callNumberTypeCodes.put(ELECTRONIC_RESOURCE, "OTHER");
+		callNumberTypeNames.put(ELECTRONIC_RESOURCE, "Other schema");
+		callNumberTypeCodes.put("ALPHANUM", "OTHER");
+		callNumberTypeNames.put("ALPHANUM", "Other schema");
+		callNumberTypeCodes.put("ASIS", "OTHER");
+		callNumberTypeNames.put("ASIS", "Other schema");
+		callNumberTypeCodes.put("ATDEWEYLOC", "OTHER");
+		callNumberTypeNames.put("ATDEWEYLOC", "Other schema");
+		callNumberTypeCodes.put("AUTO", "OTHER");
+		callNumberTypeNames.put("AUTO", "Other schema");
+
+		alphaNumCallNums.add("Current periodical");
+		alphaNumCallNums.add("Current periodicals");
+		alphaNumCallNums.add("Current Periodical");
+		alphaNumCallNums.add("Current Periodicals");
+		alphaNumCallNums.add("FILM");
+		alphaNumCallNums.add("MICROFICHE");
+		alphaNumCallNums.add("MICROCARD");
+		alphaNumCallNums.add("Electronic Book");
+		alphaNumCallNums.add("Electronic book");
+
+		alphaNumCallNumPrefixes.add("DISS");
+		alphaNumCallNumPrefixes.add("THESIS");
+		alphaNumCallNumPrefixes.add("SC Asteroid");
+		alphaNumCallNumPrefixes.add("SC ALS");
+		alphaNumCallNumPrefixes.add("SC B878");
+		alphaNumCallNumPrefixes.add("SC Bas");
+		alphaNumCallNumPrefixes.add("SC Bay");
+		alphaNumCallNumPrefixes.add("SC Berman");
+		alphaNumCallNumPrefixes.add("SC Bir");
+		alphaNumCallNumPrefixes.add("SC CD");
+		alphaNumCallNumPrefixes.add("SC Col");
+		alphaNumCallNumPrefixes.add("SC Cowper");
+		alphaNumCallNumPrefixes.add("SC FF");
+		alphaNumCallNumPrefixes.add("SC FI");
+		alphaNumCallNumPrefixes.add("SC Flat case");
+		alphaNumCallNumPrefixes.add("SC FR xxx");
+		alphaNumCallNumPrefixes.add("SC GI"); 
+		alphaNumCallNumPrefixes.add("SC GSP 2SER");                                                                                                                                                                                                                                                          
+		alphaNumCallNumPrefixes.add("SC Hen");
+		alphaNumCallNumPrefixes.add("SC Hom");
+		alphaNumCallNumPrefixes.add("SC Ize");
+		alphaNumCallNumPrefixes.add("SC LEC");
+		alphaNumCallNumPrefixes.add("SC Lehigh Photos");
+		alphaNumCallNumPrefixes.add("SC LETTER");
+		alphaNumCallNumPrefixes.add("SC Letter DG");
+		alphaNumCallNumPrefixes.add("SC Linz");
+		alphaNumCallNumPrefixes.add("SC LPub");
+		alphaNumCallNumPrefixes.add("SC LSer");
+		alphaNumCallNumPrefixes.add("SC LUP");
+		alphaNumCallNumPrefixes.add("SC LVF");
+		alphaNumCallNumPrefixes.add("SC Min");
+		alphaNumCallNumPrefixes.add("SC MS");
+		alphaNumCallNumPrefixes.add("SC Pam");
+		alphaNumCallNumPrefixes.add("SC Photo");
+		alphaNumCallNumPrefixes.add("SC Stereo 001");
+		alphaNumCallNumPrefixes.add("SC Storage Office");
+		alphaNumCallNumPrefixes.add("SC T Galleria");
+		alphaNumCallNumPrefixes.add("SC T"); 
+		alphaNumCallNumPrefixes.add("SC TechPhoto");
+		alphaNumCallNumPrefixes.add("SC Text");
+		alphaNumCallNumPrefixes.add("SC Trx");
+		alphaNumCallNumPrefixes.add("SC TVF");
+		alphaNumCallNumPrefixes.add("SC VKm");
+		alphaNumCallNumPrefixes.add("SC Wyl");
 
 
-	    // We only ever use the ON_RESERVE status to mark items
-	    // that are on course reserve as ONHOLD
-	    // If an item isn't on course reserve, we derive its status
-	    // from other fields.  
-	    // "Flagged" I don't know what to do with at all.
+		// We only ever use the ON_RESERVE status to mark items
+		// that are on course reserve as ONHOLD
+		// If an item isn't on course reserve, we derive its status
+		// from other fields.  
+		// "Flagged" I don't know what to do with at all.
 		itemReservedStatusCodeMap = new HashMap<String, String>();
 		itemReservedStatusNameMap = new HashMap<String, String>();
 		//itemStatusCodeMap.put("NOT_ON_RES", "AVAILABLE");
@@ -290,22 +296,49 @@ public class LU_BuildInstance {
 	}
 
 	public LU_BuildInstance(String callNumbersFilename, String shelvingKeysFilename,
-							String itemNumbersFilename, String analyticsFilename,
-							String itemsFilename, String LocationsFileName,
-							String sfxExportFileName) {
-		this();
-		this.readSirsiFiles(callNumbersFilename, shelvingKeysFilename,
-							itemNumbersFilename, analyticsFilename,
-							itemsFilename);
-		this.readLehighData(LocationsFileName, sfxExportFileName);
+			String itemNumbersFilename, String analyticsFilename,
+			String itemsFilename, String LocationsFileName,
+			String sfxExportFileName) {
+		this(callNumbersFilename, shelvingKeysFilename, itemNumbersFilename, 
+			 analyticsFilename, itemsFilename, LocationsFileName,
+			 sfxExportFileName, LU_DBLoadInstances.ole_em, LU_DBLoadInstances.migration_em);
 	}
-	
+
 	public LU_BuildInstance(boolean stage, String callNumbersFilename, 
 			String shelvingKeysFilename, String boundWithsFilename,
 			String itemNumbersFilename, String analyticsFilename,
 			String itemsFilename, String LocationsFileName,
 			String sfxExportFileName) {
+		this(stage, callNumbersFilename, shelvingKeysFilename, boundWithsFilename,
+			 itemNumbersFilename, analyticsFilename, itemsFilename,
+			 LocationsFileName, sfxExportFileName, LU_DBLoadInstances.ole_em, LU_DBLoadInstances.migration_em);
+	}
+
+	public LU_BuildInstance(String callNumbersFilename, String shelvingKeysFilename,
+			String itemNumbersFilename, String analyticsFilename,
+			String itemsFilename, String LocationsFileName,
+			String sfxExportFileName,
+			EntityManager ole_em,
+			EntityManager migration_em) {
 		this();
+		this.ole_em = ole_em;
+		this.migration_em = migration_em;
+		this.readSirsiFiles(callNumbersFilename, shelvingKeysFilename,
+				itemNumbersFilename, analyticsFilename,
+				itemsFilename);
+		this.readLehighData(LocationsFileName, sfxExportFileName);
+	}
+
+	public LU_BuildInstance(boolean stage, String callNumbersFilename, 
+			String shelvingKeysFilename, String boundWithsFilename,
+			String itemNumbersFilename, String analyticsFilename,
+			String itemsFilename, String LocationsFileName,
+			String sfxExportFileName,
+			EntityManager ole_em,
+			EntityManager migration_em) {
+		this();
+		this.ole_em = ole_em;
+		this.migration_em = migration_em;
 		if ( stage ) {
 			this.stageSirsiFiles(callNumbersFilename, shelvingKeysFilename,
 					boundWithsFilename, itemNumbersFilename, analyticsFilename,
@@ -313,7 +346,6 @@ public class LU_BuildInstance {
 		}
 		this.readLehighData(LocationsFileName, sfxExportFileName);
 	}
-	
 	public void printHashMaps(int limit, PrintWriter output) {
 		int i = 0;
 		List<List<String>> callNumberStrings;
@@ -326,14 +358,14 @@ public class LU_BuildInstance {
 			LU_DBLoadInstances.Log(output, "Catalog key: " + catkey + ", number of callnumbers: " + callNumberStrings.size());
 			for ( List<String> callNumberStr : callNumberStrings ) {
 				LU_DBLoadInstances.Log(output, "Call number by catalog key " + catkey + ": " + 
-			                        	StringUtils.join(callNumberStr.toArray(), ","));
+						StringUtils.join(callNumberStr.toArray(), ","));
 			}
 			LU_DBLoadInstances.Log(output, "");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
 		}
-		
+
 		i = 0;
 		LU_DBLoadInstances.Log(output, "");
 		LU_DBLoadInstances.Log(output, "Call numbers by item number (actual call number) ...");
@@ -342,7 +374,7 @@ public class LU_BuildInstance {
 			LU_DBLoadInstances.Log(output, "Item number: " + itemnumber + ", number of callnumbers: " + callNumberStrings.size());
 			for ( List<String> callNumberStr : callNumberStrings ) {
 				LU_DBLoadInstances.Log(output, "Call number by itemnumber " + itemnumber + ": " + 
-			                        	StringUtils.join(callNumberStr.toArray(), ","));
+						StringUtils.join(callNumberStr.toArray(), ","));
 			}
 			LU_DBLoadInstances.Log(output, "");
 			i++;
@@ -358,7 +390,7 @@ public class LU_BuildInstance {
 			LU_DBLoadInstances.Log(output, "Catalog key: " + catkey + ", number of items: " + itemStrings.size());
 			for ( List<String> itemStr : itemStrings ) {
 				LU_DBLoadInstances.Log(output, "Item by catalog key " + catkey + ": " + 
-			                        	StringUtils.join(itemStr.toArray(), ","));
+						StringUtils.join(itemStr.toArray(), ","));
 			}
 			LU_DBLoadInstances.Log(output, "");
 			i++;
@@ -374,16 +406,16 @@ public class LU_BuildInstance {
 			LU_DBLoadInstances.Log(output, "Item ID: " + itemID + ", number of items: " + itemStrings.size());
 			for ( List<String> itemStr : itemStrings ) {
 				LU_DBLoadInstances.Log(output, "Item by ID " + itemID + ": " + 
-			                        	StringUtils.join(itemStr.toArray(), ","));
+						StringUtils.join(itemStr.toArray(), ","));
 			}
 			LU_DBLoadInstances.Log(output, "");
 			i++;
 			if ( (limit > 0) && i >= limit ) 
 				break;
 		}		
-		
+
 	}
-	
+
 	public static String normalizeCallNumber(String callnum, String type) {
 		String normcn = "";
 		/*
@@ -399,8 +431,8 @@ public class LU_BuildInstance {
                     LU_DBLoadInstances.LOG_WARN);
 			normcn = callnum;						
 		}
-		*/
-		
+		 */
+
 
 
 		if ( type.toUpperCase().equals("SUDOC") ) {
@@ -426,13 +458,13 @@ public class LU_BuildInstance {
 				}
 			}
 			normcn = shelfKey.toString().trim();
-			*/
+			 */
 			/*
 			LU_DBLoadInstances.Log(System.out, "Callnumber type is SuDoc, not normalizing: " 
                     + callnum + ", type: " + type,
                     LU_DBLoadInstances.LOG_INFO);
 			normcn = callnum;
-			*/
+			 */
 			/*
 			 * 		
 			 * // Regular expression stolen from SuDoc.pm:
@@ -468,7 +500,7 @@ public class LU_BuildInstance {
 				//m.replaceAll(String.format(format, Integer.parseInt("5")));
 				int index = 0;
 				while ( m.find(index) ) {
-					
+
 					int num = Integer.parseInt(m.group(1));
 					String repl = String.format(format, num);
 					System.out.println("Normalizing sudoc, matching group: " + m.group(1) + ", replacing with " + repl);
@@ -476,18 +508,18 @@ public class LU_BuildInstance {
 					normcn = m.replaceFirst(String.format(format, num));
 					m = p.matcher(normcn);
 					System.out.println("String is now: " + normcn);
-					
+
 				}
 				//normcn = normcn.replaceAll("\\b(\\d+)\\b", "$1");
-				
+
 				normcn = normcn.replaceAll("\\s", "_");
-				
+
 			} else {
 				LU_DBLoadInstances.Log(System.out, "SuDoc callnumber didn't match pattern: " + callnum,
 									   LU_DBLoadInstances.LOG_WARN);
 				normcn = callnum;
 			}
-			*/
+			 */
 		} else if ( type.toUpperCase().equals("LCC") ) {
 			//LCCallNumber lcc_num = new LCCallNumber(callnum);
 			//normcn = lcc_num.getShelfKey();
@@ -495,15 +527,15 @@ public class LU_BuildInstance {
 				normcn = CallNumUtils.getLCShelfkey(callnum, null);
 			} else {
 				LU_DBLoadInstances.Log(System.out, "Callnumber is not valid LCC, not normalizing: " 
-                        + callnum + ", type: " + type,
-                        LU_DBLoadInstances.LOG_WARN);
+						+ callnum + ", type: " + type,
+						LU_DBLoadInstances.LOG_WARN);
 				normcn = callnum;			
 			}
 		} else if ( type.toUpperCase().equals("DDC") ) {
 			//DeweyCallNumber ddc_num = new DeweyCallNumber(callnum);
 			//normcn = ddc_num.getShelfKey();
 			if ( CallNumUtils.isValidDewey(callnum) ||
-				 CallNumUtils.isValidDeweyWithCutter(callnum) ) {
+					CallNumUtils.isValidDeweyWithCutter(callnum) ) {
 				normcn = CallNumUtils.getDeweyShelfKey(callnum);
 			} else {
 				LU_DBLoadInstances.Log(System.out, "Callnumber is not valid DDC, not normalizing: " 
@@ -517,10 +549,10 @@ public class LU_BuildInstance {
 					LU_DBLoadInstances.LOG_WARN);
 			normcn = callnum;			
 		}
-		
+
 		return normcn;
 	}
-	
+
 	public static String computeISBN10CheckDigit(String isbn) {
 		int digit = 0;
 		for ( int i = 0; i < 9; i++ ) {
@@ -533,7 +565,7 @@ public class LU_BuildInstance {
 			return Integer.toString(digit);
 		}
 	}
-	
+
 	public static String formatISBNString(String isbn) {
 		String newisbn = isbn;
 		Matcher m;
@@ -576,16 +608,19 @@ public class LU_BuildInstance {
 		}
 		return newisbn;
 	}
-	
+
 	public static String formatTitleControlNumber(String tcn) {
 		//tcn = tcn.replaceAll("(Sirsi)", "");
 		if ( tcn != null ) { 
 			LU_DBLoadInstances.Log(System.out, "Formatting title control number: " + tcn,
 					LU_DBLoadInstances.LOG_DEBUG);
-			tcn = tcn.trim();
+			//tcn = tcn.trim();
+			// We want to replace internal spaces too
+			tcn = tcn.replaceAll("\\s", "");
 			if ( tcn.length() >= 3 ) {
-				String pref = tcn.substring(0, 3);
-				String rest = tcn.substring(3);
+				String pref = tcn.substring(0, 3).trim();
+				String rest = tcn.substring(3).trim();
+				//if ( tcn.substring(0, 1).equals("o") ) {
 				if ( pref.equals("ocm") ||
 						pref.equals("ocn") ) {
 					tcn = "(OCoLC)" + StringUtils.leftPad(rest, 8, "0");
@@ -603,12 +638,12 @@ public class LU_BuildInstance {
 			LU_DBLoadInstances.Log(System.out, "Formatted to: " + tcn,
 					LU_DBLoadInstances.LOG_DEBUG);
 		} else {
-			LU_DBLoadInstances.Log(System.out, "Not formatting null  title control number",
+			LU_DBLoadInstances.Log(System.out, "Not formatting null title control number",
 					LU_DBLoadInstances.LOG_DEBUG);
 		}
 		return tcn;
 	}
-	
+
 	// Returns the index in the record's collection of fields of the first
 	// field with the tag in the "field" parameter, or if there aren't any instances
 	// of that field, then the index of the first field that is lexicographically
@@ -621,82 +656,111 @@ public class LU_BuildInstance {
 		i = 0;
 		while ( ( i < fields.size() ) &&
 				!( (none && (fields.get(i).getTag().compareTo(field) > 0 ) ) ||		
-			        fields.get(i).getTag().equals(field) ) ) {
+						fields.get(i).getTag().equals(field) ) ) {
 			i++;
 		}
 		return i;
 	}
-	
+
 	// Subfields with tag "?" and data "UNAUTHORIZED" appear all over 
 	// in Sirsi's bib export.  OLE complains about them, so we remove
 	// them all here.
 	public static void removeUnauthorizedFields(Record record) {
 		List<DataField> datafields = record.getDataFields();
-		Subfield s;
 		for ( DataField df : datafields ) {
-			do {
-				s = df.getSubfield('?');
-				if ( s != null && s.getData().trim().equals("UNAUTHORIZED") ) {
+			List<Subfield> subfields = df.getSubfields('?');
+			for ( Subfield s : subfields ) {
+				if ( s.getCode() == '?' &&
+						s.getData().trim().equals("UNAUTHORIZED") ) {
 					df.removeSubfield(s);
 				}
-			} while ( s!= null );
+			}
 		}
 	}
-	
-	public static void checkTitleControlNumbers(Record record, String titleControlNumber) {
-	    MarcFactory factory = MarcFactory.newInstance();
-	    int first035 = getFirstFieldIndex(record, "035");
-	    boolean oclctcnfound = false;
-	    List<VariableField> controlnumbers = record.getVariableFields("035");
-	    String tcnPrefix = null, tcnNum = null;
-	    Matcher m;
-	    List<String> existingTCNs = new ArrayList<String>();
-	    //Map<String, List<String>> subfields;
-	    DataField newtcn;
-	    String oclcnum = "";
-	    String sirsinum = "";
-	    int oclcnumindex = 0, sirsinumindex = 0;
-	    if ( titleControlNumber != null && titleControlNumber.length() > 3 ) {
-	    	tcnPrefix = titleControlNumber.substring(0, 3);
-	    	tcnNum = titleControlNumber.substring(3);
-	    	// No 035's, add the titleControlNumber
-	    	LU_DBLoadInstances.Log(System.out, "Adding title control number at index " + first035, LU_DBLoadInstances.LOG_DEBUG);
-	    	newtcn = factory.newDataField("035", ' ', ' ');
-	    	titleControlNumber = formatTitleControlNumber(titleControlNumber);
-	    	newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
-	    	record.getDataFields().add(first035, newtcn);
-	    	//existingTCNs.add(newtcn.toString().trim());
-	    	oclctcnfound = ( tcnPrefix.equals("ocm") || tcnPrefix.equals("ocn") );
-	    	if ( oclctcnfound ) {
-	    		oclcnum = tcnNum;
-	    	}
-	    }
-	    // There could be multiple 035 fields.  One of them may already be in the form "(OCoLC)<number>"
-	    // If so, swap that one in to be first.
-	    // If there isn't one like that, but there is one of the form 
-	    // (\(.*\))\s*?o(\d+)
-	    // Then make that one first and change it to be
-	    // (OCoLC)$2
-	    // First we'll look for one that starts with (OCoLC)
-	    
-	    for ( int i = 0; i < record.getDataFields().size(); i++ ) {
-	    	DataField tcn_df = record.getDataFields().get(i); 
-	    	if ( tcn_df.getTag().equals("035")) {
-	    		if ( existingTCNs.contains(tcn_df.toString().trim()) ) {
-	    			LU_DBLoadInstances.Log(System.out, "Removing 035 with only duplicate TCN data " + 
-	    					tcn_df.toString().trim() + " at index " + i, 
-	    					LU_DBLoadInstances.LOG_DEBUG);
-	    			record.getDataFields().remove(i);
-	    			i--; // Everything past this in the array has been left-shifted one now, so we decrement i
-	    			continue;
-	    		} else {
-	    			existingTCNs.add(tcn_df.toString().trim());
-	    			LU_DBLoadInstances.Log(System.out, "Added data to existing TCNs: " + tcn_df.toString(),
-	    					LU_DBLoadInstances.LOG_DEBUG);
 
+	public static void change003(Record record) {
+		List<ControlField> controlfields = new ArrayList<ControlField>();
+		controlfields.addAll(record.getControlFields());
+		MarcFactory factory = MarcFactory.newInstance();
+		for ( ControlField cf : controlfields ) {
+			if ( cf.getTag().equals("003") && cf.getData().trim().equals("SIRSI") ) {
+				record.removeVariableField(cf);
+				ControlField newcf = factory.newControlField();
+				newcf.setTag("003");
+				//newcf.setData("OLE");
+				newcf.setData("PBL");
+				record.addVariableField(newcf);
+				break;
+			}
+		}
+	}
+
+	public static void checkTitleControlNumbers(Record record, String titleControlNumber) {
+		MarcFactory factory = MarcFactory.newInstance();
+		int first035 = getFirstFieldIndex(record, "035");
+		boolean oclctcnfound = false;
+		List<VariableField> controlnumbers = record.getVariableFields("035");
+		String tcnPrefix = null, tcnNum = null;
+		Matcher m;
+		List<String> existingTCNs = new ArrayList<String>();
+		//Map<String, List<String>> subfields;
+		DataField newtcn;
+		String oclcnum = "";
+		String sirsinum = "";
+		int oclcnumindex = 0, sirsinumindex = 0;
+		if ( titleControlNumber != null && titleControlNumber.length() > 3 ) {
+			tcnPrefix = titleControlNumber.substring(0, 3);
+			tcnNum = titleControlNumber.substring(3);
+			// No 035's, add the titleControlNumber
+			LU_DBLoadInstances.Log(System.out, "Adding title control number at index " + first035, LU_DBLoadInstances.LOG_DEBUG);
+			newtcn = factory.newDataField("035", ' ', ' ');
+			titleControlNumber = formatTitleControlNumber(titleControlNumber);
+			newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
+			record.getDataFields().add(first035, newtcn);
+			//existingTCNs.add(newtcn.toString().trim());
+			oclctcnfound = ( tcnPrefix.equals("ocm") || tcnPrefix.equals("ocn") );
+			if ( oclctcnfound ) {
+				oclcnum = tcnNum;
+			}
+		}
+		// There could be multiple 035 fields.  One of them may already be in the form "(OCoLC)<number>"
+		// If so, swap that one in to be first.
+		// If there isn't one like that, but there is one of the form 
+		// (\(.*\))\s*?o(\d+)
+		// Then make that one first and change it to be
+		// (OCoLC)$2
+		// First we'll look for one that starts with (OCoLC)
+
+		for ( int i = 0; i < record.getDataFields().size(); i++ ) {
+			DataField tcn_df = record.getDataFields().get(i); 
+			if ( tcn_df.getTag().equals("035")) {
+				Subfield tcn = tcn_df.getSubfield('a');
+				if ( tcn == null ) {
+					tcn = tcn_df.getSubfield('z');
+				}
+				if ( tcn != null ) {
+					String tcnstr = tcn.getData();
+					// Replace all spaces, including internal ones, in the TCN string
+					// Modifying TCN like this modifies the record
+					tcnstr = LU_BuildInstance.formatTitleControlNumber(tcnstr);
+					tcn.setData(tcnstr);
+					if ( existingTCNs.contains(tcn_df.toString().trim()) ) {
+						LU_DBLoadInstances.Log(System.out, "Removing 035 with only duplicate TCN data " + 
+								tcn_df.toString().trim() + " at index " + i + " from bib id " + record.getControlNumber(), 
+								LU_DBLoadInstances.LOG_DEBUG);
+						record.getDataFields().remove(i);
+						i--; // Everything past this in the array has been left-shifted one now, so we decrement i
+						continue;
+					} else {
+						existingTCNs.add(tcn_df.toString().trim());
+						LU_DBLoadInstances.Log(System.out, "Added data to existing TCNs: " + tcn_df.toString(),
+								LU_DBLoadInstances.LOG_DEBUG);
+
+						/*
 	    			List<Subfield> subfields = tcn_df.getSubfields('a');
 	    			LU_DBLoadInstances.Log(System.out, "TCN found at index " + i, 
 	    					LU_DBLoadInstances.LOG_DEBUG);
+
 	    			if ( (oclcnum.length() > 0 || sirsinum.length() > 0) ) {
 	    				if ( tcn_df.getSubfields().size() == 1 ) {
 	    					// We already found a TCN for this record, and this 035 only has
@@ -714,6 +778,7 @@ public class LU_BuildInstance {
 	    					}
 	    				}
 	    			}
+
 	    			for ( Subfield sub : subfields ) {
 	    				String data = sub.getData().trim();
 	    				m = oclctcnpattern.matcher(data);
@@ -730,52 +795,54 @@ public class LU_BuildInstance {
 	    					sirsinumindex = i;
 	    				}
 	    			}
-	    		}
-	    	} else {
-	    		LU_DBLoadInstances.Log(System.out, "Skipping data field with tag " + tcn_df.getTag(), 
-	    				LU_DBLoadInstances.LOG_DEBUG);
-	    	}
-	    }
-	    LU_DBLoadInstances.Log(System.out, "Existing OCLC num: " + oclcnum + " at index " + oclcnumindex + 
-	    		", existing sirsi num: " + sirsinum + " at index " + sirsinumindex, 
-	    		LU_DBLoadInstances.LOG_DEBUG);
-	    if ( oclcnum.length() > 0 ) {
-	    	// Find and remove the OCoLC 035 entry, and insert it to be the first 035 entry
-	    	if ( sirsinum.length() > 0 && sirsinum.equals(oclcnum)) {
-	    		// There's an identical Sirsi number, remove it
-	    		if ( oclcnumindex > sirsinumindex ) {
-	    			oclcnumindex--;
-	    		}
-	    		record.getDataFields().remove(sirsinumindex);
-	    	}
-	    	LU_DBLoadInstances.Log(System.out, "Moving OCLC control number to index " + first035, LU_DBLoadInstances.LOG_DEBUG);
-	    	DataField oclcnumfield = record.getDataFields().get(oclcnumindex);
-	    	record.getDataFields().remove(oclcnumindex);
-	    	record.getDataFields().add(first035, oclcnumfield);
-	    } else if ( sirsinum.length() > 0 && titleControlNumber != null ) {
-	    	LU_DBLoadInstances.Log(System.out, "Existing sirsi num: " + sirsinum + " at index " + sirsinumindex, 
-	    			LU_DBLoadInstances.LOG_DEBUG);
+						 */
+					}
+				}
+			} else {
+				LU_DBLoadInstances.Log(System.out, "Skipping data field with tag " + tcn_df.getTag(), 
+						LU_DBLoadInstances.LOG_DEBUG);
+			}
+		}
+		LU_DBLoadInstances.Log(System.out, "Existing OCLC num: " + oclcnum + " at index " + oclcnumindex + 
+				", existing sirsi num: " + sirsinum + " at index " + sirsinumindex, 
+				LU_DBLoadInstances.LOG_DEBUG);
+		if ( oclcnum.length() > 0 ) {
+			// Find and remove the OCoLC 035 entry, and insert it to be the first 035 entry
+			if ( sirsinum.length() > 0 && sirsinum.equals(oclcnum)) {
+				// There's an identical Sirsi number, remove it
+				if ( oclcnumindex > sirsinumindex ) {
+					oclcnumindex--;
+				}
+				record.getDataFields().remove(sirsinumindex);
+			}
+			LU_DBLoadInstances.Log(System.out, "Moving OCLC control number to index " + first035, LU_DBLoadInstances.LOG_DEBUG);
+			DataField oclcnumfield = record.getDataFields().get(oclcnumindex);
+			record.getDataFields().remove(oclcnumindex);
+			record.getDataFields().add(first035, oclcnumfield);
+		} else if ( sirsinum.length() > 0 && titleControlNumber != null ) {
+			LU_DBLoadInstances.Log(System.out, "Existing sirsi num: " + sirsinum + " at index " + sirsinumindex, 
+					LU_DBLoadInstances.LOG_DEBUG);
 
-	    	// No OCLC number, but there is a Sirsi number.  Remove it
-	    	record.getDataFields().remove(sirsinumindex);
+			// No OCLC number, but there is a Sirsi number.  Remove it
+			record.getDataFields().remove(sirsinumindex);
 
-	    	// Then add the formatted 035 from the Sirsi number
-	    	newtcn = factory.newDataField("035", ' ', ' ');
-	    	titleControlNumber = formatTitleControlNumber(sirsinum);
-	    	newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
-	    	record.getDataFields().add(first035, newtcn);
-	    } else if ( titleControlNumber != null ) {
-	    	LU_DBLoadInstances.Log(System.out, "No existing OCLC or Sirsi TCN, adding new one at index " + first035, 
-	    			LU_DBLoadInstances.LOG_DEBUG);
-	    	newtcn = factory.newDataField("035", ' ', ' ');
-	    	titleControlNumber = formatTitleControlNumber(titleControlNumber);
-	    	newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
-	    	record.getDataFields().add(first035, newtcn);
+			// Then add the formatted 035 from the Sirsi number
+			newtcn = factory.newDataField("035", ' ', ' ');
+			titleControlNumber = formatTitleControlNumber(sirsinum);
+			newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
+			record.getDataFields().add(first035, newtcn);
+		} else if ( titleControlNumber != null ) {
+			LU_DBLoadInstances.Log(System.out, "No existing OCLC or Sirsi TCN, adding new one at index " + first035, 
+					LU_DBLoadInstances.LOG_DEBUG);
+			newtcn = factory.newDataField("035", ' ', ' ');
+			titleControlNumber = formatTitleControlNumber(titleControlNumber);
+			newtcn.addSubfield(factory.newSubfield('a', titleControlNumber));
+			record.getDataFields().add(first035, newtcn);
 
-	    }
-	    
+		}
+
 	}
-	
+
 	public static void append999fields(Record destrec, Record sourcerec) {
 		MarcFactory factory = MarcFactory.newInstance();
 		List<VariableField> source999s = sourcerec.getVariableFields("999");
@@ -787,9 +854,9 @@ public class LU_BuildInstance {
 			//destrec.getDataFields().add(source999);
 		}
 	}
-	
+
 	public static void fixISBN(Record record) {
-	    MarcFactory factory = MarcFactory.newInstance();
+		MarcFactory factory = MarcFactory.newInstance();
 		List<VariableField> isbns = record.getVariableFields("020");
 		Map<String, List<String>> subfields;		
 		LU_DBLoadInstances.Log(System.out, "Before modification, record is: " + record.toString(), LU_DBLoadInstances.LOG_DEBUG);
@@ -799,7 +866,7 @@ public class LU_BuildInstance {
 			// with a single "$a" subfield, and all other fields identical
 			if ( subfields.get("$a") != null && subfields.get("$a").size() > 1 ) {
 				LU_DBLoadInstances.Log(System.out, "Multiple a subfields, removing the isbn record and creating multiple 020s instead", 
-						               LU_DBLoadInstances.LOG_DEBUG);
+						LU_DBLoadInstances.LOG_DEBUG);
 				record.removeVariableField(isbnentry);
 				for ( String subfieldaval : subfields.get("$a") ) {
 					//ControlFieldImpl newisbn = new ControlFieldImpl();
@@ -852,13 +919,13 @@ public class LU_BuildInstance {
 					record.addVariableField(newisbn);
 				}
 				LU_DBLoadInstances.Log(System.out, "After formatting ISBN strings, record is now: " + record.toString(),
-						               LU_DBLoadInstances.LOG_DEBUG);
+						LU_DBLoadInstances.LOG_DEBUG);
 			} else {
 				LU_DBLoadInstances.Log(System.out, "No $a subfields to format in record's ISBN: " + record.toString(), 
-						               LU_DBLoadInstances.LOG_DEBUG);
+						LU_DBLoadInstances.LOG_DEBUG);
 			}
 		}
-				
+
 	}
 	
 	public void readLehighData(String locationsFilename, String sfxExportFileName) {
@@ -867,8 +934,8 @@ public class LU_BuildInstance {
 		String pieces[] = null, headers[] = null;
 		int curr = 0, limit = -1;
 		try {
-			
-			TypedQuery<Location> query = LU_DBLoadInstances.ole_em.createQuery("select l from Location l", Location.class);
+
+			TypedQuery<Location> query = ole_em.createQuery("select l from Location l", Location.class);
 			List<Location> locations = query.getResultList();
 			for ( Location loc : locations ) {
 				if ( loc.getLevel().getCode().equals("SHELVING") ) {
@@ -908,8 +975,8 @@ public class LU_BuildInstance {
 					this.collectionCodeToLibraryCode.put(pieces[1], pieces[3]);
 				}
 			}
-			*/
-			
+			 */
+
 			sfx_reader = new BufferedReader(new FileReader(sfxExportFileName));
 			line = sfx_reader.readLine();
 			headers = line.split("\t");
@@ -957,7 +1024,7 @@ public class LU_BuildInstance {
 						 pieces[4].length() == 0 ) {
 						sfx_no_matching_data++;
 					}
-					*/
+					 */
 				}
 			}
 		} catch(Exception e) {
@@ -965,247 +1032,249 @@ public class LU_BuildInstance {
 			e.printStackTrace(System.err);
 		}
 	}
-	
+
 	public void stageSirsiFiles(String callNumbersFilename, String shelvingKeysFilename, 
-								String boundWithsFileName,  String itemNumbersFilename, 
-								String analyticsFilename,   String itemsFilename) {
+			String boundWithsFileName,  String itemNumbersFilename, 
+			String analyticsFilename,   String itemsFilename) {
 		this.stageSirsiFiles(callNumbersFilename, shelvingKeysFilename, boundWithsFileName,
-	            itemNumbersFilename, analyticsFilename, itemsFilename, -1);
+				itemNumbersFilename, analyticsFilename, itemsFilename, -1);
 	}
-	
+
 	public void stageSirsiFiles(String callNumbersFilename, String shelvingKeysFilename,
-			   					String boundWithsFileName, String itemNumbersFilename, 
-			   					String analyticsFilename,  String itemsFilename, int limit) {
+			String boundWithsFileName, String itemNumbersFilename, 
+			String analyticsFilename,  String itemsFilename, int limit) {
 		BufferedReader callNumbersReader, boundWithsReader, shelvingKeysReader, 
-		               itemNumbersReader, analyticsReader, itemsReader;
+		itemNumbersReader, analyticsReader, itemsReader;
 		try {
 			DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        	LU_DBLoadInstances.Log("Clearing out callnumber and item tables in migration database ...");
-			EntityTransaction migration_transaction = LU_DBLoadInstances.migration_em.getTransaction();
+			LU_DBLoadInstances.Log("Clearing out callnumber and item tables in migration database ...");
+			EntityTransaction migration_transaction = migration_em.getTransaction();
 			migration_transaction.begin();
-			javax.persistence.Query q = LU_DBLoadInstances.migration_em.createNativeQuery("DELETE FROM callnumbers");
+			javax.persistence.Query q = migration_em.createNativeQuery("DELETE FROM callnumbers");
 			q.executeUpdate();
-			q = LU_DBLoadInstances.migration_em.createNativeQuery("DELETE FROM items");
+			q = migration_em.createNativeQuery("DELETE FROM items");
 			q.executeUpdate();
 			migration_transaction.commit();
-			
+
 			File callNumbersFile = new File(callNumbersFilename);
-        	callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
-        	boundWithsReader = new BufferedReader(new FileReader(boundWithsFileName));
-        	shelvingKeysReader = new BufferedReader(new FileReader(shelvingKeysFilename));
-        	itemNumbersReader = new BufferedReader(new FileReader(itemNumbersFilename));
-        	analyticsReader = new BufferedReader(new FileReader(analyticsFilename));
-        	itemsReader = new BufferedReader(new FileReader(itemsFilename));
-        	LU_DBLoadInstances.Log("Staging call number records in migration database, time is: " + df.format(Calendar.getInstance().getTime()));
-        	//String workingdir = "/mnt/bigdrive/bibdata/sirsidump/20131211";
-        	String workingdir = callNumbersFile.getParent();
-        	PrintWriter writer = new PrintWriter(workingdir + "/testoutput.txt", "UTF-8");
-        	int curr = 0, increment = 50000;
-        	SirsiCallNumber scn;
-        	
-        	migration_transaction.begin();
-        	while(callNumbersReader.ready() && (limit < 0 || curr < limit)) {
-        		// There should be the same number of lines in all 4 files containing callnum data,
-        		// and they should all be sorted the same way to line 1 goes with line 1 goes with line 1, etc.
-        		// I'm building those files myself, so I can guarantee it, heh
-        		// With that in mind, we'll just read lines from all 4 files at once
-        		scn = new SirsiCallNumber();
-        		String line = callNumbersReader.readLine();
-        		String shelvingKeysLine = shelvingKeysReader.readLine();
-        		String itemNumbersLine = itemNumbersReader.readLine();
-        		writer.println("Item Numbers Line: " + itemNumbersLine);
-        		String analyticsLine = analyticsReader.readLine(); 
-        		String fields[] = line.split("\\|");
-        		// Can't just assign the return value of Arrays.asList(fields) to callNumberFields --
-        		// that method returns an immutable, fixed-size list
-        		ArrayList<String> callNumberFields = new ArrayList<String>();
-        		callNumberFields.addAll(Arrays.asList(fields));
-        		
-        		scn.setCat_key(Integer.parseInt(fields[0]));
-        		scn.setCallnum_key(Integer.parseInt(fields[1]));
-        		scn.setAnalytic_pos(Integer.parseInt(fields[2]));
-        		scn.setLevel(fields[3]);
-        		scn.setNum_copies(Integer.parseInt(fields[4]));
-        		scn.setNum_call_holds(Integer.parseInt(fields[5]));
-        		scn.setClassification(fields[6]);
-        		scn.setNum_reserve_control_recs(Integer.parseInt(fields[7]));
-        		scn.setNum_academic_reserves(Integer.parseInt(fields[8]));
-        		scn.setLibrary(fields[9]);
-        		scn.setNum_visible_copies(Integer.parseInt(fields[10]));
-        		scn.setShadowed(fields[11]);
-        		
-        		List<String> tmpfields;
-        		String tmpStr;
-        		// Now add the shelving key, item number, and analytics data to callNumberFields
-        		// The shelving keys may also contain pipes, so they are exported into their own file
-        		// The first two fields on each line of that file are the call number 
-        		// and catalog keys, so we skip them, then add the rest onto the end
-        		// of the callNumberFields array.
-           		fields = shelvingKeysLine.split("\\|");
-        		tmpfields = Arrays.asList(fields).subList(2, fields.length);
-        		tmpStr = StringUtils.join(tmpfields, "|");
-        		scn.setShelving_key(tmpStr.trim());
-        		
-        		// Now we repeat that process for the itemNumbersLine and analyticsLine
-        		fields = itemNumbersLine.split("\\|");
-        		// I found a few callnumbers which contained 4 fields
-        		// in the output from from selcallnum -iS -oKD.  This 
-        		// should have only been 3 fields, and it turns out this
-        		// was because the item number field, output by -D from selcallnum,
-        		// can have | characters in it.  Sirsi's own MARC export of the catalog
-        		// didn't include the info after the pipe in the "call number" subfield
-        		// of the 999 field for an item -- it went in subfield v.  So, I'm stripping
-        		// it off here by only using fields[2] as the callnumber.
-        		//tmpfields = Arrays.asList(fields).subList(2, fields.length);
-        		tmpfields = Arrays.asList(fields).subList(2, 3);
-        		tmpStr = StringUtils.join(tmpfields, "|");
-        		scn.setCall_number(tmpStr.trim());
+			callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
+			boundWithsReader = new BufferedReader(new FileReader(boundWithsFileName));
+			shelvingKeysReader = new BufferedReader(new FileReader(shelvingKeysFilename));
+			itemNumbersReader = new BufferedReader(new FileReader(itemNumbersFilename));
+			analyticsReader = new BufferedReader(new FileReader(analyticsFilename));
+			itemsReader = new BufferedReader(new FileReader(itemsFilename));
+			LU_DBLoadInstances.Log("Staging call number records in migration database, time is: " + df.format(Calendar.getInstance().getTime()));
+			//String workingdir = "/mnt/bigdrive/bibdata/sirsidump/20131211";
+			String workingdir = callNumbersFile.getParent();
+			PrintWriter writer = new PrintWriter(workingdir + "/testoutput.txt", "UTF-8");
+			int curr = 0, increment = 50000;
+			SirsiCallNumber scn;
 
-        		fields = analyticsLine.split("\\|");
-        		tmpfields = Arrays.asList(fields).subList(2, fields.length);
-        		tmpStr = StringUtils.join(tmpfields, "|");
-        		scn.setAnalytics(tmpStr.trim());
-        		
-        		LU_DBLoadInstances.migration_em.persist(scn);
- 
-        		if ( ++curr % increment == 0 ) {
-            		migration_transaction.commit();
-					LU_DBLoadInstances.migration_em.clear(); // TODO: testing this to see if it fixes memory problems
-        			LU_DBLoadInstances.Log(System.out, "Staged call number " + curr, LU_DBLoadInstances.LOG_INFO);
-        			migration_transaction.begin();
-        		}
-        	}
-    		migration_transaction.commit();
+			migration_transaction.begin();
+			while(callNumbersReader.ready() && (limit < 0 || curr < limit)) {
+				// There should be the same number of lines in all 4 files containing callnum data,
+				// and they should all be sorted the same way to line 1 goes with line 1 goes with line 1, etc.
+				// I'm building those files myself, so I can guarantee it, heh
+				// With that in mind, we'll just read lines from all 4 files at once
+				scn = new SirsiCallNumber();
+				String line = callNumbersReader.readLine();
+				String shelvingKeysLine = shelvingKeysReader.readLine();
+				String itemNumbersLine = itemNumbersReader.readLine();
+				writer.println("Item Numbers Line: " + itemNumbersLine);
+				String analyticsLine = analyticsReader.readLine(); 
+				String fields[] = line.split("\\|");
+				// Can't just assign the return value of Arrays.asList(fields) to callNumberFields --
+				// that method returns an immutable, fixed-size list
+				ArrayList<String> callNumberFields = new ArrayList<String>();
+				callNumberFields.addAll(Arrays.asList(fields));
 
-        	LU_DBLoadInstances.Log("Staging bound-withs in migration database, time is: " + df.format(Calendar.getInstance().getTime()));
-        	curr = 0;
-        	int boundwith_increment = 1000;
-        	migration_transaction.begin();
-        	// boundwiths exported with the command 
-        	// selbound -oKPcdy > boundwiths.data
-        	// The fields are:
-        	// 0 : child record's catalog key
-        	// 1 : child record's callnum key
-        	// 2 : parent record's catalog key
-        	// 3 : parent record's callnum key
-        	// 4 : user access rights of creator, values like "CAT", "CATSERIALS", "ACQ"
-        	// 5 : create date
-        	// 6 : library
-        	while ( boundWithsReader.ready() ) {
-        		String boundWithsLine = boundWithsReader.readLine();
-        		String[] fields = boundWithsLine.split("\\|");
-        		if ( fields[0].length() == 0 || fields[1].length() == 0 ) {
-                	LU_DBLoadInstances.Log(System.err, "No cat key or call num key for boundwith: " + boundWithsLine,
-                						   LU_DBLoadInstances.LOG_WARN);
-                	
-        		} else {
-        			//System.err.println("Selecting, fields[0] = " + fields[0] + ", fields[1] = " + fields[1] + ", ...");
-        			SirsiCallNumberID scnid = new SirsiCallNumberID(Integer.parseInt(fields[0]), Integer.parseInt(fields[1]));
-        			scn = LU_DBLoadInstances.migration_em.find(SirsiCallNumber.class, scnid);
-        			//TypedQuery<SirsiCallNumber> query = LU_DBLoadInstances.migration_em.createQuery("SELECT s FROM SirsiCallNumber s WHERE s.Id.cat_key=" + fields[0] + " and s.Id.callnum_key=" + fields[1], SirsiCallNumber.class);
-        			//query.setHint("org.hibernate.cacheable", true);
-        			//List<SirsiCallNumber> results = query.getResultList();
-        			if ( scn != null ) {
-        				//scn = results.get(0);
-        				scn.setParent_cat_key(Integer.parseInt(fields[2]));
-        				scn.setParent_callnum_key(Integer.parseInt(fields[3]));
-        				scn.setCreator_access(fields[4]);
-        				scn.setBound_create_date(fields[5]);
-        				// "library" is always the same, "LEHIGH", and we already have that in the callnumber
-        				// record, so we ignore it.
-        				LU_DBLoadInstances.migration_em.persist(scn);
-        				//System.err.println("Persisting ...");
-                		if ( ++curr % boundwith_increment == 0 ) {
-                    		migration_transaction.commit();
-        					LU_DBLoadInstances.migration_em.clear(); // TODO: testing this to see if it fixes memory problems
-                			LU_DBLoadInstances.Log(System.out, "Staged call number " + curr, LU_DBLoadInstances.LOG_INFO);
-                			migration_transaction.begin();
-                		}
-        			}
-        		}	
-        	}
+				scn.setCat_key(Integer.parseInt(fields[0]));
+				scn.setCallnum_key(Integer.parseInt(fields[1]));
+				scn.setAnalytic_pos(Integer.parseInt(fields[2]));
+				scn.setLevel(fields[3]);
+				scn.setNum_copies(Integer.parseInt(fields[4]));
+				scn.setNum_call_holds(Integer.parseInt(fields[5]));
+				scn.setClassification(fields[6]);
+				scn.setNum_reserve_control_recs(Integer.parseInt(fields[7]));
+				scn.setNum_academic_reserves(Integer.parseInt(fields[8]));
+				scn.setLibrary(fields[9]);
+				scn.setNum_visible_copies(Integer.parseInt(fields[10]));
+				scn.setShadowed(fields[11]);
+
+				List<String> tmpfields;
+				String tmpStr;
+				// Now add the shelving key, item number, and analytics data to callNumberFields
+				// The shelving keys may also contain pipes, so they are exported into their own file
+				// The first two fields on each line of that file are the call number 
+				// and catalog keys, so we skip them, then add the rest onto the end
+				// of the callNumberFields array.
+				fields = shelvingKeysLine.split("\\|");
+				tmpfields = Arrays.asList(fields).subList(2, fields.length);
+				tmpStr = StringUtils.join(tmpfields, "|");
+				scn.setShelving_key(tmpStr.trim());
+
+				// Now we repeat that process for the itemNumbersLine and analyticsLine
+				fields = itemNumbersLine.split("\\|");
+				// I found a few callnumbers which contained 4 fields
+				// in the output from from selcallnum -iS -oKD.  This 
+				// should have only been 3 fields, and it turns out this
+				// was because the item number field, output by -D from selcallnum,
+				// can have | characters in it.  Sirsi's own MARC export of the catalog
+				// didn't include the info after the pipe in the "call number" subfield
+				// of the 999 field for an item -- it went in subfield v.  So, I'm stripping
+				// it off here by only using fields[2] as the callnumber.
+				//tmpfields = Arrays.asList(fields).subList(2, fields.length);
+				tmpfields = Arrays.asList(fields).subList(2, 3);
+				tmpStr = StringUtils.join(tmpfields, "|");
+				scn.setCall_number(tmpStr.trim());
+
+				fields = analyticsLine.split("\\|");
+				tmpfields = Arrays.asList(fields).subList(2, fields.length);
+				tmpStr = StringUtils.join(tmpfields, "|");
+				scn.setAnalytics(tmpStr.trim());
+
+				migration_em.persist(scn);
+
+				if ( ++curr % increment == 0 ) {
+					migration_transaction.commit();
+					migration_em.clear(); // TODO: testing this to see if it fixes memory problems
+					LU_DBLoadInstances.Log(System.out, "Staged call number " + curr, LU_DBLoadInstances.LOG_INFO);
+					migration_transaction.begin();
+				}
+			}
 			migration_transaction.commit();
 
-        	LU_DBLoadInstances.Log("Staging item records in migration database, time is: " + df.format(Calendar.getInstance().getTime()));
-        	curr = 0;
-        	increment = 25000;
-        	String line = "";
-        	//String fields[];
-        	List<String> itemNumberFields;
-        	//SirsiItem item;
-    		migration_transaction.begin();
-        	while(itemsReader.ready() && (limit < 0 || curr < limit)) {
-        		// Only one file to read from this time
-        		line = itemsReader.readLine();
-        		SirsiItem item = new SirsiItem();
-        		String[] fields = line.split("\\|");
-        		        		
-        		item.setCat_key(Integer.parseInt(fields[0]));
-        		item.setCallnum_key(Integer.parseInt(fields[1]));
-        		item.setItem_key(Integer.parseInt(fields[2]));
-        		item.setLast_used_date(fields[3]);
-        		item.setNum_bills(Integer.parseInt(fields[4]));
-        		item.setNum_charges(Integer.parseInt(fields[5]));
-        		item.setNum_total_charges(Integer.parseInt(fields[6]));
-        		item.setFirst_created_date(fields[7]);
-        		item.setNum_holds(Integer.parseInt(fields[8]));
-        		item.setHouse_charge(Integer.parseInt(fields[9]));
-        		item.setHome_location(fields[10]);
-        		item.setCurr_location(fields[11]);
-        		item.setLast_changed_date(fields[12]);
-        		item.setPermanent(fields[13]);
-        		item.setPrice(Integer.parseInt(fields[14]));
-        		item.setRes_type(Integer.parseInt(fields[15]));
-        		item.setLast_user_key(Integer.parseInt(fields[16]));
-        		item.setType(fields[17]);
-        		item.setRecirc_flag(fields[18]);
-        		item.setInventoried_date(fields[19]);
-        		item.setTimes_inventoried(Integer.parseInt(fields[20]));
-        		item.setLibrary(fields[21]);
-        		item.setHold_key(Integer.parseInt(fields[22]));
-        		item.setLast_discharged_date(fields[23]);
-        		item.setAccountability(fields[24]);
-        		item.setShadowed(fields[25]);
-        		item.setDistribution_key(fields[26]);
-        		item.setTransit_status(fields[27]);
-        		item.setReserve_status(fields[28]);
-        		item.setPieces(Integer.parseInt(fields[29]));
-        		item.setMedia_desk(fields[30]);
-        		// There is only this one item-line that has an empty extra
-        		// field in it for some reason.  
-        		if ( fields[32].trim().equals("737988-1001") ) {
-        			item.setBarcode(fields[32].trim());
-        			item.setNum_comments(Integer.parseInt(fields[33]));
-        		} else {
-        			item.setBarcode(fields[31].trim());
-        			item.setNum_comments(Integer.parseInt(fields[32]));
-        		}
-        	
-        		LU_DBLoadInstances.migration_em.persist(item);
+			LU_DBLoadInstances.Log("Staging bound-withs in migration database, time is: " + df.format(Calendar.getInstance().getTime()));
+			curr = 0;
+			int boundwith_increment = 1000;
+			migration_transaction.begin();
+			// boundwiths exported with the command 
+			// selbound -oKPcdy > boundwiths.data
+			// The fields are:
+			// 0 : child record's catalog key
+			// 1 : child record's callnum key
+			// 2 : parent record's catalog key
+			// 3 : parent record's callnum key
+			// 4 : user access rights of creator, values like "CAT", "CATSERIALS", "ACQ"
+			// 5 : create date
+			// 6 : library
+			while ( boundWithsReader.ready() ) {
+				String boundWithsLine = boundWithsReader.readLine();
+				String[] fields = boundWithsLine.split("\\|");
+				if ( fields[0].length() == 0 || fields[1].length() == 0 ) {
+					LU_DBLoadInstances.Log(System.err, "No cat key or call num key for boundwith: " + boundWithsLine,
+							LU_DBLoadInstances.LOG_WARN);
 
-        		if ( ++curr % increment == 0 ) {
-            		migration_transaction.commit();
-					LU_DBLoadInstances.migration_em.clear(); // TODO: testing this to see if it fixes memory problems
-        			LU_DBLoadInstances.Log(System.out, "On item number " + curr, LU_DBLoadInstances.LOG_INFO);
-        			migration_transaction.begin();
-        		}
-        		
-        	}
-        	LU_DBLoadInstances.Log("Done staging callnumbers and items in migration database, time is: " + df.format(Calendar.getInstance().getTime()));
+				} else {
+					//System.err.println("Selecting, fields[0] = " + fields[0] + ", fields[1] = " + fields[1] + ", ...");
+					SirsiCallNumberID scnid = new SirsiCallNumberID(Integer.parseInt(fields[0]), Integer.parseInt(fields[1]));
+					scn = migration_em.find(SirsiCallNumber.class, scnid);
+					//TypedQuery<SirsiCallNumber> query = migration_em.createQuery("SELECT s FROM SirsiCallNumber s WHERE s.Id.cat_key=" + fields[0] + " and s.Id.callnum_key=" + fields[1], SirsiCallNumber.class);
+					//query.setHint("org.hibernate.cacheable", true);
+					//List<SirsiCallNumber> results = query.getResultList();
+					if ( scn != null ) {
+						//scn = results.get(0);
+						scn.setParent_cat_key(Integer.parseInt(fields[2]));
+						scn.setParent_callnum_key(Integer.parseInt(fields[3]));
+						scn.setCreator_access(fields[4]);
+						scn.setBound_create_date(fields[5]);
+						// "library" is always the same, "LEHIGH", and we already have that in the callnumber
+						// record, so we ignore it.
+						migration_em.persist(scn);
+						//System.err.println("Persisting ...");
+						if ( ++curr % boundwith_increment == 0 ) {
+							migration_transaction.commit();
+							migration_em.clear(); // TODO: testing this to see if it fixes memory problems
+							LU_DBLoadInstances.Log(System.out, "Staged call number " + curr, LU_DBLoadInstances.LOG_INFO);
+							migration_transaction.begin();
+						}
+					}
+				}	
+			}
+			migration_transaction.commit();
+
+			LU_DBLoadInstances.Log("Staging item records in migration database, time is: " + df.format(Calendar.getInstance().getTime()));
+			curr = 0;
+			increment = 25000;
+			String line = "";
+			//String fields[];
+			List<String> itemNumberFields;
+			//SirsiItem item;
+			migration_transaction.begin();
+			while(itemsReader.ready() && (limit < 0 || curr < limit)) {
+				// Only one file to read from this time
+				line = itemsReader.readLine();
+				SirsiItem item = new SirsiItem();
+				String[] fields = line.split("\\|");
+
+				item.setCat_key(Integer.parseInt(fields[0]));
+				item.setCallnum_key(Integer.parseInt(fields[1]));
+				item.setItem_key(Integer.parseInt(fields[2]));
+				item.setLast_used_date(fields[3]);
+				item.setNum_bills(Integer.parseInt(fields[4]));
+				item.setNum_charges(Integer.parseInt(fields[5]));
+				item.setNum_total_charges(Integer.parseInt(fields[6]));
+				item.setFirst_created_date(fields[7]);
+				item.setNum_holds(Integer.parseInt(fields[8]));
+				item.setHouse_charge(Integer.parseInt(fields[9]));
+				item.setHome_location(fields[10]);
+				item.setCurr_location(fields[11]);
+				item.setLast_changed_date(fields[12]);
+				item.setPermanent(fields[13]);
+				item.setPrice(Integer.parseInt(fields[14]));
+				item.setRes_type(Integer.parseInt(fields[15]));
+				item.setLast_user_key(Integer.parseInt(fields[16]));
+				item.setType(fields[17]);
+				item.setRecirc_flag(fields[18]);
+				item.setInventoried_date(fields[19]);
+				item.setTimes_inventoried(Integer.parseInt(fields[20]));
+				item.setLibrary(fields[21]);
+				item.setHold_key(Integer.parseInt(fields[22]));
+				item.setLast_discharged_date(fields[23]);
+				item.setAccountability(fields[24]);
+				item.setShadowed(fields[25]);
+				item.setDistribution_key(fields[26]);
+				item.setTransit_status(fields[27]);
+				item.setReserve_status(fields[28]);
+				item.setPieces(Integer.parseInt(fields[29]));
+				item.setMedia_desk(fields[30]);
+				// There is only this one item-line that has an empty extra
+				// field in it for some reason.  
+				if ( fields[32].trim().equals("737988-1001") ) {
+					item.setBarcode(fields[32].trim());
+					item.setNum_comments(Integer.parseInt(fields[33]));
+				} else {
+					item.setBarcode(fields[31].trim());
+					item.setNum_comments(Integer.parseInt(fields[32]));
+				}
+
+				migration_em.persist(item);
+
+				if ( ++curr % increment == 0 ) {
+					migration_transaction.commit();
+					migration_em.clear(); // TODO: testing this to see if it fixes memory problems
+					LU_DBLoadInstances.Log(System.out, "On item number " + curr, LU_DBLoadInstances.LOG_INFO);
+					migration_transaction.begin();
+				}
+
+			}
+			migration_transaction.commit();
+
+			LU_DBLoadInstances.Log("Done staging callnumbers and items in migration database, time is: " + df.format(Calendar.getInstance().getTime()));
 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 
 	}
-	
+
 	public void readSirsiFiles(String callNumbersFilename, String shelvingKeysFilename,
-							   String itemNumbersFilename, String analyticsFilename,
-							   String itemsFilename) {
+			String itemNumbersFilename, String analyticsFilename,
+			String itemsFilename) {
 		this.readSirsiFiles(callNumbersFilename, shelvingKeysFilename, 
-				            itemNumbersFilename, analyticsFilename, itemsFilename, -1);
+				itemNumbersFilename, analyticsFilename, itemsFilename, -1);
 	}
-	
+
 	// The callnumbers data is broken up into 4 files because 3 of the fields contained
 	// the pipe character in them and Sirsi had no way to intelligently change the
 	// delimiter character between fields from pipe to something else -- it's selascii
@@ -1215,25 +1284,25 @@ public class LU_BuildInstance {
 	// files by themselves.
 	// TODO: change this to populate sqlite olemigration tables, rather than hashmaps
 	public void readSirsiFiles(String callNumbersFilename, String shelvingKeysFilename,
-							   String itemNumbersFilename, String analyticsFilename,
-							   String itemsFilename, int limit) {
+			String itemNumbersFilename, String analyticsFilename,
+			String itemsFilename, int limit) {
 		BufferedReader callNumbersReader, shelvingKeysReader, itemNumbersReader, analyticsReader, itemsReader;
 
 		try {
 			File callNumbersFile = new File(callNumbersFilename);
-        	callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
-        	shelvingKeysReader = new BufferedReader(new FileReader(shelvingKeysFilename));
-        	itemNumbersReader = new BufferedReader(new FileReader(itemNumbersFilename));
-        	analyticsReader = new BufferedReader(new FileReader(analyticsFilename));
-        	itemsReader = new BufferedReader(new FileReader(itemsFilename));
-        	LU_DBLoadInstances.Log("Building hashmap of call number records by call number key " + 
-        					   		"and by call number (called \"item number\" by Sirsi) ...");
-        	//String workingdir = "/mnt/bigdrive/bibdata/sirsidump/20131211";
-        	String workingdir = callNumbersFile.getParent();
-        	PrintWriter writer = new PrintWriter(workingdir + "/testoutput.txt", "UTF-8");
-        	int curr = 0, increment = 100000;
+			callNumbersReader = new BufferedReader(new FileReader(callNumbersFilename));
+			shelvingKeysReader = new BufferedReader(new FileReader(shelvingKeysFilename));
+			itemNumbersReader = new BufferedReader(new FileReader(itemNumbersFilename));
+			analyticsReader = new BufferedReader(new FileReader(analyticsFilename));
+			itemsReader = new BufferedReader(new FileReader(itemsFilename));
+			LU_DBLoadInstances.Log("Building hashmap of call number records by call number key " + 
+					"and by call number (called \"item number\" by Sirsi) ...");
+			//String workingdir = "/mnt/bigdrive/bibdata/sirsidump/20131211";
+			String workingdir = callNumbersFile.getParent();
+			PrintWriter writer = new PrintWriter(workingdir + "/testoutput.txt", "UTF-8");
+			int curr = 0, increment = 100000;
 
-        	/* Not used anymore
+			/* Not used anymore
         	while(callNumbersReader.ready() && (limit < 0 || curr < limit)) {
         		// There should be the same number of lines in all 4 files containing callnum data,
         		// and they should all be sorted the same way to line 1 goes with line 1 goes with line 1, etc.
@@ -1249,7 +1318,7 @@ public class LU_BuildInstance {
         		// that method returns an immutable, fixed-size list
         		ArrayList<String> callNumberFields = new ArrayList<String>();
         		callNumberFields.addAll(Arrays.asList(fields));
-        		
+
         		List<String> tmpfields;
         		String tmpStr;
 
@@ -1301,22 +1370,22 @@ public class LU_BuildInstance {
         		if ( ++curr % increment == 0 ) {
         			LU_DBLoadInstances.Log(System.out, "On call number " + curr, LU_DBLoadInstances.LOG_INFO);
         		}
-        	
+
         	}
-        	*/
-        	
-        	LU_DBLoadInstances.Log("Building hashmap of item records by catalog key and by Item ID ...");
-        	curr = 0;
-        	String line = "";
-        	String fields[];
-        	List<String> itemNumberFields;
-        	while(itemsReader.ready() && (limit < 0 || curr < limit)) {
-        		// Only one file to read from this time
-        		line = itemsReader.readLine();
-        		fields = line.split("\\|");
-        		itemNumberFields = Arrays.asList(fields);
-        		// Fill in the hash keyed by catalog key, which should be index 2 in the list
-        		/*
+			 */
+
+			LU_DBLoadInstances.Log("Building hashmap of item records by catalog key and by Item ID ...");
+			curr = 0;
+			String line = "";
+			String fields[];
+			List<String> itemNumberFields;
+			while(itemsReader.ready() && (limit < 0 || curr < limit)) {
+				// Only one file to read from this time
+				line = itemsReader.readLine();
+				fields = line.split("\\|");
+				itemNumberFields = Arrays.asList(fields);
+				// Fill in the hash keyed by catalog key, which should be index 2 in the list
+				/*
         		if ( itemsByCatalogKey.get(itemNumberFields.get(0)) == null ) {
         			List<List<String>> itemStrs = new ArrayList<List<String>>();
         			itemStrs.add(itemNumberFields);
@@ -1324,39 +1393,39 @@ public class LU_BuildInstance {
         		} else {
         			itemsByCatalogKey.get(itemNumberFields.get(0)).add(itemNumberFields);
         		}
-        		*/
-        		
-        		// Now fill in the hash keyed by Item ID, which is index 31
-        		String itemID = itemNumberFields.get(31).trim();
-        		if ( this.itemsByID.get(itemID) == null ) {
-        			List<List<String>> itemStrs = new ArrayList<List<String>>();
-        			itemStrs.add(itemNumberFields);
-        			itemsByID.put(itemID, itemStrs);        			
-        		} else {
-        			itemsByID.get(itemID).add(itemNumberFields);
-        		}
-        		if ( ++curr % increment == 0 ) {
-        			LU_DBLoadInstances.Log(System.out, "On item number " + curr, LU_DBLoadInstances.LOG_INFO);
-        		}
-        		
-        	}
-        	LU_DBLoadInstances.Log("Done building hashmaps");
+				 */
+
+				// Now fill in the hash keyed by Item ID, which is index 31
+				String itemID = itemNumberFields.get(31).trim();
+				if ( this.itemsByID.get(itemID) == null ) {
+					List<List<String>> itemStrs = new ArrayList<List<String>>();
+					itemStrs.add(itemNumberFields);
+					itemsByID.put(itemID, itemStrs);        			
+				} else {
+					itemsByID.get(itemID).add(itemNumberFields);
+				}
+				if ( ++curr % increment == 0 ) {
+					LU_DBLoadInstances.Log(System.out, "On item number " + curr, LU_DBLoadInstances.LOG_INFO);
+				}
+
+			}
+			LU_DBLoadInstances.Log("Done building hashmaps");
 		} catch(Exception e) {
 			LU_DBLoadInstances.Log(System.err, "Unable to read in call numbers and items: " + e.getMessage(), LU_DBLoadInstances.LOG_ERROR);
 			e.printStackTrace(System.err);
 		}
 	}
-	
-	
+
+
 	public static void main(String arguments[]) {
-		
+
 		// First read the files from Sirsi into my own classes, which mirror OLE structure, using my own logic
-		
+
 		InstanceCollection ic = new InstanceCollection();
 		/* Test to make sure that the XML output looks good */
 		//testoutput(ic);
 		//ReadInstance(ic, "/mnt/bigdrive/bibdata/allcallnums.txt", "/mnt/bigdrive/bibdata/allitems.txt");
-		
+
 		// Then marshal those classes to XML and output them
 		try {
 			JAXBContext context = JAXBContext.newInstance(InstanceCollection.class);
@@ -1368,7 +1437,7 @@ public class LU_BuildInstance {
 			e.printStackTrace(System.err);
 		}
 	}
-	
+
 	public static Map<String, List<String>> getSubfields(VariableField field) {
 		HashMap<String, List<String>> subfields = new HashMap<String, List<String>>();
 		String fieldStr = field.toString();
@@ -1402,13 +1471,13 @@ public class LU_BuildInstance {
 		}
 		return subfields;
 	}
-	
+
 	public void buildSerialsData(Record record, Bib bib, List<Record> assocMFHDRecords) {
 		String bibFormerId = bib.getFormerId();
-		TypedQuery<Serial> query = LU_DBLoadInstances.migration_em.createQuery("SELECT s FROM Serial s where s.bibid='" + bibFormerId + "'", Serial.class);
+		TypedQuery<Serial> query = migration_em.createQuery("SELECT s FROM Serial s where s.bibid='" + bibFormerId + "'", Serial.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<Serial> results = query.getResultList();
-		EntityTransaction ole_tx = LU_DBLoadInstances.ole_em.getTransaction();
+		EntityTransaction ole_tx = ole_em.getTransaction();
 		for ( Serial s : results ) {
 
 			LU_DBLoadInstances.Log(System.out, "Creating serials receiving control record in OLE for serial with migration ID " + 
@@ -1418,118 +1487,132 @@ public class LU_BuildInstance {
 				//	ole_tx.begin();
 				//}
 				if ( !oh.getHoldingsType().equals("electronic") ) {
-					SerialsReceiving sr = new SerialsReceiving(s.getSerialControlId());
-					sr.setBibId(bib.getUniqueIdPrefix() + "-" + bib.getId());
-					sr.setInstanceId(oh.getUniqueIdPrefix() + "-" + oh.getHoldingsIdentifier());
-					//sr.setRecType(s.getCategory1()+":"+s.getCategory2());
-					sr.setCreateDate(s.getDateCreated());
-					sr.setRecType("Main");
-					String notestr = "Publication cycle definition: " + s.getPublicationCycleDefinition();
-					if ( s.getSerial_notes() != null && s.getSerial_notes().size() > 0 ) {
-						notestr += ", Notes: ";
-						for ( SerialNote note : s.getSerial_notes()) { 
-							notestr += note.getNote() + " ";
-						}
-					}
-					if ( s.getSerial_names() != null && s.getSerial_names().size() > 0 ) {
-						if ( notestr.length() > 0 ) {
-							notestr += ", ";
-						}
-						notestr += ", Names: ";
-						for ( SerialName name : s.getSerial_names() ) {
-							notestr += name + " ";
-						}
-					}
-					if ( s.getCategory1() != null && s.getCategory1().length() > 0 ) {
-						notestr += ", Category 1: " +  s.getCategory1();
-					}
-					if( s.getCategory2() != null && s.getCategory2().length() > 0 ) {
-						notestr += ", Category 2: " + s.getCategory2();
-					}
-					sr.setGenReceivedNote(notestr.substring(0, Math.min(notestr.length(), 499)));
-					if ( s.getSerial_physforms() != null && s.getSerial_physforms().size() > 0 ) {
-						notestr = "";
-						//notestr += "Physforms: ";
-						for ( SerialPhysform form : s.getSerial_physforms() ) {
-							notestr += form.getPhysform() + ", ";
-						}
-						sr.setTreatmentInstrNote(notestr);
-					}
+					String bibId = bib.getUniqueIdPrefix() + "-" + bib.getId();
+					String instId = oh.getUniqueIdPrefix() + "-" + oh.getHoldingsIdentifier();
+					TypedQuery<SerialsReceiving> srExistsQuery = ole_em.createQuery("SELECT sr from SerialsReceiving sr where sr.bibId='" + 
+							bibId + "' AND sr.instanceId='" + instId + "'", 
+							SerialsReceiving.class);
+					List<SerialsReceiving> srExistsResults = srExistsQuery.getResultList();
+					if ( srExistsResults.size() == 0 ) {
 
-					sr.setPublicDisplay("Y");
-					sr.setActive("Y");
-					sr.setPrintLabel("Y");
-					sr.setCreateItem("N");
-					//sr.setSubscriptionStatus("4"); // not sure what to put here
-					sr.setReceiptLocation(s.getLibrary());
-					if ( oh.getFlatLocation() != null ) {
-						sr.setUnboundLocation(oh.getFlatLocation().getLocCodeString());
+						SerialsReceiving sr = new SerialsReceiving(s.getSerialControlId());
+						sr.setBibId(bibId);
+						sr.setInstanceId(instId);
+						//sr.setRecType(s.getCategory1()+":"+s.getCategory2());
+						sr.setCreateDate(s.getDateCreated());
+						sr.setRecType("Main");
+						String notestr = "Publication cycle definition: " + s.getPublicationCycleDefinition();
+						if ( s.getSerial_notes() != null && s.getSerial_notes().size() > 0 ) {
+							notestr += ", Notes: ";
+							for ( SerialNote note : s.getSerial_notes()) { 
+								notestr += note.getNote() + " ";
+							}
+						}
+						if ( s.getSerial_names() != null && s.getSerial_names().size() > 0 ) {
+							if ( notestr.length() > 0 ) {
+								notestr += ", ";
+							}
+							notestr += ", Names: ";
+							for ( SerialName name : s.getSerial_names() ) {
+								notestr += name + " ";
+							}
+						}
+						if ( s.getCategory1() != null && s.getCategory1().length() > 0 ) {
+							notestr += ", Category 1: " +  s.getCategory1();
+						}
+						if( s.getCategory2() != null && s.getCategory2().length() > 0 ) {
+							notestr += ", Category 2: " + s.getCategory2();
+						}
+						sr.setGenReceivedNote(notestr.substring(0, Math.min(notestr.length(), 499)));
+						if ( s.getSerial_physforms() != null && s.getSerial_physforms().size() > 0 ) {
+							notestr = "";
+							//notestr += "Physforms: ";
+							for ( SerialPhysform form : s.getSerial_physforms() ) {
+								notestr += form.getPhysform() + ", ";
+							}
+							sr.setTreatmentInstrNote(notestr);
+						}
+
+						sr.setPublicDisplay("Y");
+						sr.setActive("Y");
+						sr.setPrintLabel("Y");
+						sr.setCreateItem("N");
+						//sr.setSubscriptionStatus("4"); // not sure what to put here
+						sr.setReceiptLocation(s.getLibrary());
+						if ( oh.getFlatLocation() != null ) {
+							sr.setUnboundLocation(oh.getFlatLocation().getLocCodeString());
+						} else {
+							sr.setUnboundLocation("");
+						}
+						if ( s.getSubscriptionStatus() == null ||
+								s.getSubscriptionStatus().trim() == "" ||
+								subscriptionStatusMap.get(s.getSubscriptionStatus().trim()) == null ) {
+							sr.setSubscriptionStatus("0"); // For subscription status "unknown"
+						} else {
+							sr.setSubscriptionStatus(subscriptionStatusMap.get(s.getSubscriptionStatus().trim()));
+						}
+						sr.setVendor(s.getLinkedVendorId());
+
+						ole_em.persist(sr);
+
+						SerialsReceivingRecType srtype = new SerialsReceivingRecType();
+						srtype.setSerialsReceiving(sr);
+						srtype.setRecType("Main");
+						//srtype.setRecType(s.getCategory1() + ":" + s.getCategory2());
+						srtype.setActionInterval(s.getClaimPeriod());
+						if ( s.getNameType().equals("CUSTOM") ) {
+							srtype.setChronCaptionLvl1(s.getCustomIssueNames().substring(0, Math.min(s.getCustomIssueNames().length(), 39)));
+						} else {
+							srtype.setChronCaptionLvl1(s.getNameType().substring(0, Math.min(s.getNameType().length(), 39)));
+						}
+						srtype.setChronCaptionLvl2(s.getFormSubdiv1());
+						srtype.setChronCaptionLvl3(s.getFormSubdiv2());
+						srtype.setChronCaptionLvl4(s.getFormSubdiv3());
+						srtype.setEnumCaptionLvl1(s.getLabelSubdiv1());
+						srtype.setEnumCaptionLvl2(s.getLabelSubdiv2());
+						srtype.setEnumCaptionLvl3(s.getLabelSubdiv3());
+
+						/*
+						srtype.setChronCaptionLvl2(s.getLabelSubdiv1());
+						srtype.setChronCaptionLvl3(s.getLabelSubdiv2());
+						srtype.setChronCaptionLvl4(s.getLabelSubdiv3());
+						srtype.setEnumCaptionLvl1(s.getFormSubdiv1());
+						srtype.setEnumCaptionLvl2(s.getFormSubdiv2());
+						srtype.setEnumCaptionLvl3(s.getFormSubdiv3());
+						 */
+						ole_em.persist(srtype);
+
+						TypedQuery<Issue> query2 = migration_em.createQuery("SELECT i FROM Issue i where i.serialControlId='" + s.getSerialControlId() + "'", Issue.class);
+						query.setHint("org.hibernate.cacheable", true);
+						List<Issue> results2 = query2.getResultList();
+						for ( Issue i : results2 ) {
+							// Fill in ole_ser_rcv_his_rec from issue data
+							SerialsReceivingHisRec srhr = new SerialsReceivingHisRec(sr);
+							// put PRED_NAME into hisrec's CHRON_LVL_1
+							srhr.setRecType("Main");
+							srhr.setChronLvl1(i.getPredictionName().substring(0, Math.min(i.getPredictionName().length(), 39)));
+							srhr.setEnumLvl1(i.getPredictionNumeration().substring(0, Math.min(i.getPredictionNumeration().length(),  39)));
+							srhr.setClaimCount(i.getClaimNumber());
+							srhr.setClaimDate(i.getClaimDateCreated());
+							srhr.setClaimType(i.getClaimReason());
+
+							ole_em.persist(srhr);
+						}
+						//System.err.println("Committing serials receiving record");
+						//ole_tx.commit(); // commit after every serials receiving rec
+
+						// Need to transform that bib id from Sirsi into an OLE bib id
+						// docstore SOLR search, maybe?
+						// Probably better to look in olemigration database while filling in bib records
+						// to see if former id of bib matches bib id of any serials
+						// Then fill in serial information ...
 					} else {
-						sr.setUnboundLocation("");
+						LU_DBLoadInstances.Log(System.out, "Skipping creating serials receiving record for serials with bibId " + bibId + 
+								" and instance ID " + instId + " because it already exists in the database.", 
+								LU_DBLoadInstances.LOG_INFO);
 					}
-					if ( s.getSubscriptionStatus() == null ||
-						 s.getSubscriptionStatus().trim() == "" ||
-						 subscriptionStatusMap.get(s.getSubscriptionStatus().trim()) == null ) {
-						sr.setSubscriptionStatus("0"); // For subscription status "unknown"
-					} else {
-						sr.setSubscriptionStatus(subscriptionStatusMap.get(s.getSubscriptionStatus().trim()));
-					}
-					sr.setVendor(s.getLinkedVendorId());
-
-					LU_DBLoadInstances.ole_em.persist(sr);
-
-					SerialsReceivingRecType srtype = new SerialsReceivingRecType();
-					srtype.setSerialsReceiving(sr);
-					srtype.setRecType("Main");
-					//srtype.setRecType(s.getCategory1() + ":" + s.getCategory2());
-					srtype.setActionInterval(s.getClaimPeriod());
-					if ( s.getNameType().equals("CUSTOM") ) {
-						srtype.setChronCaptionLvl1(s.getCustomIssueNames().substring(0, Math.min(s.getCustomIssueNames().length(), 39)));
-					} else {
-						srtype.setChronCaptionLvl1(s.getNameType().substring(0, Math.min(s.getNameType().length(), 39)));
-					}
-					srtype.setChronCaptionLvl2(s.getFormSubdiv1());
-					srtype.setChronCaptionLvl3(s.getFormSubdiv2());
-					srtype.setChronCaptionLvl4(s.getFormSubdiv3());
-					srtype.setEnumCaptionLvl1(s.getLabelSubdiv1());
-					srtype.setEnumCaptionLvl2(s.getLabelSubdiv2());
-					srtype.setEnumCaptionLvl3(s.getLabelSubdiv3());
-
-					/*
-				srtype.setChronCaptionLvl2(s.getLabelSubdiv1());
-				srtype.setChronCaptionLvl3(s.getLabelSubdiv2());
-				srtype.setChronCaptionLvl4(s.getLabelSubdiv3());
-				srtype.setEnumCaptionLvl1(s.getFormSubdiv1());
-				srtype.setEnumCaptionLvl2(s.getFormSubdiv2());
-				srtype.setEnumCaptionLvl3(s.getFormSubdiv3());
-					 */
-					LU_DBLoadInstances.ole_em.persist(srtype);
-
-					TypedQuery<Issue> query2 = LU_DBLoadInstances.migration_em.createQuery("SELECT i FROM Issue i where i.serialControlId='" + s.getSerialControlId() + "'", Issue.class);
-					query.setHint("org.hibernate.cacheable", true);
-					List<Issue> results2 = query2.getResultList();
-					for ( Issue i : results2 ) {
-						// Fill in ole_ser_rcv_his_rec from issue data
-						SerialsReceivingHisRec srhr = new SerialsReceivingHisRec(sr);
-						// put PRED_NAME into hisrec's CHRON_LVL_1
-						srhr.setRecType("Main");
-						srhr.setChronLvl1(i.getPredictionName().substring(0, Math.min(i.getPredictionName().length(), 39)));
-						srhr.setEnumLvl1(i.getPredictionNumeration().substring(0, Math.min(i.getPredictionNumeration().length(),  39)));
-						srhr.setClaimCount(i.getClaimNumber());
-						srhr.setClaimDate(i.getClaimDateCreated());
-						srhr.setClaimType(i.getClaimReason());
-
-						LU_DBLoadInstances.ole_em.persist(srhr);
-					}
-					//System.err.println("Committing serials receiving record");
-					//ole_tx.commit(); // commit after every serials receiving rec
-
-					// Need to transform that bib id from Sirsi into an OLE bib id
-					// docstore SOLR search, maybe?
-					// Probably better to look in olemigration database while filling in bib records
-					// to see if former id of bib matches bib id of any serials
-					// Then fill in serial information ...
 				}
+
 			}
 
 		}
@@ -1537,10 +1620,10 @@ public class LU_BuildInstance {
 		//	ole_tx.begin();
 		//}
 	}
-	
+
 	public void buildBibHoldingsData(Record record, Bib bib, List<Record> assocMFHDRecords) {
-	    //String catalogKey = record.getVariableField("001").toString().split(" ")[1];
-	    String catalogKey = LU_DBLoadInstances.formatCatKey(record.getControlNumber());
+		//String catalogKey = record.getVariableField("001").toString().split(" ")[1];
+		String catalogKey = LU_DBLoadInstances.formatCatKey(record.getControlNumber());
 		//List<List<String>> callNumberStrings = this.callNumbersByCatalogKey.get(catalogKey);
 		//List<List<String>> itemStrings = this.itemsByCatalogKey.get(catalogKey);
 		List<VariableField> itemsholdings = record.getVariableFields("999");
@@ -1550,7 +1633,7 @@ public class LU_BuildInstance {
 		List<Record> printMFHDRecords = new ArrayList<Record>();
 		//for( List<String> callNumberFields : callNumberStrings ) {
 		Map<String, List<String>> subfields;		
-		
+
 		for ( VariableField itemholdings : itemsholdings ) {
 			subfields = LU_BuildInstance.getSubfields(itemholdings);
 			List<String> locs = subfields.get("$l");
@@ -1564,8 +1647,8 @@ public class LU_BuildInstance {
 				}
 			}
 		}
-		
-		
+
+
 		for ( Record MFHDRec : assocMFHDRecords ) {
 			VariableField eightfivetwo = getValidEightFiveTwo(MFHDRec);
 			String rectype = "";
@@ -1581,7 +1664,7 @@ public class LU_BuildInstance {
 				printMFHDRecords.add(MFHDRec);
 			}
 		}					
-		
+
 		if ( eholdings != null && eholdings.size() > 0 ) { 
 			buildEHoldingsData(record, bib, eholdings, onlineMFHDRecords);
 		}
@@ -1589,10 +1672,10 @@ public class LU_BuildInstance {
 			buildPrintHoldingsData(record, bib, printholdings, printMFHDRecords);
 		}
 	}
-	
+
 	public void buildInstanceCollection(Record record, Bib bib, List<Record> assocMFHDRecords) {
 
-	    String catalogKey = record.getVariableField("001").toString().split(" ")[1];
+		String catalogKey = record.getVariableField("001").toString().split(" ")[1];
 		//List<List<String>> callNumberStrings = this.callNumbersByCatalogKey.get(catalogKey);
 		//List<List<String>> itemStrings = this.itemsByCatalogKey.get(catalogKey);
 		List<VariableField> itemsholdings = record.getVariableFields("999");
@@ -1602,7 +1685,7 @@ public class LU_BuildInstance {
 		List<Record> printMFHDRecords = new ArrayList<Record>();
 		//for( List<String> callNumberFields : callNumberStrings ) {
 		Map<String, List<String>> subfields;		
-		
+
 		if ( record.getVariableFields("856").size() > 1 && eInstanceReady ) {
 			// multiple 856 fields -- generate e-instances for each one
 			// no code to ingest these yet, so don't bother currently
@@ -1638,7 +1721,7 @@ public class LU_BuildInstance {
 					// subfield l should both be "WWW".  Otherwise, physical resource, and all those
 					// go in same instance record
 					if ( !rectype.equals(ELECTRONIC_RESOURCE) || 
-						  subfields.get("$l").get(0).equals(ELECTRONIC_RESOURCE) ) {
+							subfields.get("$l").get(0).equals(ELECTRONIC_RESOURCE) ) {
 						mfhd_itemsholdings.add(field);
 					}
 				}
@@ -1648,7 +1731,7 @@ public class LU_BuildInstance {
 				// TODO: But we only want one oleHoldings object.  Do we need a wholely separate instance for every MFHD-999 field pairing?
 				// That's what the code below creates -- separate instances, each with only 1 item, and an oleHoldings object that 
 				// will be almost identical
-				
+
 				// Now loop over the mfhd_itemsholdings and call buildHoldingsData and buildItemsData, like below
 				for ( VariableField field : mfhd_itemsholdings ) {
 					//Instance inst = new Instance(LU_DBLoadInstances.formatCatKey(record.getControlNumber()));
@@ -1665,7 +1748,7 @@ public class LU_BuildInstance {
 			// No MFHD records, just loop over the 999 fields of the bib record, which represent items
 			for ( VariableField field : itemsholdings ) {
 				Instance inst = new Instance(LU_DBLoadInstances.formatCatKey(record.getControlNumber()));
-				
+
 				subfields = this.getSubfields(field);			
 				//List<String> itemnumber = subfields.get("$a"); // I think that's the subfield code, check that
 				this.buildHoldingsData(record, bib, subfields, null); 		
@@ -1676,46 +1759,46 @@ public class LU_BuildInstance {
 		}
 		//ic.setInstance(inst);
 	}
-	
+
 	public void buildHoldingsNotes(OLEHoldings oh, List<String> commentfields) {
 		List<String> nonpublicNoteType = Arrays.asList(".CIRCNOTE.", ".STAFF.");
 		List<String> publicNoteType = Arrays.asList(".PUBLIC.");
-    	LU_DBLoadInstances.Log(System.out, "Adding " + commentfields.size() + " comments to instance", LU_DBLoadInstances.LOG_DEBUG);
-    	for ( String comment : commentfields ) {
-    		// Keep the delimiter on the preceding element of the split array
-    		OLEHoldingsNote note = new OLEHoldingsNote();
-    		String[] pieces = comment.split("(?<=\\. )");
+		LU_DBLoadInstances.Log(System.out, "Adding " + commentfields.size() + " comments to instance", LU_DBLoadInstances.LOG_DEBUG);
+		for ( String comment : commentfields ) {
+			// Keep the delimiter on the preceding element of the split array
+			OLEHoldingsNote note = new OLEHoldingsNote();
+			String[] pieces = comment.split("(?<=\\. )");
 			// People put periods in their comments sometimes, and that's the delimiter Sirsi uses between
 			// the comment type and the comment itself, so it blows up the comments array.
 			// *sigh*
 			// So, we just join all the pieces after element 0 together 
-    		String commentstr = StringUtils.join(Arrays.asList(pieces).subList(1, pieces.length));
-    		/*
+			String commentstr = StringUtils.join(Arrays.asList(pieces).subList(1, pieces.length));
+			/*
     		if ( pieces.length != 2 ) {
     			LU_DBLoadInstances.Log(System.err, "Badly formatted comment: " + comment, LU_DBLoadInstances.LOG_ERROR);
     			for (String piece : pieces ) {
     				LU_DBLoadInstances.Log(System.err, "Piece: " + piece, LU_DBLoadInstances.LOG_ERROR);
     				System.out.println("Piece: " + piece);
     			}
-    			
+
     		} else {
     			commentstr = pieces[1];
     		} 
-    		*/
-    		if ( nonpublicNoteType.contains(pieces[0].trim())) {
-    			note.setType(nonpublicStr);
-    		} else if ( publicNoteType.contains(pieces[0].trim())) {
+			 */
+			if ( nonpublicNoteType.contains(pieces[0].trim())) {
+				note.setType(nonpublicStr);
+			} else if ( publicNoteType.contains(pieces[0].trim())) {
 				note.setType(publicStr);
-    		} else {
-    			LU_DBLoadInstances.Log(System.err, "Unknown type of comment: " + comment, LU_DBLoadInstances.LOG_WARN);
-    		}
-    		note.setNote(commentstr);
-    		note.setOLEHoldings(oh);
-    		oh.getNotes().add(note);
-    	}
+			} else {
+				LU_DBLoadInstances.Log(System.err, "Unknown type of comment: " + comment, LU_DBLoadInstances.LOG_WARN);
+			}
+			note.setNote(commentstr);
+			note.setOLEHoldings(oh);
+			oh.getNotes().add(note);
+		}
 
 	}
-	
+
 	public boolean startsWithAlphaNumPrefix(String callnum) {
 		for ( String prefix : alphaNumCallNumPrefixes ) {
 			if ( callnum.startsWith(prefix) ) {
@@ -1724,14 +1807,14 @@ public class LU_BuildInstance {
 		}
 		return false;
 	}
-	
+
 	public void buildCommonHoldingsData(Record rec, Bib bib, VariableField holding, Map<String, List<String>> subfields, Record assocMFHDRec, OLEHoldings oh) {
 		String callnumberstr = subfields.get("$a").get(0).trim();
 		Map<String, List<String>> tmpsubfields;
 
 		SirsiCallNumber scn = null;
 		if ( oh.getHoldingsType().equals("print") ) {
-			TypedQuery<SirsiCallNumber> query = LU_DBLoadInstances.migration_em.createQuery("select scn from SirsiCallNumber scn where scn.call_number = :cnstr", SirsiCallNumber.class);
+			TypedQuery<SirsiCallNumber> query = migration_em.createQuery("select scn from SirsiCallNumber scn where scn.call_number = :cnstr", SirsiCallNumber.class);
 			query.setParameter("cnstr", callnumberstr);
 			List<SirsiCallNumber> results = query.getResultList();
 			if ( results.size() > 0 ) {
@@ -1758,28 +1841,27 @@ public class LU_BuildInstance {
 									LU_DBLoadInstances.LOG_DEBUG);
 			// TODO: print list of callNumbers for this item number
 		}
-		*/
-		
-	   	LU_DBLoadInstances.Log(System.out, "Adding callnumber info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
-	    CallNumber cn = new CallNumber();
-	    // Same as the shelvingscheme for now
-	    String cntype = subfields.get("$w").get(0);
-	    				    
-	    //cn.setPrefix(subfields.get("$a").get(0));
-	    //cn.setNumber(subfields.get("$i").get(0));
-	    cn.setPrefix("");
-	    cn.setNumber(subfields.get("$a").get(0), oh.getFlatLocation());
+		 */
 
-	    
-	    // Not used: callNumberType, callNumberPrefix, itemPart,
-	    // They make reference to MFHD 852 codes i, h, and k
-	    // Those don't appear to be in our data anywhere
-	    // TODO: run that by Doreen, et al ^^^
-	    // Also not used currently: shelving scheme
+		LU_DBLoadInstances.Log(System.out, "Adding callnumber info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
+		CallNumber cn = new CallNumber();
+		// Same as the shelvingscheme for now
+		String cntype = subfields.get("$w").get(0);
+
+		//cn.setPrefix(subfields.get("$a").get(0));
+		//cn.setNumber(subfields.get("$i").get(0));
+		cn.setPrefix("");
+		cn.setNumber(subfields.get("$a").get(0), oh.getFlatLocation());
+
+		// Not used: callNumberType, callNumberPrefix, itemPart,
+		// They make reference to MFHD 852 codes i, h, and k
+		// Those don't appear to be in our data anywhere
+		// TODO: run that by Doreen, et al ^^^
+		// Also not used currently: shelving scheme
 		String cntypecode = callNumberTypeCodes.get(cntype);
 		String cntypename = callNumberTypeNames.get(cntype);
 		if ( cntypecode == null || cntypecode.length() == 0) {
-		   	LU_DBLoadInstances.Log(System.out, "Unrecognized cntype: " + cntype + ", unable to set cntypecode", LU_DBLoadInstances.LOG_WARN);
+			LU_DBLoadInstances.Log(System.out, "Unrecognized cntype: " + cntype + ", unable to set cntypecode", LU_DBLoadInstances.LOG_WARN);
 			cntypecode = "N/A";
 		}
 		if ( cntypename == null || cntypename.length() == 0) {
@@ -1787,35 +1869,76 @@ public class LU_BuildInstance {
 			cntypename = "N/A";
 		}
 		if ( alphaNumCallNums.contains(cn.getNumber()) ||
-			 ( oh.getFlatLocation().getLocCodeString().startsWith("LEHIGH/LIND/SPCOLL") &&
-			   startsWithAlphaNumPrefix(cn.getNumber()) ) ) {
+				( oh.getFlatLocation().getLocCodeString().startsWith("LEHIGH/LIND/SPCOLL") &&
+						startsWithAlphaNumPrefix(cn.getNumber()) ) ) {
 			cntypecode = "OTHER";
 			cntypename = "Other schema";
 		}
 		oh.setCallNumberType(cntypecode, cntypename);
 
-		// It should be a "normalized" version of the call number, with
-	    // spaces and other stuff removed
-	    ShelvingOrder shelvingOrder = new ShelvingOrder();
-	    shelvingOrder.setShelvingOrder(LU_BuildInstance.normalizeCallNumber(cn.getNumber(), cntypecode));
-	    cn.setShelvingOrder(shelvingOrder);
+		// Now edit callnumber for multipart volume data on the end
+		// We take that out of the holdings level callnumber, but leave
+		// it in in the item's callnumber
+		String itemtypestr = subfields.get("$t").get(0);
+		if ( !itemtypestr.trim().equals("JOURNAL") && 
+				(cntypecode.equals("DDC") || cntypecode.equals("LC")) ) {
+			// Try to recognize the volume or year pattern on the end
+			String cnstr = cn.getNumber();
+			Pattern vol_year_pattern = Pattern.compile(".*\\s+([A-Za-z]{1,4}\\.\\d+,\\s?\\d{4})$");
+			Pattern vol_pattern = Pattern.compile(".*\\s+([A-Za-z]{1,4}\\.\\d+)$");
+			Pattern year_pattern = Pattern.compile(".*\\s+(\\d{4})$");
+			Matcher m;
+			m = vol_year_pattern.matcher(cnstr);
+			if ( m.find() ) {
+				LU_DBLoadInstances.Log(System.out, "Callnumber matching volume-year pattern: " + cnstr + ", volume-year part: " + m.group(1),
+						LU_DBLoadInstances.LOG_INFO);
+				cnstr = cnstr.replace(m.group(1), "");
+				LU_DBLoadInstances.Log(System.out, "Callnumber after removing volume-year matching pattern: " + cnstr,
+						LU_DBLoadInstances.LOG_INFO);
+			} else {
+				m = vol_pattern.matcher(cnstr);
+				if ( m.find() ) {
+					LU_DBLoadInstances.Log(System.out, "Callnumber matching volume pattern: " + cnstr + ", volume part: " + m.group(1),
+							LU_DBLoadInstances.LOG_INFO);
+					cnstr = cnstr.replace(m.group(1), "");
+					LU_DBLoadInstances.Log(System.out, "Callnumber after removing volume matching pattern: " + cnstr,
+							LU_DBLoadInstances.LOG_INFO);
+				} else {
+					m = year_pattern.matcher(cnstr);
+					if ( m.find() ) {
+						LU_DBLoadInstances.Log(System.out, "Callnumber matching year pattern: " + cnstr + ", year part: " + m.group(1),
+								LU_DBLoadInstances.LOG_INFO);
+						cnstr = cnstr.replace(m.group(1), "");
+						LU_DBLoadInstances.Log(System.out, "Callnumber after removing year matching pattern: " + cnstr,
+								LU_DBLoadInstances.LOG_INFO);
+					}
+				}
+			}
+			cn.setNumber(cnstr);
+		}
 
-	    oh.setCallNumber(cn);
-	    
+		// It should be a "normalized" version of the call number, with
+		// spaces and other stuff removed
+		ShelvingOrder shelvingOrder = new ShelvingOrder();
+		shelvingOrder.setShelvingOrder(LU_BuildInstance.normalizeCallNumber(cn.getNumber(), cntypecode));
+		cn.setShelvingOrder(shelvingOrder);
+
+		oh.setCallNumber(cn);
+
 		oh.setStaffOnly(bib.getStaffOnly());
-	    List<String> commentfields = subfields.get("$o"); // TODO: figure out the split and regex, test this
-	    if ( commentfields != null && commentfields.size() > 0 ) {
-	    	buildHoldingsNotes(oh, commentfields);
-	    }
-	    
+		List<String> commentfields = subfields.get("$o"); // TODO: figure out the split and regex, test this
+		if ( commentfields != null && commentfields.size() > 0 ) {
+			buildHoldingsNotes(oh, commentfields);
+		}
+
 		if ( assocMFHDRec != null ) {
 			VariableField eightsixsix = assocMFHDRec.getVariableField("866");
 			if ( eightsixsix != null ) {
-			    ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
+				ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
 				extentOfOwnership.setType("public", "public");
 				String ownershipstr = "";
 
-		    	LU_DBLoadInstances.Log(System.out, "Adding extent of ownership info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);				
+				LU_DBLoadInstances.Log(System.out, "Adding extent of ownership info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);				
 				tmpsubfields = this.getSubfields(eightsixsix);
 				LU_DBLoadInstances.Log(System.out, "Subfields of 866 for MFHD record: ", LU_DBLoadInstances.LOG_DEBUG);
 				for ( String key : tmpsubfields.keySet() ) {
@@ -1837,7 +1960,7 @@ public class LU_BuildInstance {
 					n.setType("public");
 					n.setExtentOfOwnership(extentOfOwnership);
 					extentOfOwnership.getNotes().add(n);
-					
+
 				}
 				extentOfOwnership.setTextualHoldings(ownershipstr);
 				VariableField pattern = assocMFHDRec.getVariableField("853");
@@ -1883,41 +2006,50 @@ public class LU_BuildInstance {
 				}
 				extentOfOwnership.setOLEHoldings(oh);
 				oh.getExtentOfOwnership().add(extentOfOwnership);
-				
+
 				// Not ready yet ...
 				//oh.setCoverage(parseCoverage(ownershipstr));
-				
+
 				// Here we add the ownership string, and its note if
 				// there is one, to the holdings record's regular notes.
 				// This won't be necessary later, once stuff tied to
 				// ole_ds_ext_ownership_t shows up in the UI somewhere.
-				OLEHoldingsNote n2 = new OLEHoldingsNote();
-				n2.setNote("Extent of ownership: " + ownershipstr);
-				n2.setType("public");
-				n2.setOLEHoldings(oh);
-				oh.getNotes().add(n2);				
-				if ( extentOfOwnership.getNotes().size() > 0 ) {
-					n2 = new OLEHoldingsNote();
-					n2.setNote("Ownership note: " + extentOfOwnership.getNotes().get(0).getNote());
+				// That time is now -- no longer necessary to create
+				// regular notes in addition to extent of ownership notes
+				// for print holdings.  For e-holdings, we still want to
+				// do this, but de-dup it
+
+				if ( oh.getHoldingsType().equals("electronic") ) {
+					OLEHoldingsNote n2 = new OLEHoldingsNote();
+					n2.setNote("Extent of ownership: " + ownershipstr);
 					n2.setType("public");
 					n2.setOLEHoldings(oh);
-					oh.getNotes().add(n2);
+					oh.getNotes().add(n2);				
+					if ( extentOfOwnership.getNotes().size() > 0 ) {
+						if ( ownershipstr == null || !ownershipstr.equals(extentOfOwnership.getNotes().get(0).getNote()) ) {
+							n2 = new OLEHoldingsNote();
+							n2.setNote("Ownership note: " + extentOfOwnership.getNotes().get(0).getNote());
+							n2.setType("public");
+							n2.setOLEHoldings(oh);
+							oh.getNotes().add(n2);
+						}
+					}
 				}
-				
+
 			}
-			
+
 			// TODO: receptStatus comes from the associated holdings record's
 			// 008 field, position 6 (counting from 0 or 1, not sure, probably 1 given context)
-		    // There will need to be separate instances for each MFHD record, probably -- should
-		    // be either 1 or 2 MFHD records, if any, one for electronic version and one for physical
+			// There will need to be separate instances for each MFHD record, probably -- should
+			// be either 1 or 2 MFHD records, if any, one for electronic version and one for physical
 			String receiptStatus = assocMFHDRec.getVariableField("008").toString().substring(6, 7);
 			oh.setReceiptStatus(receiptStatus, receiptStatus);
 		} else {
 			// TODO: no holdings record, where does the extent of ownership and receipt status come from?
 		}
-		
+
 	}
-	
+
 	public List<Coverage> parseCoverage(String ownershipstr) {
 		List<Coverage> coverage = new ArrayList<Coverage>();
 		Tokenizer tokenizer = new Tokenizer();
@@ -1930,12 +2062,12 @@ public class LU_BuildInstance {
 		} while(tokenizer.getPos() < tokenizer.getStr().length()); 				
 		return coverage;
 	}
-	
+
 	public void buildEHoldingsData(Record record, Bib bib, List<VariableField> eholdings, List<Record> onlineMFHDRecords) {
 		Record MFHDRec = null;
 		if ( onlineMFHDRecords != null && onlineMFHDRecords.size() > 0 ) {
 			MFHDRec = onlineMFHDRecords.get(0); // there's only ever 1 of these per bib record in our data, 
-												// as evidenced by test2.java's checkHoldingsRecords method
+			// as evidenced by test2.java's checkHoldingsRecords method
 		}
 		Map<String, List<String>> subfields;
 		Map<String, List<String>> tmpsubfields;
@@ -1943,13 +2075,13 @@ public class LU_BuildInstance {
 		List<Map<String, String>> sfxdata;
 		VariableField catalog_issns = record.getVariableField("022");
 		VariableField catalog_lccns = record.getVariableField("010");
-		
+
 		String callnumberstr;
 		String purlpattern = "^http://purl.*";
 		List<OLEHoldings> holdings = new ArrayList<OLEHoldings>();
 		List<VariableField> eightfivesixes = record.getVariableFields("856");
 		FlatLocation electronic_location = new FlatLocation();
-		electronic_location.setLevel("Insitution/Library");
+		electronic_location.setLevel("Institution/Library");
 		electronic_location.setLocCodeString("LEHIGH/ELECTRONIC");
 		for ( VariableField eightfivesix : eightfivesixes ) {
 			OLEHoldings oh = new OLEHoldings();
@@ -1957,35 +2089,61 @@ public class LU_BuildInstance {
 			oh.setFlatLocation(electronic_location);
 			tmpsubfields = LU_BuildInstance.getSubfields(eightfivesix);
 			String note = "", uriStr = "";
-    		if ( tmpsubfields.get("$z") != null ) {
-    			note = tmpsubfields.get("$z").get(0);
-    		}
-    		// TODO: look in the "$3" subfield for notes, too
-    		// Often $z and $3 are specified.  Cat them together, I guess.
+			if ( tmpsubfields.get("$z") != null ) {
+				note = tmpsubfields.get("$z").get(0);
+			}
+			if ( tmpsubfields.get("$3") != null ) {
+				if ( note.length() > 0 ) {
+					note += ", ";
+				}
+				note += tmpsubfields.get("$3").get(0);
+			}
 			if ( tmpsubfields.get("$u") != null ) {
-	    		AccessURI uri = new AccessURI();
-	    		uriStr = tmpsubfields.get("$u").get(0).trim();
-	    		if ( uriStr.matches(purlpattern) ) {
-	    			oh.setLocalPersistentURI(uriStr);
-	    		}
-	    		uri.setUri(uriStr);
-	    		uri.setText(note + ": " + uriStr);
-	    		uri.setOleHoldings(oh);
-    			oh.getAccessURIs().add(uri);
-    		} else if ( tmpsubfields.get("$a") != null ) {
-	    		AccessURI uri = new AccessURI();
-	    		uriStr = tmpsubfields.get("$a").get(0).trim();
-	    		if ( uriStr.matches(purlpattern) ) {
-	    			oh.setLocalPersistentURI(uriStr);
-	    		}
-	    		uri.setUri(uriStr);
-	    		uri.setText(note + ": " + uriStr);
-	    		uri.setOleHoldings(oh);
-    			oh.getAccessURIs().add(uri);			    			
-    		}
-    		
+				AccessURI uri = new AccessURI();
+				uriStr = tmpsubfields.get("$u").get(0).trim();
+				if ( uriStr.matches(purlpattern) ) {
+					oh.setLocalPersistentURI(uriStr);
+				}
+				uri.setUri(uriStr);
+				//uri.setText(note + ": " + uriStr);
+				//Staff tell me they don't want the URI string in the link text,
+				// since that just makes more work to go around fixing it if the
+				// link changes.  So, we only use the URI as the link text if there
+				// isn't anything in subfield z or subfield 3
+				if ( note.length() > 0 ) {
+					uri.setText(note);
+				} else {
+					uri.setText(uriStr);
+				}
+				uri.setOleHoldings(oh);
+				oh.getAccessURIs().add(uri);
+			} else if ( tmpsubfields.get("$a") != null ) {
+				AccessURI uri = new AccessURI();
+				uriStr = tmpsubfields.get("$a").get(0).trim();
+				if ( uriStr.matches(purlpattern) ) {
+					oh.setLocalPersistentURI(uriStr);
+				}
+				uri.setUri(uriStr);
+				//uri.setText(note + ": " + uriStr);
+				//Staff tell me they don't want the URI string in the link text,
+				// since that just makes more work to go around fixing it if the
+				// link changes.  So, we only use the URI as the link text if there
+				// isn't anything in subfield z or subfield 3
+				if ( note.length() > 0 ) {
+					uri.setText(note);
+				} else {
+					uri.setText(uriStr);
+				}
+				uri.setOleHoldings(oh);
+				oh.getAccessURIs().add(uri);			    			
+			}
+
 			// Now there should only be 1 URI per holdings record
-			
+
+			// Library staff say that SFX data is more often wrong that right,
+			// so we're better off just not using it to generate coverage data
+			// for electronic holdings.  Thus, this gets commented out.
+			/*
 			sfxdata = findSFXData(catalog_issns, sfxdata_by_issn); 
 			if (  sfxdata == null ) {
 				//System.out.println("No SFX data by ISSN for catalog record " + xmlrecord.getControlNumber() + ", trying by eISSN ...");
@@ -2015,8 +2173,8 @@ public class LU_BuildInstance {
 				oh.setCoverage(buildCoverages(sfxdata, oh));
 				//has_sfx_data++;
 			}
-			
-			
+			 */
+
 			// This also shouldn't be necessary once stuff from
 			// ole_ds_holdings_access_uri_t shows up in the
 			// user interface somewhere
@@ -2025,8 +2183,8 @@ public class LU_BuildInstance {
 				oh.setLink(oh.getAccessURIs().get(0).getUri());
 				oh.setLinkText(oh.getAccessURIs().get(0).getText());
 			}
-			*/
-			
+			 */
+
 			/*
 			 * Librarians asked that we put the call number from 999 $a and type from 999 $w
 			 * into the holdings call number fields for electronic records, too
@@ -2039,24 +2197,24 @@ public class LU_BuildInstance {
 			               LU_DBLoadInstances.LOG_WARN);
 				domainstr = "N/A";
 			}
-			
-			
-			 
+
+
+
 			CallNumber cn = new CallNumber();
 			cn.setNumber("E-Resource: " + domainstr);
-			
+
 			String cntypecode = callNumberTypeCodes.get(ELECTRONIC_RESOURCE);
 			String cntypename = callNumberTypeNames.get(ELECTRONIC_RESOURCE);
 			oh.setCallNumberType(cntypecode, cntypename);
 			oh.setCallNumber(cn);
-			*/
-			
+			 */
+
 			oh.setBib(bib);
 			bib.getHoldings().add(oh);
 			holdings.add(oh);
-			
+
 		}
-		
+
 		for ( OLEHoldings oh : holdings ) {
 			for ( VariableField eholding : eholdings ) {
 				subfields = LU_BuildInstance.getSubfields(eholding);
@@ -2064,7 +2222,7 @@ public class LU_BuildInstance {
 			}
 		}
 	}
-	
+
 	public static String getDomain(String uriStr) {
 		String domainstr = "";
 		try {
@@ -2073,13 +2231,13 @@ public class LU_BuildInstance {
 		} catch (URISyntaxException e) {
 			// TODO Auto-generated catch block
 			LU_DBLoadInstances.Log(System.err, "Unable to parse domain from URI: " + uriStr,
-		               LU_DBLoadInstances.LOG_INFO);
+					LU_DBLoadInstances.LOG_INFO);
 			//e.printStackTrace();
 			domainstr = "";
 		}
 		return domainstr;
 	}
-	
+
 	public static List<Coverage> buildCoverages(List<Map<String, String>> sfxdata_list, OLEHoldings oh) {
 		List<Coverage> coverages = new ArrayList<Coverage>();
 		Coverage coverage;
@@ -2087,7 +2245,7 @@ public class LU_BuildInstance {
 		Tokenizer tokenizer = new Tokenizer();
 		tokenizer.setBreakchars(Arrays.asList(new String[]{"\"", "'", ",", "(", ")", " "}));
 
-		
+
 		String uriStr = oh.getAccessURIs().get(0).getUri();
 		String holdings_uri_domain = getDomain(uriStr);
 		String sfx_uri_domain = "";
@@ -2107,7 +2265,7 @@ public class LU_BuildInstance {
 				if ( sfx_uri_domain.equals(holdings_uri_domain) ) {
 					sfxdata_list_mod.add(sfxdata);
 					LU_DBLoadInstances.Log(System.out, "URI found in SFX data: " + uriStr, 
-					           LU_DBLoadInstances.LOG_INFO);
+							LU_DBLoadInstances.LOG_INFO);
 				}
 			}
 		}
@@ -2115,7 +2273,7 @@ public class LU_BuildInstance {
 		if ( sfxdata_list_mod.size() == 0 ) {
 			sfxdata_list_mod = sfxdata_list;
 			LU_DBLoadInstances.Log(System.out, "No match for URI found in SFX data: " + oh.getAccessURIs().get(0).getUri(), 
-			           LU_DBLoadInstances.LOG_INFO);
+					LU_DBLoadInstances.LOG_INFO);
 		}
 		for ( Map<String, String> sfxdata : sfxdata_list_mod ) {
 			datestr = sfxdata.get("THRESHOLD_GLOBAL");
@@ -2126,7 +2284,7 @@ public class LU_BuildInstance {
 			// etc.
 			if ( datestr != null && datestr.length() > 0) {
 				LU_DBLoadInstances.Log(System.out, "Datestr from THRESHOLD_GLOBAL is: " + datestr, 
-						           LU_DBLoadInstances.LOG_DEBUG);
+						LU_DBLoadInstances.LOG_DEBUG);
 				tokenizer.setStr(datestr);
 				coverage = new Coverage();
 				token = tokenizer.nextToken();
@@ -2150,7 +2308,7 @@ public class LU_BuildInstance {
 			datestr = datestr.replaceAll("\\$obj->", "");
 			if ( datestr != null && datestr.length() > 0 ) {
 				LU_DBLoadInstances.Log(System.out, "Datestr from THRESHOLD_ACTIVE is: " + datestr, 
-				           LU_DBLoadInstances.LOG_DEBUG);
+						LU_DBLoadInstances.LOG_DEBUG);
 				tokenizer.setStr(datestr);
 				coverage = new Coverage();
 				token = tokenizer.nextToken();
@@ -2173,7 +2331,7 @@ public class LU_BuildInstance {
 		}
 		return coverages;
 	}
-	
+
 	// Numbers can be inside single or double quotes
 	public static String parseNumber(Tokenizer tokenizer) {
 		String numstr = "";
@@ -2187,7 +2345,7 @@ public class LU_BuildInstance {
 		}
 		return numstr;
 	}
-	
+
 	public static void parseDate(Tokenizer tokenizer, Coverage coverage, String startend) {
 		String token = tokenizer.nextToken(); // should be "("
 		token = tokenizer.nextToken(); // should be "'" or "\""
@@ -2197,29 +2355,29 @@ public class LU_BuildInstance {
 		if ( startend.equals("start") ) {
 			// range should be >= or ==
 
-				token = tokenizer.nextToken(); // should be "'" or "\""
-				token = tokenizer.nextToken(); // should be ","
-				numstr = parseNumber(tokenizer);
-				if ( Tokenizer.isNumber(numstr) ) {
-					coverage.setStartDate(numstr);
-				}
-				token = tokenizer.nextToken(); // should be ","
-				numstr = parseNumber(tokenizer);
-				if ( Tokenizer.isNumber(numstr) ) {
-					coverage.setStartVolume(numstr);
-				}
-				token = tokenizer.nextToken(); // should be ","
-				numstr = parseNumber(tokenizer); // should be start issue, if there is one
-				if ( Tokenizer.isNumber(numstr) ) {
-					coverage.setStartIssue(numstr);
-				}
-				token = tokenizer.nextToken(); // should be ")"
-				if ( range.equals("==") ) {
-					// Then just set the end date/volume/issue equal to the start/volume/issue
-					coverage.setEndDate(coverage.getStartDate());
-					coverage.setEndVolume(coverage.getEndVolume());
-					coverage.setEndIssue(coverage.getStartIssue());
-				} 
+			token = tokenizer.nextToken(); // should be "'" or "\""
+			token = tokenizer.nextToken(); // should be ","
+			numstr = parseNumber(tokenizer);
+			if ( Tokenizer.isNumber(numstr) ) {
+				coverage.setStartDate(numstr);
+			}
+			token = tokenizer.nextToken(); // should be ","
+			numstr = parseNumber(tokenizer);
+			if ( Tokenizer.isNumber(numstr) ) {
+				coverage.setStartVolume(numstr);
+			}
+			token = tokenizer.nextToken(); // should be ","
+			numstr = parseNumber(tokenizer); // should be start issue, if there is one
+			if ( Tokenizer.isNumber(numstr) ) {
+				coverage.setStartIssue(numstr);
+			}
+			token = tokenizer.nextToken(); // should be ")"
+			if ( range.equals("==") ) {
+				// Then just set the end date/volume/issue equal to the start/volume/issue
+				coverage.setEndDate(coverage.getStartDate());
+				coverage.setEndVolume(coverage.getEndVolume());
+				coverage.setEndIssue(coverage.getStartIssue());
+			} 
 		} else {
 			// range should be <=
 			token = tokenizer.nextToken(); // should be "'" or "\""
@@ -2241,7 +2399,7 @@ public class LU_BuildInstance {
 			token = tokenizer.nextToken(); // should be ")"
 		}
 	}
-	
+
 	public static void parseTimeDiff(Tokenizer tokenizer, Coverage coverage) {
 		String token = tokenizer.nextToken(); // should be "("
 		token = tokenizer.nextToken(); // should be "'" or "\""
@@ -2278,7 +2436,7 @@ public class LU_BuildInstance {
 
 		}
 	}
-	
+
 	public static List<Map<String, String>> findSFXData(VariableField catalog_data, Map<String, List<Map<String, String>>> sfxdata_map) {
 		List<Map<String, String>> sfxdata = null;
 		if ( catalog_data != null ) {
@@ -2286,7 +2444,7 @@ public class LU_BuildInstance {
 			for ( String key : tmpsubfields.keySet() ) {
 				List<String> values = tmpsubfields.get(key);
 				for ( String value : values ) {
-				//	System.out.println("Searching by value " + value.trim());
+					//	System.out.println("Searching by value " + value.trim());
 					sfxdata = sfxdata_map.get(value.trim()); 
 					if (  sfxdata != null ) {
 						return sfxdata;
@@ -2298,7 +2456,7 @@ public class LU_BuildInstance {
 		}
 		return sfxdata;
 	}
-	
+
 	public void buildPrintHoldingsData(Record record, Bib bib, List<VariableField> printholdings, List<Record> printMFHDRecords) {
 		// Lots of the same stuff here, but print holdings get items attached to them,
 		// while electronic ones don't
@@ -2309,6 +2467,20 @@ public class LU_BuildInstance {
 		List<String> nonpublicNoteType = Arrays.asList(".CIRCNOTE.", ".STAFF.");
 		List<String> publicNoteType = Arrays.asList(".PUBLIC.");
 		Map<Record, List<VariableField>> MFHD_to_printholdings = new HashMap<Record, List<VariableField>>();
+		// Construct lists of holdings records for each distinct location, and divide holdings
+		// records up into those lists
+		Map<String, List<VariableField>> locHoldingsMap = new HashMap<String, List<VariableField>>();
+		for ( VariableField printholding : printholdings ) {
+			DataField df = (DataField) printholding;
+			String locStr = df.getSubfield('l').getData();
+			if ( locHoldingsMap.get(locStr) == null ) {
+				List<VariableField> locHoldings = new ArrayList<VariableField>();
+				locHoldings.add(printholding);
+				locHoldingsMap.put(locStr, locHoldings);
+			} else {
+				locHoldingsMap.get(locStr).add(printholding);
+			}
+		}
 		if ( printMFHDRecords != null && printMFHDRecords.size() > 0 ) {
 			for ( Record MFHDRec : printMFHDRecords ) {
 				// There can be many print MFHDRecords for a Bib, each of which 
@@ -2318,62 +2490,105 @@ public class LU_BuildInstance {
 				// Use the 852 $c subfield -- the type should help.  Compare to 
 				// 999 field's $t subfield.  See a12120.
 				// One of the 999's is MICROFORM, has MFORM in a holdings rec's 852 $c
-				
+
 				// Look in 853's "$a" subfield, compare to "$l" of 999, maybe?  LMC in both for a8032
-				
+
 				// TODO: what should happen here is a loop over the print holdings, adding to a list for each
 				// MFHDRec, then add that list to the MFHD_to_printholdings map for the MFHDRec
 				// But I have no way of telling which printholdings (999 fields from the Bib record) go with
 				// which MFHDRecords
 				// Lacking a way to map these, I'm just going to associated every printholdings with every print MFHDRec
-				
+
 				MFHD_to_printholdings.put(MFHDRec, printholdings);
 
 			}
-			
+
 			// TODO: rather than one holdings per 999 field, use the Schema described by Lisa:
 			for ( Record MFHDRec : MFHD_to_printholdings.keySet() ) {
 				List<VariableField> assocPrintHoldings = MFHD_to_printholdings.get(MFHDRec);
+				for ( String locStr : locHoldingsMap.keySet() ) {
+					FlatLocation floc = this.getFlatLocation(locStr);
+					VariableField firstholding = locHoldingsMap.get(locStr).get(0);
+					subfields = LU_BuildInstance.getSubfields(firstholding);
+					LU_DBLoadInstances.Log(System.out, "Building holdings in location " + floc.getLocCodeString() + 
+							" for callnumber " + subfields.get("$a").get(0) + ", number of items: " + locHoldingsMap.get(locStr).size(), 
+							LU_DBLoadInstances.LOG_INFO);
+					OLEHoldings oh = new OLEHoldings();
+					oh.setHoldingsType("print");
+					oh.setFlatLocation(floc);
+					oh.setBib(bib);
+					bib.getHoldings().add(oh);
+					this.buildCommonHoldingsData(record, bib, firstholding, subfields, MFHDRec, oh);
+					for ( VariableField vf : locHoldingsMap.get(locStr) ) {
+						subfields = LU_BuildInstance.getSubfields(vf);
+						this.buildItemsData(record, bib, oh, subfields);
+					}
+				}
+
+				// Before grouping holdings by location:
+				/*
 				for ( VariableField printholding : assocPrintHoldings ) {
 					OLEHoldings oh = new OLEHoldings();
 					oh.setHoldingsType("print");
-					
+
 					subfields = LU_BuildInstance.getSubfields(printholding);
-					
+
 					String locStr = subfields.get("$l").get(0);
 					oh.setFlatLocation(this.getFlatLocation(locStr));
-					
+
 					// Callnumber and type setting code used to be here, moved into 
 					// buildCommonHoldingsData since e-holdings will use the same info now
-				    
+
 					this.buildCommonHoldingsData(record, bib, printholding, subfields, MFHDRec, oh);
 					// print holdings get a location and "access location"
 
-					
+
 					// changed on 2014-04-23 -- ccc2
 					//oh.setLocationStr(getLocationName(locStr));
 					//oh.setLocationLevelStr("SHELVING");
-					
+
 					oh.setBib(bib);
 					bib.getHoldings().add(oh);
-					
+
 					// print holdings also get an item record, unlike electronic ones
 					this.buildItemsData(record, bib, oh, subfields);
 				}
+				 */
 			}
 		} else {
 			// No MFHD records, just loop over the printholdings passed in
+			for ( String locStr : locHoldingsMap.keySet() ) {
+				FlatLocation floc = this.getFlatLocation(locStr);
+				VariableField firstholding = locHoldingsMap.get(locStr).get(0);
+				subfields = LU_BuildInstance.getSubfields(firstholding);
+				LU_DBLoadInstances.Log(System.out, "Building holdings in location " + floc.getLocCodeString() + 
+						" for callnumber " + subfields.get("$a").get(0) + ", number of items: " + locHoldingsMap.get(locStr).size(), 
+						LU_DBLoadInstances.LOG_INFO);
+				OLEHoldings oh = new OLEHoldings();
+				oh.setHoldingsType("print");
+				oh.setFlatLocation(floc);
+				oh.setBib(bib);
+				bib.getHoldings().add(oh);
+				this.buildCommonHoldingsData(record, bib, firstholding, subfields, null, oh);
+				for ( VariableField vf : locHoldingsMap.get(locStr) ) {
+					subfields = LU_BuildInstance.getSubfields(vf);
+					this.buildItemsData(record, bib, oh, subfields);
+				}
+			}
+
+			// Before grouping holdings by location:
+			/*			
 			for ( VariableField printholding : printholdings ) {
 				OLEHoldings oh = new OLEHoldings();
 				oh.setHoldingsType("print");
 				subfields = LU_BuildInstance.getSubfields(printholding);
-				
+
 				// print holdings get a location and "access location"
 				String locStr = subfields.get("$l").get(0);
 				oh.setFlatLocation(this.getFlatLocation(locStr));
 				//oh.setLocationStr(getLocationName(locStr));
 				//oh.setLocationLevelStr("SHELVING");
-				
+
 				// Callnumber and type setting code used to be here, moved into
 			    // buildCommonHoldingsData since electronic holdings now use the
 			    // same info
@@ -2383,19 +2598,20 @@ public class LU_BuildInstance {
 			    // Those don't appear to be in our data anywhere
 			    // TODO: run that by Doreen, et al ^^^
 			    // Also not used currently: shelving scheme
-			   			    
+
 				this.buildCommonHoldingsData(record, bib, printholding, subfields, null, oh);
 
 
 				oh.setBib(bib);
 				bib.getHoldings().add(oh);
-				
+
 				// print holdings also get an item record, unlike electronic ones
 				this.buildItemsData(record, bib, oh, subfields);
 			}
+			 */
 		}
 	}
-	
+
 	public static VariableField getValidEightFiveTwo(Record MFHDRec) {
 		VariableField eightfivetwo = null;
 		Map<String, List<String>> subfields;
@@ -2412,7 +2628,7 @@ public class LU_BuildInstance {
 		}
 		return null;
 	}
-	
+
 	/*
 	 *  The subfields parameter is a hashmap containing all the subfields of a 999 field.
 	 * There can be more than one of several of them, so each key returns a list.  The
@@ -2433,41 +2649,55 @@ public class LU_BuildInstance {
 			//inst.setItems(new Items());
 			holdings.setItems(new ArrayList<Item>());
 		}
-		
+
 		String locStr;
-	    Item item = new Item();
-	    item.setUniqueIdPrefix("wio");
-	    item.setClaimsReturnedFlag("N"); // Apparently there has to be a value here or the docstore
-	    // REST API gives a NullPointerException ...
-	    
-	    item.setCallNumber(holdings.getCallNumber());
-	    item.setCallNumberType(holdings.getCallNumberType());
-	    
-	    // There should only be one subfield "i", as it's the item's barcode and should be unique
-	    // And there should be only 1 item with that item ID, so we can just get the first
-	    // element of each of those lists
-	    String itemID = subfields.get("$i").get(0).trim();
-	    if ( itemID.equals("$737988-1001") ) { // found this extra $ in one item, it's a typo -- it's not in the output from selitem
-	    	itemID = itemID.substring(1); // chop the $ off of there
-	    }
-		
-	    //TypedQuery<SirsiItem> query = LU_DBLoadInstances.migration_em.createQuery("SELECT i FROM SirsiItem i WHERE i.barcode='" + itemID + "'", SirsiItem.class);
+		Item item = new Item();
+		item.setUniqueIdPrefix("wio");
+		item.setClaimsReturnedFlag("N"); // Apparently there has to be a value here or the docstore
+		// REST API gives a NullPointerException ...
+
+		item.setCallNumberType(holdings.getCallNumberType());
+
+		CallNumber cn = new CallNumber();
+		cn.setPrefix("");
+		// The holdings record may have had the callnumber abbreviated to remove 
+		// volume or year info on the end, but we want that to be in the item,
+		// so we can't re-use the holdings record's callnumber here
+		cn.setNumber(subfields.get("$a").get(0), holdings.getFlatLocation());
+
+		// It should be a "normalized" version of the call number, with
+		// spaces and other stuff removed
+		ShelvingOrder shelvingOrder = new ShelvingOrder();
+		shelvingOrder.setShelvingOrder(LU_BuildInstance.normalizeCallNumber(cn.getNumber(), item.getCallNumberType().getCode()));
+		cn.setShelvingOrder(shelvingOrder);
+
+		item.setCallNumber(cn);
+
+		// There should only be one subfield "i", as it's the item's barcode and should be unique
+		// And there should be only 1 item with that item ID, so we can just get the first
+		// element of each of those lists
+		String itemID = subfields.get("$i").get(0).trim();
+		if ( itemID.equals("$737988-1001") ) { // found this extra $ in one item, it's a typo -- it's not in the output from selitem
+			itemID = itemID.substring(1); // chop the $ off of there
+		}
+
+		//TypedQuery<SirsiItem> query = migration_em.createQuery("SELECT i FROM SirsiItem i WHERE i.barcode='" + itemID + "'", SirsiItem.class);
 		//query.setHint("org.hibernate.cacheable", true);
 		//List<SirsiItem> results = query.getResultList();
 		SirsiItem sirsiItem = null;
-		sirsiItem = LU_DBLoadInstances.migration_em.find(SirsiItem.class, itemID);
+		sirsiItem = migration_em.find(SirsiItem.class, itemID);
 		//if ( results.size() > 0 ) {
 		//	sirsiItem = results.get(0);
 		//} else {
 		if ( sirsiItem == null ) {
-	    	LU_DBLoadInstances.Log(System.err, "No item in migration database for ID " + itemID + ", record: " + record.toString(), LU_DBLoadInstances.LOG_ERROR);
+			LU_DBLoadInstances.Log(System.err, "No item in migration database for ID " + itemID + ", record: " + record.toString(), LU_DBLoadInstances.LOG_ERROR);
 		}
 		if ( (subfields.get("$i").size() != 1) ) {
-				//|| results.size() > 1 ) {
-			 //( itemsByID.get(itemID) != null && 
-			 //  itemsByID.get(itemID).size() != 1 ) ) {
+			//|| results.size() > 1 ) {
+			//( itemsByID.get(itemID) != null && 
+			//  itemsByID.get(itemID).size() != 1 ) ) {
 			LU_DBLoadInstances.Log(System.err, "Bar code number (item ID) not unique for item: " + subfields.toString(), 
-									LU_DBLoadInstances.LOG_ERROR);			
+					LU_DBLoadInstances.LOG_ERROR);			
 		}
 		LU_DBLoadInstances.Log(System.out, "Looking for item !" + itemID + "!", LU_DBLoadInstances.LOG_DEBUG);
 		LU_DBLoadInstances.Log(System.out, "Subfields: ", LU_DBLoadInstances.LOG_DEBUG);
@@ -2485,8 +2715,8 @@ public class LU_BuildInstance {
 	    } else {
 	    	itemString = this.itemsByID.get(itemID).get(0);
 	    }
-		*/
-	    
+		 */
+
 		// The field order of the itemString is described here:		
 		// The contents of the items file was produced by this command:
 		// selitem -oKabcdfhjlmnpqrstuvwyzA1234567Bk > /ExtDisk/allitems.txt
@@ -2526,9 +2756,9 @@ public class LU_BuildInstance {
 		 * 31 (B) item ID (NQ)
 		 * 32 (k) number of comments	
 		 */
-	    
+
 		item.setBarcodeARSL(""); // We don't use this, currently
-		
+
 		List<FormerIdentifier> fids = new ArrayList<FormerIdentifier>();
 		FormerIdentifier fi = new FormerIdentifier();
 		Identifier id = new Identifier();
@@ -2549,26 +2779,26 @@ public class LU_BuildInstance {
 		} else {
 			id.setIdentifierValue("N/A");
 		}
-		*/
+		 */
 		//id.setSource("SIRSI_ITEMKEY");
 		fi.setIdentifierType("SIRSI_ITEMKEY");
 		fi.setIdentifier(id);
 		fi.setItem(item);
 		fids.add(fi);
 		item.setFormerIdentifiers(fids);
-		
+
 		ItemType type;
 		String itemtypestr = subfields.get("$t").get(0);
 		item.setItemType(itemtypestr, itemtypestr);
-		
+
 		// 	Commenting out setting the itemType's codeValue, since OLE's bulk ingest
 		// choked on the field
 		//type.setCodeValue(subfields.get("$t").get(0)); // should be only one of these
 		// Don't worry about the typeOrSource of the itemType, not sure what that would be
-		
+
 		// should also only be one of these
 		item.setCopyNumber(subfields.get("$c").get(0));
-		
+
 		// Status could mean any number of things.  From Sirsi, we've got transit status and reserve status
 		// Could also be "current location".  I'm going to assume it's current location here, based on the data I've seen
 
@@ -2588,7 +2818,7 @@ public class LU_BuildInstance {
 			//String num_charges = itemString.get(5);
 			String item_res_status = sirsiItem.getReserve_status();
 			String num_charges = Integer.toString(sirsiItem.getNum_charges());
-			
+
 			if ( item_res_status != null && itemReservedStatusCodeMap.get(item_res_status) != null ) {
 				item_status_code = itemReservedStatusCodeMap.get(item_res_status);
 				item_status_name = itemReservedStatusNameMap.get(item_res_status);
@@ -2622,7 +2852,7 @@ public class LU_BuildInstance {
 		//DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
 		DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 		item.setItemStatusDateUpdated(df.format(Calendar.getInstance().getTime()));
-		
+
 		// Should also only be one of these
 		if ( subfields.get("$j") != null ) {
 			item.setNumberOfPieces(subfields.get("$j").get(0));
@@ -2639,17 +2869,17 @@ public class LU_BuildInstance {
 				LU_DBLoadInstances.Log(System.err, "Not setting price from invalid string: " + pricestr,
 						LU_DBLoadInstances.LOG_WARN);
 			}
-			
+
 		}	
-		
-	    //String locStr = subfields.get("$l").get(0);
+
+		//String locStr = subfields.get("$l").get(0);
 		// Items can override the location from the containing OLE Holdings
-	    
-	    if ( locStr.equals(ELECTRONIC_RESOURCE) ) {
-	    	// No location to fill in ...
-	    } else {
-	    	LU_DBLoadInstances.Log(System.out, "Adding location information to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
-	    	/*
+
+		if ( locStr.equals(ELECTRONIC_RESOURCE) ) {
+			// No location to fill in ...
+		} else {
+			LU_DBLoadInstances.Log(System.out, "Adding location information to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
+			/*
 	    	String[] locPieces = locStr.split("-|_");
 	    	if ( locPieces.length == 3 ) {
 	    		libraryName = libraryCodeToName.get(locPieces[0]);
@@ -2676,15 +2906,15 @@ public class LU_BuildInstance {
 	    	} else {
 	    		libraryName = locStr;
 	    	}
-			*/
+			 */
 
-	    	FlatLocation loc = this.getFlatLocation(locStr);
-	    	//loc.setLevel("SHELVING");
-	    	// ccc2 -- changed 2014-04-23
-	    	//loc.setName(getLocationName(locStr));
-	    	//loc.setName(locStr);
-		    item.setLocation(loc);
-	    }
+			FlatLocation loc = this.getFlatLocation(locStr);
+			//loc.setLevel("SHELVING");
+			// ccc2 -- changed 2014-04-23
+			//loc.setName(getLocationName(locStr));
+			//loc.setName(locStr);
+			item.setLocation(loc);
+		}
 		// TODO: go over these with Doreen
 		// Fields not used:
 		// copyNumberLabel, volumeNumber, volumneNumberLabel, enumeration
@@ -2693,9 +2923,9 @@ public class LU_BuildInstance {
 		// statisticalSearchingCodes?
 
 		// item.setChronology(chronology) // TODO: this might be a date at the end of the call 
-                                          // number (subfield $a), but doesn't appear to be there for most
-		
-			
+		// number (subfield $a), but doesn't appear to be there for most
+
+
 		// If we're creating e-instances, then we don't need to make multiple items here, as
 		// there will be a totally separate instance for each URL
 		// Until OLE can ingest e-instances, we need to make multiple items with different
@@ -2727,13 +2957,13 @@ public class LU_BuildInstance {
 			holdings.getItems().add(item);
 		}
 	}
-	
+
 	public void buildHoldingsData(Record record, Bib bib, Map<String, List<String>> subfields, Record assocMFHDRec) {
 		// Use the first callNumber in the list to fill in some info 
-		
-	    // There should only be one subfield "a", as it's the item's call number and should be unique
-	    // And there should be only 1 call number with that "item number" in Sirsi, so we can just get the first
-	    // element of each of those lists
+
+		// There should only be one subfield "a", as it's the item's call number and should be unique
+		// And there should be only 1 call number with that "item number" in Sirsi, so we can just get the first
+		// element of each of those lists
 		String callnumberstr = subfields.get("$a").get(0).trim();
 		LU_DBLoadInstances.Log(System.out, "Building holdings data for item !" + callnumberstr + "!", LU_DBLoadInstances.LOG_DEBUG);
 		LU_DBLoadInstances.Log(System.out, "Subfields: ", LU_DBLoadInstances.LOG_DEBUG);
@@ -2758,7 +2988,7 @@ public class LU_BuildInstance {
 			replacement = Character.toString((char)numval);
 			callnumberstr = m.replaceAll(replacement);
 		}
-		*/
+		 */
 
 		/* not used anymore
 		List<String> callNumberFields = new ArrayList<String>();
@@ -2776,8 +3006,8 @@ public class LU_BuildInstance {
 									LU_DBLoadInstances.LOG_DEBUG);
 			// TODO: print list of callNumbers for this item number
 		}
-		*/
-		
+		 */
+
 		// The contents of the call numbers file was produced by this command:
 		// selcallnum -iS -oKabchpqryz2 > /ExtDisk/allcallnums.txt
 		// The shelving Key, output by -oA, the "item number", called call number at Lehigh
@@ -2801,11 +3031,11 @@ public class LU_BuildInstance {
 		 * 13 item number (call number at Lehigh)
 		 * 14 analytics
 		 */
-		
+
 		Map<String, List<String>> tmpsubfields;
 		//inst.setInstanceIdentifier(callNumberFields.get(0));
-	
-		
+
+
 		//inst.setResourceIdentifier(subfields.get("$a").get(0));
 		//inst.setResourceIdentifier(LU_DBLoadInstances.formatCatKey(record.getControlNumber())); // need to set this to what's in 001 of the bib to link them
 		//inst.setResourceIdentifier(LU_DBLoadInstances.formatCatKey(callNumberFields.get(0)));
@@ -2828,14 +3058,14 @@ public class LU_BuildInstance {
 			}
 			inst.setFormerResourceIdentifiers(fids);
 		}
-		*/
+		 */
 
 		/*
 		SourceHoldings sh = new SourceHoldings();
 		sh.setPrimary("false");
 		inst.setSourceHoldings(sh);
-		*/
-		
+		 */
+
 		// Build up oleHoldings within instance
 		OLEHoldings oh = new OLEHoldings(bib);
 		oh.setStaffOnly(bib.getStaffOnly());
@@ -2843,82 +3073,82 @@ public class LU_BuildInstance {
 		// the way i've been interpreting it, holdings don't have types.  items do.
 		// it's at the item level that we say whether something is electronic or physical
 		// we could create separate holdings for the electronic ones, but aren't currently
-		
+
 		List<String> nonpublicNoteType = Arrays.asList(".CIRCNOTE.", ".STAFF.");
 		List<String> publicNoteType = Arrays.asList(".PUBLIC.");
-	    List<String> commentfields = subfields.get("$o"); // TODO: figure out the split and regex, test this
-	    if ( commentfields != null && commentfields.size() > 0 ) {
-	    	LU_DBLoadInstances.Log(System.out, "Adding " + commentfields.size() + " comments to instance", LU_DBLoadInstances.LOG_DEBUG);
-	    	for ( String comment : commentfields ) {
-	    		// Keep the delimiter on the preceding element of the split array
-	    		OLEHoldingsNote note = new OLEHoldingsNote();
-	    		String[] pieces = comment.split("(?<=\\. )");
-    			// People put periods in their comments sometimes, and that's the delimiter Sirsi uses between
-    			// the comment type and the comment itself, so it blows up the comments array.
-    			// *sigh*
-    			// So, we just join all the pieces after element 0 together 
-	    		String commentstr = StringUtils.join(Arrays.asList(pieces).subList(1, pieces.length));
-	    		/*
+		List<String> commentfields = subfields.get("$o"); // TODO: figure out the split and regex, test this
+		if ( commentfields != null && commentfields.size() > 0 ) {
+			LU_DBLoadInstances.Log(System.out, "Adding " + commentfields.size() + " comments to instance", LU_DBLoadInstances.LOG_DEBUG);
+			for ( String comment : commentfields ) {
+				// Keep the delimiter on the preceding element of the split array
+				OLEHoldingsNote note = new OLEHoldingsNote();
+				String[] pieces = comment.split("(?<=\\. )");
+				// People put periods in their comments sometimes, and that's the delimiter Sirsi uses between
+				// the comment type and the comment itself, so it blows up the comments array.
+				// *sigh*
+				// So, we just join all the pieces after element 0 together 
+				String commentstr = StringUtils.join(Arrays.asList(pieces).subList(1, pieces.length));
+				/*
 	    		if ( pieces.length != 2 ) {
 	    			LU_DBLoadInstances.Log(System.err, "Badly formatted comment: " + comment, LU_DBLoadInstances.LOG_ERROR);
 	    			for (String piece : pieces ) {
 	    				LU_DBLoadInstances.Log(System.err, "Piece: " + piece, LU_DBLoadInstances.LOG_ERROR);
 	    				System.out.println("Piece: " + piece);
 	    			}
-	    			
+
 	    		} else {
 	    			commentstr = pieces[1];
 	    		} 
-	    		*/
-	    		if ( nonpublicNoteType.contains(pieces[0].trim())) {
-	    			note.setType(nonpublicStr);
-	    		} else if ( publicNoteType.contains(pieces[0].trim())) {
-	    			note.setType(publicStr);
-	    		} else {
-	    			LU_DBLoadInstances.Log(System.err, "Unknown type of comment: " + comment, LU_DBLoadInstances.LOG_WARN);
-	    		}
-	    		note.setNote(commentstr);
-	    		note.setOLEHoldings(oh);
-	    		oh.getNotes().add(note);
-	    	}
-	    }
-	    
-	    ArrayList<VariableField> uriFields = (ArrayList<VariableField>) record.getVariableFields("856");
-	    if ( uriFields != null && uriFields.size() > 0 ){
-	    	LU_DBLoadInstances.Log(System.out, "Adding " + uriFields.size() + " URIs to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
-	    	for ( VariableField uriField : uriFields ) {
-	    		tmpsubfields = this.getSubfields(uriField);
-	    		if ( tmpsubfields.get("$u") != null ) {
-		    		AccessURI uri = new AccessURI();
-		    		uri.setText(tmpsubfields.get("$u").get(0));
-	    			// TODO: what to do with the "z" subfields?  They would provide the coverage information in an e-instance
-	    			// Not sure how to handle them here.
-		    		uri.setOleHoldings(oh);
-	    			oh.getAccessURIs().add(uri);
-	    		} 
-	    		if ( tmpsubfields.get("$a") != null ) {
-		    		AccessURI uri = new AccessURI();
-	    			uri.setText(tmpsubfields.get("$a").get(0));
-	    			// TODO: what to do with the "z" subfields?  They would provide the coverage information in an e-instance
-	    			// Not sure how to handle them here.
-	    			uri.setOleHoldings(oh);
-	    			oh.getAccessURIs().add(uri);	    				    			
-	    		}
-	    		if ( oh.getAccessURIs().size() == 0 ) {
-	    			LU_DBLoadInstances.Log(System.err, "856 with no $u or $a subfields for record " + record.getControlNumber() + 
-	    						        ", 856 field is" + uriField.toString(), LU_DBLoadInstances.LOG_WARN);	    			
-	    		}
-	    	}
-	    	
-	    }
+				 */
+				if ( nonpublicNoteType.contains(pieces[0].trim())) {
+					note.setType(nonpublicStr);
+				} else if ( publicNoteType.contains(pieces[0].trim())) {
+					note.setType(publicStr);
+				} else {
+					LU_DBLoadInstances.Log(System.err, "Unknown type of comment: " + comment, LU_DBLoadInstances.LOG_WARN);
+				}
+				note.setNote(commentstr);
+				note.setOLEHoldings(oh);
+				oh.getNotes().add(note);
+			}
+		}
+
+		ArrayList<VariableField> uriFields = (ArrayList<VariableField>) record.getVariableFields("856");
+		if ( uriFields != null && uriFields.size() > 0 ){
+			LU_DBLoadInstances.Log(System.out, "Adding " + uriFields.size() + " URIs to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
+			for ( VariableField uriField : uriFields ) {
+				tmpsubfields = this.getSubfields(uriField);
+				if ( tmpsubfields.get("$u") != null ) {
+					AccessURI uri = new AccessURI();
+					uri.setText(tmpsubfields.get("$u").get(0));
+					// TODO: what to do with the "z" subfields?  They would provide the coverage information in an e-instance
+					// Not sure how to handle them here.
+					uri.setOleHoldings(oh);
+					oh.getAccessURIs().add(uri);
+				} 
+				if ( tmpsubfields.get("$a") != null ) {
+					AccessURI uri = new AccessURI();
+					uri.setText(tmpsubfields.get("$a").get(0));
+					// TODO: what to do with the "z" subfields?  They would provide the coverage information in an e-instance
+					// Not sure how to handle them here.
+					uri.setOleHoldings(oh);
+					oh.getAccessURIs().add(uri);	    				    			
+				}
+				if ( oh.getAccessURIs().size() == 0 ) {
+					LU_DBLoadInstances.Log(System.err, "856 with no $u or $a subfields for record " + record.getControlNumber() + 
+							", 856 field is" + uriField.toString(), LU_DBLoadInstances.LOG_WARN);	    			
+				}
+			}
+
+		}
 
 		// Items can override the location from the containing OLE Holdings
-	    String locStr = subfields.get("$l").get(0);
-	    if ( locStr.equals(ELECTRONIC_RESOURCE) ) {
-	    	// No location to fill in ...
-	    } else {
-	    	LU_DBLoadInstances.Log(System.out, "Adding location information to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
-	    	/*
+		String locStr = subfields.get("$l").get(0);
+		if ( locStr.equals(ELECTRONIC_RESOURCE) ) {
+			// No location to fill in ...
+		} else {
+			LU_DBLoadInstances.Log(System.out, "Adding location information to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
+			/*
 	    	String[] locPieces = locStr.split("-|_");
 	    	if ( locPieces.length == 3 ) {
 	    		libraryName = libraryCodeToName.get(locPieces[0]);
@@ -2945,13 +3175,13 @@ public class LU_BuildInstance {
 	    	} else {
 	    		libraryName = locStr;
 	    	}
-			*/
+			 */
 
-	    	oh.setFlatLocation(this.getFlatLocation(locStr));
-		    //oh.setLocationStr(getLocationName(locStr));
-		    //oh.setLocationLevelStr("SHELVING");
-	    	
-	    	/* old code 
+			oh.setFlatLocation(this.getFlatLocation(locStr));
+			//oh.setLocationStr(getLocationName(locStr));
+			//oh.setLocationLevelStr("SHELVING");
+
+			/* old code 
 	    	LocationLevel locLevel1 = new LocationLevel();
 	    	locLevel1.setLevel("UNIVERSITY");
 	    	locLevel1.setName("Lehigh University");
@@ -2966,29 +3196,29 @@ public class LU_BuildInstance {
 	    		locLevel2.setSubLocationLevel(locLevel3);
 	    	}
 	    	location.setLocLevel(locLevel1);
-	    	
+
     		// Also old code ..
 	    	FlatLocation flatLoc = new FlatLocation();
 	    	flatLoc.setLevel("SHELVING");
 	    	flatLoc.setName(shelving.getName());
 		    oh.setLocation(flatLoc);
-		    
-		    */
-	    }		
-	    
-    	LU_DBLoadInstances.Log(System.out, "Adding callnumber info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
-	    CallNumber cn = new CallNumber();
-	    // Same as the shelvingscheme for now
-	    String cntype = subfields.get("$w").get(0);
-	    
-	    cn.setPrefix("");
-	    cn.setNumber(subfields.get("$a").get(0));
 
-	    // Not used: callNumberType, callNumberPrefix, itemPart,
-	    // They make reference to MFHD 852 codes i, h, and k
-	    // Those don't appear to be in our data anywhere
-	    // TODO: run that by Doreen, et al ^^^
-	    // Also not used currently: shelving scheme
+			 */
+		}		
+
+		LU_DBLoadInstances.Log(System.out, "Adding callnumber info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);
+		CallNumber cn = new CallNumber();
+		// Same as the shelvingscheme for now
+		String cntype = subfields.get("$w").get(0);
+
+		cn.setPrefix("");
+		cn.setNumber(subfields.get("$a").get(0));
+
+		// Not used: callNumberType, callNumberPrefix, itemPart,
+		// They make reference to MFHD 852 codes i, h, and k
+		// Those don't appear to be in our data anywhere
+		// TODO: run that by Doreen, et al ^^^
+		// Also not used currently: shelving scheme
 		String cntypecode = callNumberTypeCodes.get(cntype);
 		String cntypename = callNumberTypeNames.get(cntype);
 		if ( cntypecode == null || cntypecode.length() == 0) {
@@ -2999,19 +3229,19 @@ public class LU_BuildInstance {
 		}
 		oh.setCallNumberType(cntypecode, cntypename);
 		// It should be a "normalized" version of the call number, with
-	    // spaces and other stuff removed
-	    ShelvingOrder shelvingOrder = new ShelvingOrder();
-	    shelvingOrder.setShelvingOrder(LU_BuildInstance.normalizeCallNumber(cn.getNumber(), cntypecode));
-	    cn.setShelvingOrder(shelvingOrder);
-	    oh.setCallNumber(cn);
-	    
-	    
-	    ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
+		// spaces and other stuff removed
+		ShelvingOrder shelvingOrder = new ShelvingOrder();
+		shelvingOrder.setShelvingOrder(LU_BuildInstance.normalizeCallNumber(cn.getNumber(), cntypecode));
+		cn.setShelvingOrder(shelvingOrder);
+		oh.setCallNumber(cn);
+
+
+		ExtentOfOwnership extentOfOwnership = new ExtentOfOwnership();
 		extentOfOwnership.setType("public", "public");
 		if ( assocMFHDRec != null ) {
 			VariableField eightsixsix = assocMFHDRec.getVariableField("866");
 			if ( eightsixsix != null ) {
-		    	LU_DBLoadInstances.Log(System.out, "Adding extent of ownership info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);				
+				LU_DBLoadInstances.Log(System.out, "Adding extent of ownership info to instance holdings data", LU_DBLoadInstances.LOG_DEBUG);				
 				tmpsubfields = this.getSubfields(eightsixsix);
 				LU_DBLoadInstances.Log(System.out, "Subfields of 866 for MFHD record: ", LU_DBLoadInstances.LOG_DEBUG);
 				for ( String key : tmpsubfields.keySet() ) {
@@ -3035,8 +3265,8 @@ public class LU_BuildInstance {
 
 			// TODO: receptStatus comes from the associated holdings record's
 			// 008 field, position 6 (counting from 0 or 1, not sure, probably 1 given context)
-		    // There will need to be separate instances for each MFHD record, probably -- should
-		    // be either 1 or 2 MFHD records, if any, one for electronic version and one for physical
+			// There will need to be separate instances for each MFHD record, probably -- should
+			// be either 1 or 2 MFHD records, if any, one for electronic version and one for physical
 			String receiptStatus = assocMFHDRec.getVariableField("008").toString().substring(6, 7);
 			oh.setReceiptStatus(new ReceiptStatus(receiptStatus, receiptStatus));
 		} else {
@@ -3044,11 +3274,11 @@ public class LU_BuildInstance {
 		}
 		extentOfOwnership.setOLEHoldings(oh);
 		oh.getExtentOfOwnership().add(extentOfOwnership);
-    	LU_DBLoadInstances.Log(System.out, "Done creating holdings data, adding to instance collection", LU_DBLoadInstances.LOG_DEBUG);
+		LU_DBLoadInstances.Log(System.out, "Done creating holdings data, adding to instance collection", LU_DBLoadInstances.LOG_DEBUG);
 
-    	bib.getHoldings().add(oh);
-    	
-    	this.buildItemsData(record, bib, oh, subfields);
+		bib.getHoldings().add(oh);
+
+		this.buildItemsData(record, bib, oh, subfields);
 		//inst.setOleHoldings(oh);
 		//oh.setInstance(inst);
 	}
@@ -3110,7 +3340,7 @@ public class LU_BuildInstance {
 			}
 			//return shelving.getName();
 			//newlocStr += "/" + shelving.getCode();
-			
+
 			// All renamed locations are shelving level locations
 			if ( renamedLocations.get(locStr) != null ) {
 				newlocStr += "/" + renamedLocations.get(locStr);
@@ -3123,12 +3353,12 @@ public class LU_BuildInstance {
 		flatLoc.setLocCodeString(newlocStr);
 		return flatLoc;
 	}
-	
+
 	/*
 	 * Not relevant anymore in directdb branch
 	public static void testoutput(InstanceCollection ic) {
 		// Test to make sure that the XML output looks good 
-		
+
 		// Build up instance
 		Instance inst = new Instance();
 		inst.setInstanceIdentifier("123");
@@ -3136,7 +3366,7 @@ public class LU_BuildInstance {
 		SourceHoldings sh = new SourceHoldings();
 		sh.setPrimary("false");
 		//inst.setSourceHoldings(sh);
-		
+
 		// Build up oleHoldings within instance
 		OLEHoldings oh = new OLEHoldings();
 		oh.setHoldingsIdentifier("string");
@@ -3195,7 +3425,7 @@ public class LU_BuildInstance {
 		eoo.getNotes().add(n);
 		oh.getExtentOfOwnership().add(eoo);
 		// Done building up oleHoldings
-		
+
 		// Build up Items
 		Items items = new Items();
 		Item item = new Item();
@@ -3273,17 +3503,17 @@ public class LU_BuildInstance {
 		// nillable, and set to the empty string by item's constructor
 		// so they'll show up as empty tags in the output
 		// Done building up item
-		
+
 		items.getItems().add(item);
-		
+
 		inst.setOleHoldings(oh);
 		inst.setItems(items);
 		// Done building up instance
-		
+
 		//ic.setInstance(inst);
 		ic.getInstances().add(inst);
-		
+
 	}
-	*/
-	
+	 */
+
 }

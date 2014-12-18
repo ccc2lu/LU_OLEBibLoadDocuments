@@ -11,6 +11,7 @@ import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
+import javax.persistence.EntityManager;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
@@ -25,6 +26,7 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+import edu.lu.oleconvert.LU_BuildInstance;
 import edu.lu.oleconvert.LU_DBLoadInstances;
 
 @Entity
@@ -79,7 +81,7 @@ public class Item implements Serializable {
 	private CallNumber callNumber;
 	private CallNumberType callNumberType;
 	
-	private double price;
+	private Double price;
 	private String numberOfPieces;
 	//private String itemStatus;
 	// ole_ds_item_status_t is gone, only using deliver version now, apparently
@@ -137,7 +139,7 @@ public class Item implements Serializable {
 		//fund = donorPublicDisplay = donorNote = "";
 		fund = "";
 		//this.itemDonor = new ItemDonor();
-		price = 0;
+		price = new Double(0);
 		numberOfPieces = "";
 		//itemStatus = itemStatusEffectiveDate = "";
 		itemStatusDateUpdated = "";
@@ -443,7 +445,7 @@ public class Item implements Serializable {
 	public void setTemporaryItemType(String code, String name) {
 		Deliver_ItemType type;
 		//TypedQuery<ItemType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM ItemType t WHERE t.code='" + code + "'", ItemType.class);
-		TypedQuery<Deliver_ItemType> query = LU_DBLoadInstances.ole_em.createQuery("SELECT t FROM Deliver_ItemType t WHERE t.code='" + code + "'", Deliver_ItemType.class);
+		TypedQuery<Deliver_ItemType> query = LU_BuildInstance.ole_em.createQuery("SELECT t FROM Deliver_ItemType t WHERE t.code='" + code + "'", Deliver_ItemType.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<Deliver_ItemType> results = query.getResultList();
 		if ( results.size() == 0 ) {
@@ -497,11 +499,11 @@ public class Item implements Serializable {
 	
 	@Column(name="PRICE")
 	@XmlElement(name="price", required=true, nillable=true)
-	public double getPrice() {
+	public Double getPrice() {
 		return price;
 	}
 
-	public void setPrice(double newprice) {
+	public void setPrice(Double newprice) {
 		this.price = newprice;
 	}
 
@@ -539,7 +541,7 @@ public class Item implements Serializable {
 	public void setItemStatus(String code, String name) {
 		ItemStatus status;
 		// TypedQuery<ItemStatus> query = LU_DBLoadInstances.em.createQuery("SELECT s FROM ItemStatus s WHERE s.code='" + code + "'", ItemStatus.class);
-		TypedQuery<ItemStatus> query = LU_DBLoadInstances.ole_em.createQuery("SELECT s FROM ItemStatus s WHERE s.deliverStatus.code='" + code + "'", ItemStatus.class);
+		TypedQuery<ItemStatus> query = LU_BuildInstance.ole_em.createQuery("SELECT s FROM ItemStatus s WHERE s.deliverStatus.code='" + code + "'", ItemStatus.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<ItemStatus> results = query.getResultList();
 		if ( results.size() == 0 ) {
@@ -562,7 +564,20 @@ public class Item implements Serializable {
 	public void setItemStatus(String code, String name) {
 		Deliver_ItemStatus status;
 		// TypedQuery<ItemStatus> query = LU_DBLoadInstances.em.createQuery("SELECT s FROM ItemStatus s WHERE s.code='" + code + "'", ItemStatus.class);
-		TypedQuery<Deliver_ItemStatus> query = LU_DBLoadInstances.ole_em.createQuery("SELECT s FROM Deliver_ItemStatus s WHERE s.code='" + code + "'", Deliver_ItemStatus.class);
+		TypedQuery<Deliver_ItemStatus> query = LU_BuildInstance.ole_em.createQuery("SELECT s FROM Deliver_ItemStatus s WHERE s.code='" + code + "'", Deliver_ItemStatus.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<Deliver_ItemStatus> results = query.getResultList();
+		if ( results.size() == 0 ) {
+			status = new Deliver_ItemStatus(code, name);
+		} else {
+			status = results.get(0);
+		}		
+		this.setItemStatus(status);
+	}
+	public void setItemStatus(String code, String name, EntityManager em) {
+		Deliver_ItemStatus status;
+		// TypedQuery<ItemStatus> query = LU_DBLoadInstances.em.createQuery("SELECT s FROM ItemStatus s WHERE s.code='" + code + "'", ItemStatus.class);
+		TypedQuery<Deliver_ItemStatus> query = em.createQuery("SELECT s FROM Deliver_ItemStatus s WHERE s.code='" + code + "'", Deliver_ItemStatus.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<Deliver_ItemStatus> results = query.getResultList();
 		if ( results.size() == 0 ) {
@@ -665,7 +680,7 @@ public class Item implements Serializable {
 	}
 	public void setCallNumberType(String code, String name) {
 		CallNumberType type;
-		TypedQuery<CallNumberType> query = LU_DBLoadInstances.ole_em.createQuery("SELECT t FROM CallNumberType t WHERE t.code='" + code + "'", CallNumberType.class);
+		TypedQuery<CallNumberType> query = LU_BuildInstance.ole_em.createQuery("SELECT t FROM CallNumberType t WHERE t.code='" + code + "'", CallNumberType.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<CallNumberType> results = query.getResultList();
 		if ( results.size() == 0 ) {
@@ -692,7 +707,7 @@ public class Item implements Serializable {
 	public void setItemType(String code, String name) {
 		ItemType type;
 		//TypedQuery<ItemType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM ItemType t WHERE t.code='" + code + "'", ItemType.class);
-		TypedQuery<ItemType> query = LU_DBLoadInstances.ole_em.createQuery("SELECT t FROM ItemType t WHERE t.deliverType.code='" + code + "'", ItemType.class);
+		TypedQuery<ItemType> query = LU_BuildInstance.ole_em.createQuery("SELECT t FROM ItemType t WHERE t.deliverType.code='" + code + "'", ItemType.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<ItemType> results = query.getResultList();
 		if ( results.size() == 0 ) {
@@ -718,7 +733,7 @@ public class Item implements Serializable {
 	public void setItemType(String code, String name) {
 		Deliver_ItemType type;
 		//TypedQuery<ItemType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM ItemType t WHERE t.code='" + code + "'", ItemType.class);
-		TypedQuery<Deliver_ItemType> query = LU_DBLoadInstances.ole_em.createQuery("SELECT t FROM Deliver_ItemType t WHERE t.code='" + code + "'", Deliver_ItemType.class);
+		TypedQuery<Deliver_ItemType> query = LU_BuildInstance.ole_em.createQuery("SELECT t FROM Deliver_ItemType t WHERE t.code='" + code + "'", Deliver_ItemType.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<Deliver_ItemType> results = query.getResultList();
 		if ( results.size() == 0 ) {
@@ -730,7 +745,21 @@ public class Item implements Serializable {
 		}		
 		this.setItemType(type);
 	}
-	
+	public void setItemType(String code, String name, EntityManager em) {
+		Deliver_ItemType type;
+		//TypedQuery<ItemType> query = LU_DBLoadInstances.em.createQuery("SELECT t FROM ItemType t WHERE t.code='" + code + "'", ItemType.class);
+		TypedQuery<Deliver_ItemType> query = em.createQuery("SELECT t FROM Deliver_ItemType t WHERE t.code='" + code + "'", Deliver_ItemType.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<Deliver_ItemType> results = query.getResultList();
+		if ( results.size() == 0 ) {
+			//System.out.println("Creating new item type with code " + code);
+			type = new Deliver_ItemType(code, name);
+		} else {
+			type = results.get(0);
+			//System.out.println("Fetched existing item type with code " + type.getCode());
+		}		
+		this.setItemType(type);
+	}	
 	
 	@Column(name="PURCHASE_ORDER_LINE_ITEM_ID")
 	@XmlElement(name="purchaseOrderLineItemIdentifier", required=true, nillable=true)

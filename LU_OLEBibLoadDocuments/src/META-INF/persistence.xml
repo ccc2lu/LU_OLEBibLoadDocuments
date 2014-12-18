@@ -23,6 +23,25 @@
 		</properties>
 	</persistence-unit>
 	
+	<persistence-unit name="ole_reporting" transaction-type="RESOURCE_LOCAL">
+		<provider>org.hibernate.ejb.HibernatePersistence</provider>
+		<shared-cache-mode>ENABLE_SELECTIVE</shared-cache-mode>
+		<!-- <class>edu.lu.oleconvert.ole.Bib</class> -->
+		<properties>
+			<property name="hibernate.connection.driver_class" value="com.mysql.jdbc.Driver"/>
+			<property name="hibernate.connection.username" value="OLE"/>
+			<property name="hibernate.connection.password" value="OLE"/>
+            <property name="hibernate.connection.url" value="jdbc:mysql://${oledbhost}/ole_reporting"/>
+            <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
+            <property name="hibernate.c3p0.min_size" value="5"/>
+            <property name="hibernate.c3p0.max_size" value="20"/>
+            <property name="hibernate.c3p0.timeout" value="300"/>
+            <property name="hibernate.c3p0.max_statements" value="50"/>
+            <property name="hibernate.c3p0.idle_test_period" value="3000"/>
+            <!-- <property name="hibernate.show_sql" value="true"/> -->
+		</properties>
+	</persistence-unit>	
+	
 	<persistence-unit name="olemigration">
 		<provider>org.hibernate.ejb.HibernatePersistence</provider>
 		<!-- <shared-cache-mode>ENABLE_SELECTIVE</shared-cache-mode> -->

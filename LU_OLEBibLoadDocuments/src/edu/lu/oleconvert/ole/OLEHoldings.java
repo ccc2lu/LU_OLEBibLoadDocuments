@@ -11,6 +11,7 @@ import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
+import javax.persistence.EntityManager;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
@@ -26,6 +27,7 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+import edu.lu.oleconvert.LU_BuildInstance;
 import edu.lu.oleconvert.LU_DBLoadInstances;
 
 @Entity
@@ -464,7 +466,21 @@ public class OLEHoldings implements Serializable {
 	}
 	public void setCallNumberType(String code, String name) {
 		CallNumberType type;
-		TypedQuery<CallNumberType> query = LU_DBLoadInstances.ole_em.createQuery("SELECT t FROM CallNumberType t WHERE t.code='" + code + "'", CallNumberType.class);
+		TypedQuery<CallNumberType> query = LU_BuildInstance.ole_em.createQuery("SELECT t FROM CallNumberType t WHERE t.code='" + code + "'", CallNumberType.class);
+		query.setHint("org.hibernate.cacheable", true);
+		List<CallNumberType> results = query.getResultList();
+		if ( results.size() == 0 ) {
+			type = new CallNumberType();
+			type.setCode(code);
+			type.setName(name);
+		} else {
+			type = results.get(0);
+		}		
+		this.setCallNumberType(type);
+	}
+	public void setCallNumberType(String code, String name, EntityManager em) {
+		CallNumberType type;
+		TypedQuery<CallNumberType> query = em.createQuery("SELECT t FROM CallNumberType t WHERE t.code='" + code + "'", CallNumberType.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<CallNumberType> results = query.getResultList();
 		if ( results.size() == 0 ) {
@@ -543,7 +559,7 @@ public class OLEHoldings implements Serializable {
 	}
 	public void setReceiptStatus(String code, String name) {
 		ReceiptStatus r;
-		TypedQuery<ReceiptStatus> query = LU_DBLoadInstances.ole_em.createQuery("SELECT r FROM ReceiptStatus r WHERE r.code='" + code + "'", ReceiptStatus.class);
+		TypedQuery<ReceiptStatus> query = LU_BuildInstance.ole_em.createQuery("SELECT r FROM ReceiptStatus r WHERE r.code='" + code + "'", ReceiptStatus.class);
 		query.setHint("org.hibernate.cacheable", true);
 		List<ReceiptStatus> results = query.getResultList();
 		if ( results.size() == 0 ) {

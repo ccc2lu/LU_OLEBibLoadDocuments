@@ -42,9 +42,11 @@ public class SerialsReceiving implements Serializable {
 	@Column(name="SER_RCV_REC_ID")
 	private Long id;
 	
+	/*
 	@OneToOne(fetch=FetchType.LAZY, cascade=CascadeType.ALL)
 	@JoinColumn(name="FDOC_NBR", referencedColumnName="DOC_HDR_ID")
 	private FDoc fDoc;
+	*/
 	
 	@OneToMany(fetch=FetchType.LAZY, mappedBy="serialsReceiving", cascade=CascadeType.ALL)
 	List<SerialsReceivingHisRec> serialsReceivingHistory;
@@ -181,9 +183,9 @@ public class SerialsReceiving implements Serializable {
 	public SerialsReceiving(String serId) {
 		this();
 		this.setReceivingRec(serId);
-		this.fDoc = new FDoc(this);
+		//this.fDoc = new FDoc(this);
 		// cascade should handle persisting this
-		//LU_DBLoadInstances.ole_em.persist(this.fDoc);
+		//LU_BuildInstance.ole_em.persist(this.fDoc);
 		
 		//this.setId(serId);
 		//this.setObjId(serId);
@@ -360,6 +362,7 @@ public class SerialsReceiving implements Serializable {
 		this.poId = poId;
 	}
 
+	/*
 	public FDoc getFDoc() {
 		return fDoc;
 	}
@@ -367,7 +370,8 @@ public class SerialsReceiving implements Serializable {
 	public void setFDoc(FDoc doc) {
 		this.fDoc = doc;
 	}
-
+	 */
+	
 	public String getClaim() {
 		return claim;
 	}
