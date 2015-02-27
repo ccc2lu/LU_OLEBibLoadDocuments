@@ -34,4 +34,13 @@ public class OLEDBUtil {
 		return results;
 	}
 	
+	public List<Bib> getBatchOfBibs(int offset, int batchsize) {
+		ole_reporting_em.clear();
+		TypedQuery<Bib> query = ole_reporting_em.createQuery("select b from Bib b", Bib.class);
+		query.setFirstResult(offset);
+		query.setMaxResults(batchsize);
+		List<Bib> results = query.getResultList();
+		return results;
+	}
+	
 }

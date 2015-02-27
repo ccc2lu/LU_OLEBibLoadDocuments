@@ -26,6 +26,8 @@ public class LoadBoundWiths {
 		EntityManager ole_em = ole_emf.createEntityManager();
 		EntityTransaction ole_tx = ole_em.getTransaction();
 
+		// The migration database is a SQLite file-based database that is populated separately by some PHP scripts
+		// and also partly by the StageLoaderData class that's also part of this package
 		EntityManagerFactory migration_emf = Persistence.createEntityManagerFactory("olemigration");
 		EntityManager migration_em = migration_emf.createEntityManager();
 
@@ -35,11 +37,11 @@ public class LoadBoundWiths {
 		Iterator it = results.iterator();
 		while ( it.hasNext() ) {
 			SirsiCallNumber scn = (SirsiCallNumber) it.next();
-			// Check if this is a child record, and if so, create a bound-with
 			try {
+				
+				// If this is a child record, create a bound-with row using the holdings ID from the parent record as it existed in Sirsi
 				if ( scn.getLevel().equals("CHILD") ) {
-					// bib id will be the cat key for the parent, holdings id we'll have to retrieve
-					// though using 
+
 					TypedQuery<OLEHoldings> holdings_query = ole_em.createQuery("select oh from OLEHoldings oh where oh.formerId='" + scn.getParent_cat_key() + "|" + scn.getParent_callnum_key() + "'", OLEHoldings.class);
 					List<OLEHoldings> holdings_results = holdings_query.getResultList();
 					if ( holdings_results.size() > 0 ) {
@@ -63,9 +65,10 @@ public class LoadBoundWiths {
 						LU_DBLoadInstances.Log(System.err, "No parent holdings record found for former ID " + scn.getParent_cat_key() + "|" + scn.getParent_callnum_key(),
 								LU_DBLoadInstances.LOG_WARN);
 					}
+
 				} else if ( scn.getLevel().equals("PARENT") ) {
-					// bib id will be the cat key for the parent, holdings id we'll have to retrieve
-					// though using 
+
+					// If this is a parent record, create a bound-with using the holdings ID from this record as it existed in Sirsi
 					TypedQuery<OLEHoldings> holdings_query = ole_em.createQuery("select oh from OLEHoldings oh where oh.formerId='" + scn.getCat_key() + "|" + scn.getCallnum_key() + "'", OLEHoldings.class);
 					List<OLEHoldings> holdings_results = holdings_query.getResultList();
 					if ( holdings_results.size() > 0 ) {
