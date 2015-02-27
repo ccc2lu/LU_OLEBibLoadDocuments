@@ -39,6 +39,27 @@ public class StageLoaderData {
 
 		
 		String dumpdir = args[0];
+		
+		// These input files were produced using Sirsi's selcallnum tool with varying parameters
+		// For mod.allcallnums.txt, it was:
+		// selcallnum -iS -oKabchpqryz2
+		// For mod.allcallnumsshelvingkeys.txt, it was:
+		// selcallnum -iS -oKA
+		// For mod.boundwiths.txt it was:
+		// selbound -oKPcdy
+		// For mod.allcallnumsitemnumbers.txt it was:
+		// selcallnum -iS -oKD
+		// For mod.allcallnumsanalytics.txt it was:
+		// selcallnum -iS -oKZ
+		// For mod.allitems.txt it was
+		// selitem -oKabcdfhjlmnpqrstuvwyzA1234567Bk
+		// Obviously the Sirsi manual is required to make sense of those commands, but 
+		// my code below should hopefully make relatively clear what ended up
+		// in each file as a result.  
+		// The reason for separate files containing Sirsi callnumber itemnumbers,
+		// shelving keys, and analytics is that those fields can contain the
+		// "|" character, which is also Sirsi's field delimiter.  So, they
+		// throw off everything else unless they're exported to their own files.
 		stageSirsiFiles(dumpdir + "/mod.allcallnums.txt", dumpdir + "/mod.allcallnumsshelvingkeys.txt", dumpdir + "/mod.boundwiths.txt", 
 		                dumpdir + "/mod.allcallnumsitemnumbers.txt", dumpdir + "/mod.allcallnumsanalytics.txt", 
 		                dumpdir + "/mod.allitems.txt", -1);
@@ -78,7 +99,6 @@ public class StageLoaderData {
 			while(callNumbersReader.ready() && (limit < 0 || curr < limit)) {
 				// There should be the same number of lines in all 4 files containing callnum data,
 				// and they should all be sorted the same way to line 1 goes with line 1 goes with line 1, etc.
-				// I'm building those files myself, so I can guarantee it, heh
 				// With that in mind, we'll just read lines from all 4 files at once
 				scn = new SirsiCallNumber();
 				String line = callNumbersReader.readLine();
@@ -141,7 +161,7 @@ public class StageLoaderData {
 
 				if ( ++curr % increment == 0 ) {
 					migration_transaction.commit();
-					migration_em.clear(); // TODO: testing this to see if it fixes memory problems
+					migration_em.clear();
 					LU_DBLoadInstances.Log(System.out, "Staged call number " + curr, LU_DBLoadInstances.LOG_INFO);
 					migration_transaction.begin();
 				}
@@ -188,7 +208,7 @@ public class StageLoaderData {
 						//System.err.println("Persisting ...");
 						if ( ++curr % boundwith_increment == 0 ) {
 							migration_transaction.commit();
-							migration_em.clear(); // TODO: testing this to see if it fixes memory problems
+							migration_em.clear();
 							LU_DBLoadInstances.Log(System.out, "Staged call number " + curr, LU_DBLoadInstances.LOG_INFO);
 							migration_transaction.begin();
 						}
@@ -256,7 +276,7 @@ public class StageLoaderData {
 
 				if ( ++curr % increment == 0 ) {
 					migration_transaction.commit();
-					migration_em.clear(); // TODO: testing this to see if it fixes memory problems
+					migration_em.clear();
 					LU_DBLoadInstances.Log(System.out, "On item number " + curr, LU_DBLoadInstances.LOG_INFO);
 					migration_transaction.begin();
 				}
